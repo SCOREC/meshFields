@@ -122,7 +122,7 @@ The following assumes that the environment is already setup (see above) and the
 ```
 cd $root
 git clone git@github.com:SCOREC/meshFields
-cmake -S meshFields -B build-meshFields-cuda -DDATA_DIR=run/
+cmake -S meshFields -B build-meshFields-cuda
 cmake --build build-meshFields-cuda 
 ```
 
