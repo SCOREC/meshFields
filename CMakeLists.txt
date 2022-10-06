@@ -22,4 +22,5 @@ target_link_libraries(SliceWrapper Omega_h::omega_h)
 target_link_libraries(SliceWrapper Cabana::cabanacore)
 target_compile_definitions(SliceWrapper PUBLIC ENABLE_CABANA)
 
+#add tests
 add_test(sliceWrapper ./SliceWrapper)
