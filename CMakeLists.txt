@@ -17,6 +17,9 @@ option(IS_TESTING "Build for CTest" OFF)
 message(STATUS "IS_TESTING: ${IS_TESTING}")
 
 add_executable(SliceWrapper test/SliceWrapper.cpp)
+target_include_directories(SliceWrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src) #hack - this should be a header-only library
 target_link_libraries(SliceWrapper Omega_h::omega_h)
 target_link_libraries(SliceWrapper Cabana::cabanacore)
 target_compile_definitions(SliceWrapper PUBLIC ENABLE_CABANA)
+
+add_test(sliceWrapper ./SliceWrapper)
