@@ -1,5 +1,4 @@
 #include "SliceWrapper.hpp"
-#include <Cabana_Core.hpp>
 
 int main(int argc, char* argv[]) {
   // AoSoA parameters
