@@ -137,6 +137,23 @@ Use the following command to rebuild `meshFields` after making changes to its so
 cmake --build build-meshFields-cuda 
 ```
 
+## run meshFields tests
+
+The following assumes that (1) the environment is already setup (see above) and the
+`root` directory is the same directory used to build the dependencies and (2) that
+`meshFields` was previously built.
+
+```
+cmake --build build-meshFields-cuda --target test
+```
+
+Alternatively, you can cd into the build directory and run `ctest` directly:
+
+```
+cd build-meshFields-cuda 
+ctest
+```
+
 ## Timing Data
 
 For timing, we'll use Kokkos SimpleKernelTimer along with some of the other tools listed here:
