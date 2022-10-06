@@ -3,7 +3,7 @@
 
 #include <Cabana_Core.hpp>
 
-template< class SliceType >
+template< class SliceType, class T >
 struct SliceWrapper {
 
   SliceType st_; //store the underlying instance
@@ -11,7 +11,7 @@ struct SliceWrapper {
   SliceWrapper(SliceType st) : st_(st)  {}
   
   KOKKOS_INLINE_FUNCTION
-  member_type& access(const int s, const int a, int i) const {
+  T& access(const int s, const int a, int i) const {
     return st_.access(s,a,i);
   }
   int arraySize(int s) {
@@ -24,7 +24,7 @@ struct SliceWrapper {
 
 using namespace Cabana;
 
-template <class MemorySpace, class ExecutionSpace, class T, int width, int vecLen>
+template <class ExecutionSpace, class MemorySpace, class T, int width, int vecLen>
 class CabSliceFactory {
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<T[width]>;
@@ -32,7 +32,7 @@ class CabSliceFactory {
     Cabana::Slice<T[width], DeviceType, 
 		  Cabana::DefaultAccessMemory, 
 		  vecLen, width*vecLen>;
-  using wrapper_slice_t = SliceWrapper<member_slice_t>;
+  using wrapper_slice_t = SliceWrapper<member_slice_t, T>;
 
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa; 
   
