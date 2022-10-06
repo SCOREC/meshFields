@@ -45,8 +45,7 @@ public:
   template <std::size_t index>
   auto makeSliceCab() {
     auto slice = Cabana::slice<index>(aosoa);
-    using type = typename std::tuple_element<index, TypeTuple>;
-    return wrapper_slice_t<type>(std::move(slice));
+    return wrapper_slice_t< std::tuple_element_t<index, TypeTuple> >(std::move(slice));
   }
   
   CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {}

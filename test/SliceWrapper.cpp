@@ -12,11 +12,12 @@ int main(int argc, char* argv[]) {
   
   // Slice Wrapper Factory
   CabSliceFactory<ExecutionSpace, MemorySpace,
-		  vecLen, double, int, float> cabSliceFactory(num_tuples);
+		  vecLen, double, int, float, char> cabSliceFactory(num_tuples);
   
   auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
   auto slice_wrapper1 = cabSliceFactory.makeSliceCab<1>();
   auto slice_wrapper2 = cabSliceFactory.makeSliceCab<2>();
+  auto slice_wrapper3 = cabSliceFactory.makeSliceCab<3>();
   
   // simd_parallel_for setup
   Cabana::SimdPolicy<vecLen, ExecutionSpace> simd_policy(0, num_tuples);
@@ -27,8 +28,9 @@ int main(int argc, char* argv[]) {
     //double x = 42/(s+a+1.3);
     //slice_wrapper0.access(s,a) = x;
     printf("SW0 value: %lf\n", slice_wrapper0.access(s,a));
-    printf("SW1 value: %lf\n", slice_wrapper1.access(s,a));
-    printf("SW2 value: %lf\n", slice_wrapper2.access(s,a));
+    printf("SW1 value: %d\n", slice_wrapper1.access(s,a));
+    printf("SW2 value: %f\n", slice_wrapper2.access(s,a));
+    printf("SW3 value: %c\n", slice_wrapper3.access(s,a));
   };
 
   Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_cabSliceFactory");
