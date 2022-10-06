@@ -3,11 +3,6 @@
 
 #include <Cabana_Core.hpp>
 
-using member_type = double;
-using MemorySpace = Kokkos::CudaSpace;
-using ExecutionSpace = Kokkos::Cuda;
-using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
-
 template< class SliceType >
 struct SliceWrapper {
 
@@ -29,8 +24,9 @@ struct SliceWrapper {
 
 using namespace Cabana;
 
-template <class T, int width, int vecLen>
+template <class MemorySpace, class ExecutionSpace, class T, int width, int vecLen>
 class CabSliceFactory {
+  using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<T[width]>;
   using member_slice_t = 
     Cabana::Slice<T[width], DeviceType, 

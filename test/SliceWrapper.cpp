@@ -8,10 +8,16 @@ int main(int argc, char* argv[]) {
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
+  using member_type = double;
   using DataTypes = Cabana::MemberTypes<member_type[width]>;
+  using ExecutionSpace = Kokkos::Cuda;
+  using MemorySpace = Kokkos::CudaSpace;
+
   
   // Slice Wrapper Factory
-  CabSliceFactory<member_type, width, vecLen> cabSliceFactory(num_tuples);
+  CabSliceFactory<ExecutionSpace, MemorySpace,
+		  member_type, width, vecLen> cabSliceFactory(num_tuples);
+  
   auto slice_wrapper = cabSliceFactory.makeSliceCab();
   
   // simd_parallel_for setup
