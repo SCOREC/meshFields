@@ -11,8 +11,8 @@ struct SliceWrapper {
   SliceWrapper(SliceType st) : st_(st)  {}
   
   KOKKOS_INLINE_FUNCTION
-  T& access(const int s, const int a, int i) const {
-    return st_.access(s,a,i);
+  T& access(const int s, const int a) const {
+    return st_.access(s,a);
   }
   int arraySize(int s) {
     return st_.arraySize(s);
@@ -24,23 +24,31 @@ struct SliceWrapper {
 
 using namespace Cabana;
 
-template <class ExecutionSpace, class MemorySpace, class T, int width, int vecLen>
+template <class ExecutionSpace, class MemorySpace, int vecLen, class... Ts>
 class CabSliceFactory {
+  using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
-  using DataTypes = Cabana::MemberTypes<T[width]>;
+  using DataTypes = Cabana::MemberTypes<Ts...>;
+
+  template <class T>
   using member_slice_t = 
-    Cabana::Slice<T[width], DeviceType, 
+    Cabana::Slice<T, DeviceType, 
 		  Cabana::DefaultAccessMemory, 
-		  vecLen, width*vecLen>;
-  using wrapper_slice_t = SliceWrapper<member_slice_t, T>;
+		  vecLen, vecLen>;
+
+  template <class T>
+  using wrapper_slice_t = SliceWrapper<member_slice_t<T>, T>;
 
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa; 
   
 public:
-  wrapper_slice_t makeSliceCab() {
-    auto slice0 = Cabana::slice<0>(aosoa);
-    return wrapper_slice_t(std::move(slice0));
+  template <std::size_t index>
+  auto makeSliceCab() {
+    auto slice = Cabana::slice<index>(aosoa);
+    using type = typename std::tuple_element<index, TypeTuple>;
+    return wrapper_slice_t<type>(std::move(slice));
   }
+  
   CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {}
 };
 

@@ -3,34 +3,32 @@
 int main(int argc, char* argv[]) {
   // AoSoA parameters
   const int vecLen = 4;
-  const int width = 1;
   int num_tuples = 10;
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
-  using member_type = double;
-  using DataTypes = Cabana::MemberTypes<member_type[width]>;
   using ExecutionSpace = Kokkos::Cuda;
   using MemorySpace = Kokkos::CudaSpace;
-
   
   // Slice Wrapper Factory
   CabSliceFactory<ExecutionSpace, MemorySpace,
-		  member_type, width, vecLen> cabSliceFactory(num_tuples);
+		  vecLen, double, int, float> cabSliceFactory(num_tuples);
   
-  auto slice_wrapper = cabSliceFactory.makeSliceCab();
+  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
+  auto slice_wrapper1 = cabSliceFactory.makeSliceCab<1>();
+  auto slice_wrapper2 = cabSliceFactory.makeSliceCab<2>();
   
   // simd_parallel_for setup
   Cabana::SimdPolicy<vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
-    for (int i = 0; i < width; i++) {
-      printf("s: %d, a: %d, i: %d\n", s,a,i);
-      double x = 42/(s+a+1.3);
-      slice_wrapper.access(s,a,i) = x;
-      printf("value: %lf\n", slice_wrapper.access(s,a,i));
-    }
+    printf("s: %d, a: %d\n", s,a);
+    //double x = 42/(s+a+1.3);
+    //slice_wrapper0.access(s,a) = x;
+    printf("SW0 value: %lf\n", slice_wrapper0.access(s,a));
+    printf("SW1 value: %lf\n", slice_wrapper1.access(s,a));
+    printf("SW2 value: %lf\n", slice_wrapper2.access(s,a));
   };
 
   Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_cabSliceFactory");
