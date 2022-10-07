@@ -29,23 +29,25 @@ class CabSliceFactory {
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
-
-  template <class T>
+  
+  template <class T, int stride>
   using member_slice_t = 
     Cabana::Slice<T, DeviceType, 
 		  Cabana::DefaultAccessMemory, 
-		  vecLen, vecLen>;
+		  vecLen, stride>;
 
-  template <class T>
-  using wrapper_slice_t = SliceWrapper<member_slice_t<T>, T>;
+  template <class T, int stride>
+  using wrapper_slice_t = SliceWrapper<member_slice_t<T, stride>, T>;
 
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa; 
   
 public:
   template <std::size_t index>
   auto makeSliceCab() {
+    using type = std::tuple_element_t<index, TypeTuple>;
+    const int stride = (vecLen * sizeof(TypeTuple)) / sizeof(type);
     auto slice = Cabana::slice<index>(aosoa);
-    return wrapper_slice_t< std::tuple_element_t<index, TypeTuple> >(std::move(slice));
+    return wrapper_slice_t< type, stride >(std::move(slice));
   }
   
   CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {}
