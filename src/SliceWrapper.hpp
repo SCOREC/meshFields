@@ -29,6 +29,7 @@ class CabSliceFactory {
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
+  using soa_t = SoA<DataTypes, vecLen>;
   
   template <class T, int stride>
   using member_slice_t = 
@@ -45,7 +46,7 @@ public:
   template <std::size_t index>
   auto makeSliceCab() {
     using type = std::tuple_element_t<index, TypeTuple>;
-    const int stride = (vecLen * sizeof(TypeTuple)) / sizeof(type);
+    const int stride = (vecLen * sizeof(soa_t)) / (4 * sizeof(type));
     auto slice = Cabana::slice<index>(aosoa);
     return wrapper_slice_t< type, stride >(std::move(slice));
   }
