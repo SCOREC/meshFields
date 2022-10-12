@@ -26,12 +26,12 @@ using namespace Cabana;
 
 template <class ExecutionSpace, class MemorySpace, class... Ts>
 class CabSliceFactory {
-public:
-  static constexpr int vecLen = Impl::PerformanceTraits<ExecutionSpace>::vector_length;
-private:
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
+public:
+  static constexpr int vecLen = Cabana::AoSoA<DataTypes, DeviceType>::vector_length;
+private:
   using soa_t = SoA<DataTypes, vecLen>;
   
   template <class T, int stride>
