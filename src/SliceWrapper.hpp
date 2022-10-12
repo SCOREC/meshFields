@@ -24,8 +24,9 @@ struct SliceWrapper {
 
 using namespace Cabana;
 
-template <class ExecutionSpace, class MemorySpace, int vecLen, class... Ts>
+template <class ExecutionSpace, class MemorySpace, class... Ts>
 class CabSliceFactory {
+  static constexpr int vecLen = Impl::PerformanceTraits<ExecutionSpace>::vector_length/8;
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;

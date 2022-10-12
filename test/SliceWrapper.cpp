@@ -7,12 +7,12 @@ int main(int argc, char* argv[]) {
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
-  using ExecutionSpace = Kokkos::Cuda;
-  using MemorySpace = Kokkos::CudaSpace;
+  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
+  using MemorySpace = ExecutionSpace::memory_space;
   
   // Slice Wrapper Factory
   CabSliceFactory<ExecutionSpace, MemorySpace,
-		  vecLen, double, int, float, char> cabSliceFactory(num_tuples);
+		  double, int, float, char> cabSliceFactory(num_tuples);
   
   auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
   auto slice_wrapper1 = cabSliceFactory.makeSliceCab<1>();
