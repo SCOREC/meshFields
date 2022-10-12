@@ -2,7 +2,6 @@
 
 int main(int argc, char* argv[]) {
   // AoSoA parameters
-  const int vecLen = 4;
   int num_tuples = 10;
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
@@ -20,7 +19,7 @@ int main(int argc, char* argv[]) {
   auto slice_wrapper3 = cabSliceFactory.makeSliceCab<3>();
   
   // simd_parallel_for setup
-  Cabana::SimdPolicy<vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {

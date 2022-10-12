@@ -26,7 +26,9 @@ using namespace Cabana;
 
 template <class ExecutionSpace, class MemorySpace, class... Ts>
 class CabSliceFactory {
+public:
   static constexpr int vecLen = Impl::PerformanceTraits<ExecutionSpace>::vector_length;
+private:
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
