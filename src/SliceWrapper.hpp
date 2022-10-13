@@ -14,12 +14,6 @@ struct SliceWrapper {
   T& access(const int s, const int a) const {
     return st_.access(s,a);
   }
-  int arraySize(int s) {
-    return st_.arraySize(s);
-  }
-  int numSoA() {
-    return st_.numSoA();
-  }
 };
 
 using namespace Cabana;
