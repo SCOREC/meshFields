@@ -11,9 +11,14 @@ struct SliceWrapper {
   SliceWrapper(SliceType st) : st_(st)  {}
   
   KOKKOS_INLINE_FUNCTION
-  T& access(const int s, const int a) const {
+  T& access(int s, int a) const {
     return st_.access(s,a);
   }
+  KOKKOS_INLINE_FUNCTION
+  auto& access(int s, int a, int i) const {
+    return st_.access(s,a,i);
+  }
+  
 };
 
 using namespace Cabana;
@@ -27,6 +32,13 @@ public:
   static constexpr int vecLen = Cabana::AoSoA<DataTypes, DeviceType>::vector_length;
 private:
   using soa_t = SoA<DataTypes, vecLen>;
+
+  template <std::size_t index>
+  using member_data_t = typename Cabana::MemberTypeAtIndex<index, DataTypes>::type;
+
+  template <std::size_t index>
+      using member_value_t =
+    typename std::remove_all_extents<member_data_t<index>>::type;
   
   template <class T, int stride>
   using member_slice_t = 
@@ -43,7 +55,7 @@ public:
   template <std::size_t index>
   auto makeSliceCab() {
     using type = std::tuple_element_t<index, TypeTuple>;
-    const int stride = sizeof(soa_t) / sizeof(type);
+    const int stride = sizeof(soa_t) / sizeof(member_value_t<index>);
     auto slice = Cabana::slice<index>(aosoa);
     return wrapper_slice_t< type, stride >(std::move(slice));
   }
