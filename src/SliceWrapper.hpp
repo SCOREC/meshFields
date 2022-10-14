@@ -18,6 +18,14 @@ struct SliceWrapper {
   auto& access(int s, int a, int i) const {
     return st_.access(s,a,i);
   }
+  KOKKOS_INLINE_FUNCTION
+  auto& access(int s, int a, int i, int j) const {
+    return st_.access(s,a,i,j);
+  }
+  KOKKOS_INLINE_FUNCTION
+  auto& access(int s, int a, int i, int j, int k) const {
+    return st_.access(s,a,i,j,k);
+  }
   
 };
 
@@ -60,7 +68,11 @@ public:
     return wrapper_slice_t< type, stride >(std::move(slice));
   }
   
-  CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {}
+  CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {
+    if (sizeof...(Ts) == 0) {
+      throw std::invalid_argument("Must provide at least one member type in template definition");
+    }
+  }
 };
 
 
