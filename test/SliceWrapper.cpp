@@ -1,6 +1,36 @@
 #include "SliceWrapper.hpp"
 #include <stdio.h>
 
+int array_type_test(int num_tuples) {
+  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
+  using MemorySpace = ExecutionSpace::memory_space;
+
+  const int width = 3;
+  
+  // Slice Wrapper Factory
+  CabSliceFactory<ExecutionSpace, MemorySpace,
+		  double[width]> cabSliceFactory(num_tuples);
+  
+  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
+  
+  // simd_parallel_for setup
+  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+
+  // kernel that reads and writes
+  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
+    for (int i = 0; i < width; i++) {
+      double x = 42/(s+a+i+1.3);
+      slice_wrapper0.access(s,a,i) = x;
+      assert(slice_wrapper0.access(s,a,i) == x);
+      printf("SW0 value: %lf\n", slice_wrapper0.access(s,a,i));
+    }
+  };
+
+  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_array_type_test");
+  return 0;
+  
+}
+
 int single_type_test(int num_tuples) {
   using ExecutionSpace = Kokkos::DefaultExecutionSpace;
   using MemorySpace = ExecutionSpace::memory_space;
@@ -18,10 +48,11 @@ int single_type_test(int num_tuples) {
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
     double x = 42/(s+a+1.3);
     slice_wrapper0.access(s,a) = x;
+    
     printf("SW0 value: %lf\n", slice_wrapper0.access(s,a));
   };
 
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_cabSliceFactory");
+  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_single_type_test");
   return 0;
 }
 
@@ -55,7 +86,7 @@ int multi_type_test(int num_tuples) {
     printf("SW3 value: %c\n", slice_wrapper3.access(s,a));
   };
 
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_cabSliceFactory");
+  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_multi_type_test");
   return 0;
 }
 
@@ -105,7 +136,7 @@ int many_type_test(int num_tuples) {
     printf("SW8 value: %Lf\n", slice_wrapper8.access(s,a));
   };
 
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_cabSliceFactory");
+  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_many_type_test");
   return 0;
 }
 
@@ -116,9 +147,15 @@ int main(int argc, char* argv[]) {
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
+  no_type_test(num_tuples);
   single_type_test(num_tuples);
   multi_type_test(num_tuples);
   many_type_test(num_tuples);
+  1d_array_test(num_tuples);
+  2d_array_test(num_tuples);
+  3d_array_test(num_tuples);
+  mix_arrays_test(num_tuples);
+  
   
   assert(cudaSuccess == cudaDeviceSynchronize());
   printf("done\n");
