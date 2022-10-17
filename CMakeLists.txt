@@ -23,5 +23,7 @@ target_link_libraries(SliceWrapper Cabana::cabanacore)
 target_compile_definitions(SliceWrapper PUBLIC ENABLE_CABANA)
 
 add_test(sliceWrapper10 ./SliceWrapper 10)
+add_test(sliceWrapper32 ./SliceWrapper 32)
+add_test(sliceWrapper33 ./SliceWrapper 33)
 add_test(sliceWrapper50 ./SliceWrapper 50)
 add_test(sliceWrapper100 ./SliceWrapper 100)

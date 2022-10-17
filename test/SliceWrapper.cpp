@@ -245,30 +245,35 @@ int many_type_test(int num_tuples) {
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
-    double x = 42/(s+a+1.3);
-    float fx = 0;
+    double d0 = 42/(s+a+1.3);
+    double d1 = d0*d0;
+    double d2 = d1/123.456751;
+    float f0 = 0;
     char c0 = 'a'+s+a;
     char c1 = 'a'+((s*a+a) % 26);
-    slice_wrapper0.access(s,a) = x;
-    slice_wrapper1.access(s,a) = s+a;
-    slice_wrapper2.access(s,a) = fx;
+    int i0 = s+a;
+    int i1 = s+a/int(d0);
+    int i2 = i0+i1;
+    slice_wrapper0.access(s,a) = d0;
+    slice_wrapper1.access(s,a) = i0;
+    slice_wrapper2.access(s,a) = f0;
     slice_wrapper3.access(s,a) = c0;
-    slice_wrapper4.access(s,a) = int(s+a/x);
+    slice_wrapper4.access(s,a) = i1;
     slice_wrapper5.access(s,a) = c1;
-    slice_wrapper6.access(s,a) = (s+a+a+s*s)*x;
-    slice_wrapper7.access(s,a) = (s+a)*num_tuples/(s+2);
-    slice_wrapper8.access(s,a) = (x+s+a)/(x*x);
+    slice_wrapper6.access(s,a) = d1;
+    slice_wrapper7.access(s,a) = i2;
+    slice_wrapper8.access(s,a) = d2;
     
-    assert(slice_wrapper0.access(s,a) == x);
-    assert(slice_wrapper1.access(s,a) == s+a);
-    assert(slice_wrapper2.access(s,a) == fx);
-    printf("int?: %d\n", slice_wrapper2.access(s,a));
+    assert(slice_wrapper0.access(s,a) == d0);
+    assert(slice_wrapper1.access(s,a) == i0);
+    assert(slice_wrapper2.access(s,a) == f0);
+    printf("float in hex: %x\ni0: %x\n", slice_wrapper2.access(s,a), i0);
     assert(slice_wrapper3.access(s,a) == c0);
-    assert(slice_wrapper4.access(s,a) == int(s+a/x));
+    assert(slice_wrapper4.access(s,a) == i1);
     assert(slice_wrapper5.access(s,a) == c1);
-    assert(slice_wrapper6.access(s,a) == (s+a+a+s*s)*x);
-    assert(slice_wrapper7.access(s,a) == (s+a)*num_tuples/(s+2));
-    assert(slice_wrapper8.access(s,a) == (x+s+a)/(x*x));
+    assert(slice_wrapper6.access(s,a) == d1);
+    assert(slice_wrapper7.access(s,a) == i2);
+    assert(slice_wrapper8.access(s,a) == d2);
   };
 
   Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_many_type_test");
@@ -277,7 +282,7 @@ int many_type_test(int num_tuples) {
   
 int main(int argc, char* argv[]) {
   // AoSoA parameters
-  int num_tuples = 50;
+  int num_tuples = atoi(argv[1]);
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
