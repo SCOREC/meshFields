@@ -22,8 +22,17 @@ target_link_libraries(SliceWrapper Omega_h::omega_h)
 target_link_libraries(SliceWrapper Cabana::cabanacore)
 target_compile_definitions(SliceWrapper PUBLIC ENABLE_CABANA)
 
+#add_executable(AoSoA_Ordering test/aosoa_ordering_issue.cpp)
+#target_link_libraries(AoSoA_Ordering Omega_h::omega_h)
+#target_link_libraries(AoSoA_Ordering Cabana::cabanacore)
+#target_compile_definitions(AoSoA_Ordering PUBLIC ENABLE_CABANA)
+
 add_test(sliceWrapper10 ./SliceWrapper 10)
 add_test(sliceWrapper32 ./SliceWrapper 32)
 add_test(sliceWrapper33 ./SliceWrapper 33)
 add_test(sliceWrapper50 ./SliceWrapper 50)
-add_test(sliceWrapper100 ./SliceWrapper 100)
+
+#add_test(AoSoAOrderingTest10 ./AoSoA_Ordering 10)
+#add_test(AoSoAOrderingTest32 ./AoSoA_Ordering 32)
+#add_test(AoSoAOrderingTest33 ./AoSoA_Ordering 33)
+#add_test(AoSoAOrderingTest50 ./AoSoA_Ordering 50)

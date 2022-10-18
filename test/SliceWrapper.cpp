@@ -145,22 +145,6 @@ int mix_arrays_test(int num_tuples) {
   return 0;
 }
 
-int no_type_test(int num_tuples) {
-  /*
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
-  bool exception = false;
-  try {
-    CabSliceFactory<ExecutionSpace, MemorySpace> cabSliceFactory(num_tuples);
-  }
-  catch (std::invalid_argument &e) {
-    exception = true;
-  }
-  assert(exception);
-  */
-  return 0;
-}
-
 int single_type_test(int num_tuples) {
   using ExecutionSpace = Kokkos::DefaultExecutionSpace;
   using MemorySpace = ExecutionSpace::memory_space;
@@ -286,7 +270,6 @@ int main(int argc, char* argv[]) {
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
   many_type_test(num_tuples);
-  no_type_test(num_tuples);
   single_type_test(num_tuples);
   multi_type_test(num_tuples);
   
