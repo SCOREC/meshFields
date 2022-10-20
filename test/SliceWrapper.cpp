@@ -7,14 +7,14 @@ int rank1_array_test(int num_tuples) {
 
   const int width = 3;
   
-  // Slice Wrapper Factory
-  CabSliceFactory<ExecutionSpace, MemorySpace,
-		  double[width]> cabSliceFactory(num_tuples);
+  // Slice Wrapper Controller
+  CabSliceController<ExecutionSpace, MemorySpace,
+		  double[width]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
   
   // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -37,14 +37,14 @@ int rank2_array_test(int num_tuples) {
   const int width = 3;
   const int height = 4;
   
-  // Slice Wrapper Factory
-  CabSliceFactory<ExecutionSpace, MemorySpace,
-		  double[width][height]> cabSliceFactory(num_tuples);
+  // Slice Wrapper Controller
+  CabSliceController<ExecutionSpace, MemorySpace,
+		  double[width][height]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
   
   // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -69,14 +69,14 @@ int rank3_array_test(int num_tuples) {
   const int height = 4;
   const int depth = 2;
   
-  // Slice Wrapper Factory
-  CabSliceFactory<ExecutionSpace, MemorySpace,
-		  double[width][height][depth]> cabSliceFactory(num_tuples);
+  // Slice Wrapper Controller
+  CabSliceController<ExecutionSpace, MemorySpace,
+		  double[width][height][depth]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
   
   // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -103,18 +103,18 @@ int mix_arrays_test(int num_tuples) {
   const int height = 4;
   const int depth = 2;
   
-  // Slice Wrapper Factory
-  CabSliceFactory<ExecutionSpace, MemorySpace,
+  // Slice Wrapper Controller
+  CabSliceController<ExecutionSpace, MemorySpace,
 		  double[width], char, double[width][height][depth],
-		  float[width][height]> cabSliceFactory(num_tuples);
+		  float[width][height]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
-  auto slice_wrapper1 = cabSliceFactory.makeSliceCab<1>();
-  auto slice_wrapper2 = cabSliceFactory.makeSliceCab<2>();
-  auto slice_wrapper3 = cabSliceFactory.makeSliceCab<3>();
+  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
+  auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
+  auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
+  auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
     
   // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -149,14 +149,14 @@ int single_type_test(int num_tuples) {
   using ExecutionSpace = Kokkos::DefaultExecutionSpace;
   using MemorySpace = ExecutionSpace::memory_space;
   
-  // Slice Wrapper Factory
-  CabSliceFactory<ExecutionSpace, MemorySpace,
-		  double> cabSliceFactory(num_tuples);
+  // Slice Wrapper Controller
+  CabSliceController<ExecutionSpace, MemorySpace,
+		  double> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
   
   // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -173,17 +173,17 @@ int multi_type_test(int num_tuples) {
   using ExecutionSpace = Kokkos::DefaultExecutionSpace;
   using MemorySpace = ExecutionSpace::memory_space;
   
-  // Slice Wrapper Factory
-  CabSliceFactory<ExecutionSpace, MemorySpace,
-		  double, int, float, char> cabSliceFactory(num_tuples);
+  // Slice Wrapper Controller
+  CabSliceController<ExecutionSpace, MemorySpace,
+		  double, int, float, char> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
-  auto slice_wrapper1 = cabSliceFactory.makeSliceCab<1>();
-  auto slice_wrapper2 = cabSliceFactory.makeSliceCab<2>();
-  auto slice_wrapper3 = cabSliceFactory.makeSliceCab<3>();
+  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
+  auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
+  auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
+  auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
   
   // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -208,24 +208,24 @@ int many_type_test(int num_tuples) {
   using ExecutionSpace = Kokkos::DefaultExecutionSpace;
   using MemorySpace = ExecutionSpace::memory_space;
   
-  // Slice Wrapper Factory
-  CabSliceFactory<ExecutionSpace, MemorySpace,
+  // Slice Wrapper Controller
+  CabSliceController<ExecutionSpace, MemorySpace,
 		  long double, double, double,
 		  long unsigned int, float, int,
-		  short int, char, char> cabSliceFactory(num_tuples);
+		  short int, char, char> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceFactory.makeSliceCab<0>();
-  auto slice_wrapper1 = cabSliceFactory.makeSliceCab<1>();
-  auto slice_wrapper2 = cabSliceFactory.makeSliceCab<2>();
-  auto slice_wrapper3 = cabSliceFactory.makeSliceCab<3>();
-  auto slice_wrapper4 = cabSliceFactory.makeSliceCab<4>();
-  auto slice_wrapper5 = cabSliceFactory.makeSliceCab<5>();
-  auto slice_wrapper6 = cabSliceFactory.makeSliceCab<6>();
-  auto slice_wrapper7 = cabSliceFactory.makeSliceCab<7>();
-  auto slice_wrapper8 = cabSliceFactory.makeSliceCab<8>();
+  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
+  auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
+  auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
+  auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
+  auto slice_wrapper4 = cabSliceController.makeSliceCab<4>();
+  auto slice_wrapper5 = cabSliceController.makeSliceCab<5>();
+  auto slice_wrapper6 = cabSliceController.makeSliceCab<6>();
+  auto slice_wrapper7 = cabSliceController.makeSliceCab<7>();
+  auto slice_wrapper8 = cabSliceController.makeSliceCab<8>();
   
   // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceFactory.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
+  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
