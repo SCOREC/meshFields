@@ -38,9 +38,6 @@ int rank2_array_test(int num_tuples) {
   
   auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
   
-  // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
-
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
     for (int i = 0; i < width; i++) {
@@ -51,8 +48,7 @@ int rank2_array_test(int num_tuples) {
       }
     }
   };
-
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_rank2_array_test");
+  cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_rank2_array");
   return 0;  
 }
 
@@ -66,13 +62,10 @@ int rank3_array_test(int num_tuples) {
   
   // Slice Wrapper Controller
   CabSliceController<ExecutionSpace, MemorySpace,
-		  double[width][height][depth]> cabSliceController(num_tuples);
+		     double[width][height][depth]> cabSliceController(num_tuples);
   
   auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
   
-  // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
-
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
     for (int i = 0; i < width; i++) {
@@ -85,8 +78,8 @@ int rank3_array_test(int num_tuples) {
       }
     }
   };
+  cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_rank3_array");
 
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_rank3_array_test");
   return 0;
 }
 
@@ -107,10 +100,7 @@ int mix_arrays_test(int num_tuples) {
   auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
   auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
   auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
-    
-  // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
-
+  
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
     char x0 = 'a'+(s+a);
@@ -135,8 +125,7 @@ int mix_arrays_test(int num_tuples) {
       }
     }
   };
-
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_mix_arrays_test");
+  cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_mix_array");
   return 0;
 }
 
@@ -149,9 +138,6 @@ int single_type_test(int num_tuples) {
 		  double> cabSliceController(num_tuples);
   
   auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
-  
-  // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -159,8 +145,8 @@ int single_type_test(int num_tuples) {
     slice_wrapper0.access(s,a) = x;
     assert(slice_wrapper0.access(s,a) == x);
   };
+  cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_single_type");
 
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_single_type_test");
   return 0;
 }
 
@@ -176,9 +162,6 @@ int multi_type_test(int num_tuples) {
   auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
   auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
   auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
-  
-  // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -194,8 +177,8 @@ int multi_type_test(int num_tuples) {
     assert(slice_wrapper2.access(s,a) == float(x));
     assert(slice_wrapper3.access(s,a) == c);
   };
+  cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_multi_type");
 
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_multi_type_test");
   return 0;
 }
 
@@ -218,9 +201,6 @@ int many_type_test(int num_tuples) {
   auto slice_wrapper6 = cabSliceController.makeSliceCab<6>();
   auto slice_wrapper7 = cabSliceController.makeSliceCab<7>();
   auto slice_wrapper8 = cabSliceController.makeSliceCab<8>();
-  
-  // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -253,8 +233,7 @@ int many_type_test(int num_tuples) {
     assert(slice_wrapper7.access(s,a) == c0);
     assert(slice_wrapper8.access(s,a) == c1);
   };
-
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_many_type_test");
+  cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_many_type");
   return 0;
 }
 
@@ -263,18 +242,16 @@ int main(int argc, char* argv[]) {
   int num_tuples = atoi(argv[1]);
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
-
-
-  rank1_array_test(num_tuples);
-  /*  many_type_test(num_tuples);
+  
   single_type_test(num_tuples);
   multi_type_test(num_tuples);
+  many_type_test(num_tuples);
   
-
+  rank1_array_test(num_tuples);
   rank2_array_test(num_tuples);
   rank3_array_test(num_tuples);
   mix_arrays_test(num_tuples);  
-  */
+
   assert(cudaSuccess == cudaDeviceSynchronize());
   printf("done\n");
 
