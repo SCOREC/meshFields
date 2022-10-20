@@ -11,15 +11,22 @@ struct SliceWrapper {
   SliceWrapper(SliceType st) : st_(st)  {}
   
   KOKKOS_INLINE_FUNCTION
-  T& access(const int s, const int a) const {
+  T& access(int s, int a) const {
     return st_.access(s,a);
   }
-  int arraySize(int s) {
-    return st_.arraySize(s);
+  KOKKOS_INLINE_FUNCTION
+  auto& access(int s, int a, int i) const {
+    return st_.access(s,a,i);
   }
-  int numSoA() {
-    return st_.numSoA();
+  KOKKOS_INLINE_FUNCTION
+  auto& access(int s, int a, int i, int j) const {
+    return st_.access(s,a,i,j);
   }
+  KOKKOS_INLINE_FUNCTION
+  auto& access(int s, int a, int i, int j, int k) const {
+    return st_.access(s,a,i,j,k);
+  }
+  
 };
 
 using namespace Cabana;
@@ -33,6 +40,13 @@ public:
   static constexpr int vecLen = Cabana::AoSoA<DataTypes, DeviceType>::vector_length;
 private:
   using soa_t = SoA<DataTypes, vecLen>;
+
+  template <std::size_t index>
+  using member_data_t = typename Cabana::MemberTypeAtIndex<index, DataTypes>::type;
+
+  template <std::size_t index>
+      using member_value_t =
+    typename std::remove_all_extents<member_data_t<index>>::type;
   
   template <class T, int stride>
   using member_slice_t = 
@@ -49,12 +63,16 @@ public:
   template <std::size_t index>
   auto makeSliceCab() {
     using type = std::tuple_element_t<index, TypeTuple>;
-    const int stride = sizeof(soa_t) / sizeof(type);
+    const int stride = sizeof(soa_t) / sizeof(member_value_t<index>);
     auto slice = Cabana::slice<index>(aosoa);
     return wrapper_slice_t< type, stride >(std::move(slice));
   }
   
-  CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {}
+  CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {
+    if (sizeof...(Ts) == 0) {
+      throw std::invalid_argument("Must provide at least one member type in template definition");
+    }
+  }
 };
 
 
