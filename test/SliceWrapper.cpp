@@ -13,9 +13,6 @@ int rank1_array_test(int num_tuples) {
   
   auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
   
-  // simd_parallel_for setup
-  Cabana::SimdPolicy<cabSliceController.vecLen, ExecutionSpace> simd_policy(0, num_tuples);
-
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
     for (int i = 0; i < width; i++) {
@@ -24,10 +21,8 @@ int rank1_array_test(int num_tuples) {
       assert(slice_wrapper0.access(s,a,i) == x);
     }
   };
-
-  Cabana::simd_parallel_for(simd_policy, vector_kernel, "parallel_for_rank1_array_test");
-  return 0;
-  
+  cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_rank1_array");
+  return 0;  
 }
 
 int rank2_array_test(int num_tuples) {
@@ -269,15 +264,17 @@ int main(int argc, char* argv[]) {
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
-  many_type_test(num_tuples);
+
+  rank1_array_test(num_tuples);
+  /*  many_type_test(num_tuples);
   single_type_test(num_tuples);
   multi_type_test(num_tuples);
   
-  rank1_array_test(num_tuples);
+
   rank2_array_test(num_tuples);
   rank3_array_test(num_tuples);
   mix_arrays_test(num_tuples);  
-  
+  */
   assert(cudaSuccess == cudaDeviceSynchronize());
   printf("done\n");
 
