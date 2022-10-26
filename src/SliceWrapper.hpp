@@ -10,6 +10,8 @@ struct SliceWrapper {
   SliceType st_; //store the underlying instance
 
   SliceWrapper(SliceType st) : st_(st)  {}
+
+  SliceWrapper() {}
   
   KOKKOS_INLINE_FUNCTION
   T& access(int s, int a) const {
@@ -72,6 +74,8 @@ public:
     auto slice = Cabana::slice<index>(aosoa);
     return wrapper_slice_t< type, stride >(std::move(slice));
   }
+
+  CabSliceController() {}
   
   CabSliceController(int n) : aosoa("sliceAoSoA", n) {
     if (sizeof...(Ts) == 0) {
