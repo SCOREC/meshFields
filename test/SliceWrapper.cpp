@@ -11,7 +11,7 @@ int rank1_array_test(int num_tuples) {
   CabSliceController<ExecutionSpace, MemorySpace,
 		  double[width]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSlice<0>();
   
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -36,7 +36,7 @@ int rank2_array_test(int num_tuples) {
   CabSliceController<ExecutionSpace, MemorySpace,
 		  double[width][height]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSlice<0>();
   
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -64,7 +64,7 @@ int rank3_array_test(int num_tuples) {
   CabSliceController<ExecutionSpace, MemorySpace,
 		     double[width][height][depth]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSlice<0>();
   
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -96,10 +96,10 @@ int mix_arrays_test(int num_tuples) {
 		  double[width], char, double[width][height][depth],
 		  float[width][height]> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
-  auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
-  auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
-  auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
+  auto slice_wrapper0 = cabSliceController.makeSlice<0>();
+  auto slice_wrapper1 = cabSliceController.makeSlice<1>();
+  auto slice_wrapper2 = cabSliceController.makeSlice<2>();
+  auto slice_wrapper3 = cabSliceController.makeSlice<3>();
   
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -137,7 +137,7 @@ int single_type_test(int num_tuples) {
   CabSliceController<ExecutionSpace, MemorySpace,
 		  double> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
+  auto slice_wrapper0 = cabSliceController.makeSlice<0>();
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -158,10 +158,10 @@ int multi_type_test(int num_tuples) {
   CabSliceController<ExecutionSpace, MemorySpace,
 		  double, int, float, char> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
-  auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
-  auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
-  auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
+  auto slice_wrapper0 = cabSliceController.makeSlice<0>();
+  auto slice_wrapper1 = cabSliceController.makeSlice<1>();
+  auto slice_wrapper2 = cabSliceController.makeSlice<2>();
+  auto slice_wrapper3 = cabSliceController.makeSlice<3>();
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
@@ -192,15 +192,15 @@ int many_type_test(int num_tuples) {
 		  long unsigned int, float, int,
 		  short int, char, char> cabSliceController(num_tuples);
   
-  auto slice_wrapper0 = cabSliceController.makeSliceCab<0>();
-  auto slice_wrapper1 = cabSliceController.makeSliceCab<1>();
-  auto slice_wrapper2 = cabSliceController.makeSliceCab<2>();
-  auto slice_wrapper3 = cabSliceController.makeSliceCab<3>();
-  auto slice_wrapper4 = cabSliceController.makeSliceCab<4>();
-  auto slice_wrapper5 = cabSliceController.makeSliceCab<5>();
-  auto slice_wrapper6 = cabSliceController.makeSliceCab<6>();
-  auto slice_wrapper7 = cabSliceController.makeSliceCab<7>();
-  auto slice_wrapper8 = cabSliceController.makeSliceCab<8>();
+  auto slice_wrapper0 = cabSliceController.makeSlice<0>();
+  auto slice_wrapper1 = cabSliceController.makeSlice<1>();
+  auto slice_wrapper2 = cabSliceController.makeSlice<2>();
+  auto slice_wrapper3 = cabSliceController.makeSlice<3>();
+  auto slice_wrapper4 = cabSliceController.makeSlice<4>();
+  auto slice_wrapper5 = cabSliceController.makeSlice<5>();
+  auto slice_wrapper6 = cabSliceController.makeSlice<6>();
+  auto slice_wrapper7 = cabSliceController.makeSlice<7>();
+  auto slice_wrapper8 = cabSliceController.makeSlice<8>();
 
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {

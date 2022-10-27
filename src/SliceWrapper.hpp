@@ -67,7 +67,7 @@ public:
   }
   
   template <std::size_t index>
-  auto makeSliceCab() {
+  auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;
     const int stride = sizeof(soa_t) / sizeof(member_value_t<index>);
     auto slice = Cabana::slice<index>(aosoa);

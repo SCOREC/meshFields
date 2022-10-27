@@ -26,7 +26,7 @@ public:
 
   template <std::size_t index>
   auto makeField() {
-    auto slice = sliceController.template makeSliceCab<index>();
+    auto slice = sliceController.template makeSlice<index>();
     return Field(slice);
   }
   
