@@ -10,13 +10,13 @@ using Controller = CabSliceController<ExecutionSpace, MemorySpace, double>;
 
 int main(int argc, char* argv[]) {
 
-  int num_tuples = (argc > 2) ? (10) : (atoi(argv[1]));
+  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
   
   Kokkos::ScopeGuard scope_guard(argc, argv);
   
   // Slice Wrapper Controller
   Controller c = Controller(num_tuples);
-  MeshField<Controller> cabMeshField(c);
+  MeshField::MeshField<Controller> cabMeshField(c);
 
   auto field = cabMeshField.makeField<0>();
   

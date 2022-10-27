@@ -1,7 +1,9 @@
 #ifndef meshfield_hpp
 #define meshfield_hpp
 
-#include <Cabana_Core.hpp>
+#include "SliceWrapper.hpp"
+
+namespace MeshField {
 
 template <class Slice>
 class Field {
@@ -20,17 +22,15 @@ class MeshField {
   Controller sliceController;  
 
 public:
-  MeshField(Controller& sc) {
-    sliceController = sc;
-  }
+  MeshField(Controller sc) : sliceController(std::move(sc)) {}
 
-  template <int index>
+  template <std::size_t index>
   auto makeField() {
-    auto slice = sliceController.makeSliceCab<index>();
+    auto slice = sliceController.template makeSliceCab<index>();
     return Field(slice);
   }
   
 };
 
-
+}
 #endif

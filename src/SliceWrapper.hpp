@@ -3,7 +3,6 @@
 
 #include <Cabana_Core.hpp>
 
-
 template< class SliceType, class T >
 struct SliceWrapper {
 
