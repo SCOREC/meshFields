@@ -5,21 +5,122 @@
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
-using Controller = CabSliceController<ExecutionSpace, MemorySpace, double>;
 
 
-int main(int argc, char* argv[]) {
+void single_type(int num_tuples) {
+  using Controller = CabSliceController<ExecutionSpace, MemorySpace, double>;
 
-  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
-  
-  Kokkos::ScopeGuard scope_guard(argc, argv);
-  
   // Slice Wrapper Controller
-  Controller c = Controller(num_tuples);
+  Controller c(num_tuples);
   MeshField::MeshField<Controller> cabMeshField(c);
 
   auto field = cabMeshField.makeField<0>();
   
+}
+
+void multi_type(int num_tuples) {
+  using Controller = CabSliceController<ExecutionSpace, MemorySpace, double,
+					double, float, int, char>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+  auto field1 = cabMeshField.makeField<1>();
+  auto field2 = cabMeshField.makeField<2>();
+  auto field3 = cabMeshField.makeField<3>();
+  auto field4 = cabMeshField.makeField<4>();
+ 
+}
+
+void many_type(int num_tuples) {
+  
+  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
+					double, double, float, float, int,
+					short int, char>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+  auto field1 = cabMeshField.makeField<1>();
+  auto field2 = cabMeshField.makeField<2>();
+  auto field3 = cabMeshField.makeField<3>();
+  auto field4 = cabMeshField.makeField<4>();
+  auto field5 = cabMeshField.makeField<5>();
+  auto field6 = cabMeshField.makeField<6>();
+}
+
+void rank1_arr(int num_tuples) {
+  const int width = 3;
+  using Controller = CabSliceController<ExecutionSpace, MemorySpace, double[width]>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+}
+
+void rank2_arr(int num_tuples) {
+  const int width = 3;
+  const int height = 4;
+  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
+					double[width][height]>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+}
+
+void rank3_arr(int num_tuples) {
+  const int width = 3;
+  const int height = 4;
+  const int depth = 2;
+  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
+					double[width][height][depth]>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+}
+
+void mix_arr(int num_tuples) {
+  const int width = 3;
+  const int height = 4;
+  const int depth = 2;
+  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
+					double[width][height][depth],
+				        float[width][height], int[width],
+					char>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+  auto field1 = cabMeshField.makeField<1>();
+  auto field2 = cabMeshField.makeField<2>();
+  auto field3 = cabMeshField.makeField<3>();
+}
+
+int main(int argc, char* argv[]) {
+  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
+  Kokkos::ScopeGuard scope_guard(argc, argv);
+
+  single_type(num_tuples);
+  multi_type(num_tuples);
+  many_type(num_tuples);
+  rank1_arr(num_tuples);
+  rank2_arr(num_tuples);
+  rank3_arr(num_tuples);
+  mix_arr(num_tuples);
   
   return 0;
 }
