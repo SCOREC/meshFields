@@ -14,6 +14,12 @@ public:
   Field(Slice& s) {
     slice = s;
   }
+
+  KOKKOS_INLINE_FUNCTION
+  auto& access(int s, int a) {
+    return slice.access(s,a);
+  }
+  
 };
 
 template <class Controller>
@@ -28,6 +34,12 @@ public:
   auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
     return Field(slice);
+  }
+
+  void parallel_for(int lower_bound, int upper_bound,
+		    std::function<void(const int, const int)> vector_kernel,
+		    std::string tag) {
+    sliceController.parallel_for(lower_bound, upper_bound, vector_kernel, tag);
   }
   
 };
