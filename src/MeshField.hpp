@@ -16,7 +16,7 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION
-  auto& access(int s, int a) {
+  auto& access(int s, int a) const {
     return slice.access(s,a);
   }
   

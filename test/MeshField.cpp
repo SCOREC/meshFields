@@ -15,6 +15,14 @@ void single_type(int num_tuples) {
   MeshField::MeshField<Controller> cabMeshField(c);
 
   auto field = cabMeshField.makeField<0>();
+
+  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
+  {
+   field.access(s,a);
+   printf("test %d %d\n", s,a);
+  };
+  
+  cabMeshField.parallel_for(0,num_tuples,vector_kernel,"single_type_pfor");
   
 }
 
@@ -111,16 +119,16 @@ void mix_arr(int num_tuples) {
 }
 
 int main(int argc, char* argv[]) {
-  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
+  int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
-
+  printf("num_tuples: %d\n", num_tuples);
   single_type(num_tuples);
-  multi_type(num_tuples);
-  many_type(num_tuples);
-  rank1_arr(num_tuples);
-  rank2_arr(num_tuples);
-  rank3_arr(num_tuples);
-  mix_arr(num_tuples);
+  //multi_type(num_tuples);
+  //many_type(num_tuples);
+  //rank1_arr(num_tuples);
+  //rank2_arr(num_tuples);
+  //rank3_arr(num_tuples);
+  //mix_arr(num_tuples);
   
   return 0;
 }
