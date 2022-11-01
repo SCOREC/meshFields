@@ -36,8 +36,9 @@ public:
     return Field(slice);
   }
 
+  template<typename FunctorType>
   void parallel_for(int lower_bound, int upper_bound,
-		    std::function<void(const int, const int)> vector_kernel,
+		    FunctorType vector_kernel,
 		    std::string tag) {
     sliceController.parallel_for(lower_bound, upper_bound, vector_kernel, tag);
   }
