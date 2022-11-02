@@ -9,6 +9,13 @@ set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
 find_package(Cabana REQUIRED)
 
+#create header only library
+add_library(meshFields INTERFACE)
+target_include_directories(meshFields INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
+target_link_libraries(meshFields INTERFACE Cabana::cabanacore)
+target_compile_definitions(meshFields INTERFACE ENABLE_CABANA) #SHOULD THIS BE PUBLIC?
+
 #Settings options for testing
 enable_testing()
 include(CTest)
@@ -16,17 +23,12 @@ include(CTest)
 option(IS_TESTING "Build for CTest" OFF)
 message(STATUS "IS_TESTING: ${IS_TESTING}")
 
+#tests
 add_executable(SliceWrapper test/testSliceWrapper.cpp)
-target_include_directories(SliceWrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src) #hack - this should be a header-only library
-target_link_libraries(SliceWrapper Omega_h::omega_h)
-target_link_libraries(SliceWrapper Cabana::cabanacore)
-target_compile_definitions(SliceWrapper PUBLIC ENABLE_CABANA)
+target_link_libraries(SliceWrapper PRIVATE meshFields)
 
 add_executable(MeshField test/testMeshField.cpp)
-target_include_directories(MeshField PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src) #hack - this should be a header-only library
-target_link_libraries(MeshField Omega_h::omega_h)
-target_link_libraries(MeshField Cabana::cabanacore)
-target_compile_definitions(MeshField PUBLIC ENABLE_CABANA)
+target_link_libraries(SliceWrapper PRIVATE meshFields)
 
 add_test(sliceWrapper50 ./SliceWrapper 50)
 add_test(meshField ./MeshField)
