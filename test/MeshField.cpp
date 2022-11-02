@@ -19,8 +19,8 @@ void single_type(int num_tuples) {
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
   {
    double d0 = 10;
-   field0.access(s,a) = d0;
-   assert(field0.access(s,a) == d0);
+   field0(s,a) = d0;
+   assert(field0(s,a) == d0);
   };
   
   cabMeshField.parallel_for(0,num_tuples,vector_kernel,"single_type_pfor");
@@ -44,21 +44,21 @@ void multi_type(int num_tuples) {
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
   {
    double d0 = 10.456;
-   field0.access(s,a) = d0;
+   field0(s,a) = d0;
    double d1 = 43.973234567;
-   field1.access(s,a) = d1;
+   field1(s,a) = d1;
    float f0 = 123.45;
-   field2.access(s,a) = f0;
+   field2(s,a) = f0;
    int i0 = 22;
-   field3.access(s,a) = i0;
+   field3(s,a) = i0;
    char c0 = 'a';
-   field4.access(s,a) = c0;
+   field4(s,a) = c0;
    
-   assert(field0.access(s,a) == d0);
-   assert(field1.access(s,a) == d1);
-   assert(field2.access(s,a) == f0);
-   assert(field3.access(s,a) == i0);
-   assert(field4.access(s,a) == c0);
+   assert(field0(s,a) == d0);
+   assert(field1(s,a) == d1);
+   assert(field2(s,a) == f0);
+   assert(field3(s,a) == i0);
+   assert(field4(s,a) == c0);
   };
   
   cabMeshField.parallel_for(0,num_tuples,vector_kernel,"multi_type_pfor");
@@ -85,27 +85,27 @@ void many_type(int num_tuples) {
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
   {
    double d0 = 10.456;
-   field0.access(s,a) = d0;
+   field0(s,a) = d0;
    double d1 = 43.973234567;
-   field1.access(s,a) = d1;
+   field1(s,a) = d1;
    float f0 = 123.45;
-   field2.access(s,a) = f0;
+   field2(s,a) = f0;
    float f1 = 543.21;
-   field3.access(s,a) = f1;
+   field3(s,a) = f1;
    int i0 = 222;
-   field4.access(s,a) = i0;
+   field4(s,a) = i0;
    short int i1 = 50;
-   field5.access(s,a) = i1;
+   field5(s,a) = i1;
    char c0 = 'h';
-   field6.access(s,a) = c0;
+   field6(s,a) = c0;
    
-   assert(field0.access(s,a) == d0);
-   assert(field1.access(s,a) == d1);
-   assert(field2.access(s,a) == f0);
-   assert(field3.access(s,a) == f1);
-   assert(field4.access(s,a) == i0);
-   assert(field5.access(s,a) == i1);
-   assert(field6.access(s,a) == c0);
+   assert(field0(s,a) == d0);
+   assert(field1(s,a) == d1);
+   assert(field2(s,a) == f0);
+   assert(field3(s,a) == f1);
+   assert(field4(s,a) == i0);
+   assert(field5(s,a) == i1);
+   assert(field6(s,a) == c0);
   };
   
   cabMeshField.parallel_for(0,num_tuples,vector_kernel,"many_type_pfor");
@@ -127,8 +127,8 @@ void rank1_arr(int num_tuples) {
    for (int i = 0; i < width; i++)
    {
     double d0 = 10+i;
-    field0.access(s,a,i) = d0;
-    assert(field0.access(s,a,i) == d0);
+    field0(s,a,i) = d0;
+    assert(field0(s,a,i) == d0);
    }
   };
   
@@ -154,8 +154,8 @@ void rank2_arr(int num_tuples) {
     for (int j = 0; j < height; j++)
     {
      double d0 = (10+i)/(j+1);
-     field0.access(s,a,i,j) = d0;
-     assert(field0.access(s,a,i,j) == d0);
+     field0(s,a,i,j) = d0;
+     assert(field0(s,a,i,j) == d0);
     }
    }
   };
@@ -185,8 +185,8 @@ void rank3_arr(int num_tuples) {
      for (int k = 0; k < depth; k++)
      {
       double d0 = ((10+i)*(k+1))/(j+1);
-      field0.access(s,a,i,j,k) = d0;
-      assert(field0.access(s,a,i,j,k) == d0);
+      field0(s,a,i,j,k) = d0;
+      assert(field0(s,a,i,j,k) == d0);
      }
     }
    }
@@ -219,27 +219,27 @@ void mix_arr(int num_tuples) {
    float f0;
    int i0;
    char c0 = 's';
-   field3.access(s,a) = c0;
+   field3(s,a) = c0;
    
    for (int i = 0; i < width; i++)
    {
     i0 = i+s+a;
-    field2.access(s,a,i) = i0;
+    field2(s,a,i) = i0;
     for (int j = 0; j < height; j++)
     {
      f0 = i0 / (i+j+1.123);
-     field1.access(s,a,i,j) = f0;
+     field1(s,a,i,j) = f0;
      for (int k = 0; k < depth; k++)
      {
       double d0 = ((10+i)*(k+1))/(j+1);
-      field0.access(s,a,i,j,k) = d0;
-      assert(field0.access(s,a,i,j,k) == d0);
+      field0(s,a,i,j,k) = d0;
+      assert(field0(s,a,i,j,k) == d0);
      }
-     assert(field1.access(s,a,i,j) == f0);
+     assert(field1(s,a,i,j) == f0);
     }
-    assert(field2.access(s,a,i) == i0);
+    assert(field2(s,a,i) == i0);
    }
-   assert(field3.access(s,a) == c0);
+   assert(field3(s,a) == c0);
   };
   
   cabMeshField.parallel_for(0,num_tuples,vector_kernel,"mix_arr_pfor");

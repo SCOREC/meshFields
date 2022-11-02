@@ -16,22 +16,22 @@ public:
   }
 
   KOKKOS_INLINE_FUNCTION
-  auto& access(int s, int a) const {
+  auto& operator()(int s, int a) const {
     return slice.access(s,a);
   }
 
   KOKKOS_INLINE_FUNCTION
-  auto& access(int s, int a, int i) const {
+  auto& operator()(int s, int a, int i) const {
     return slice.access(s,a,i);
   }
 
   KOKKOS_INLINE_FUNCTION
-  auto& access(int s, int a, int i, int j) const {
+  auto& operator()(int s, int a, int i, int j) const {
     return slice.access(s,a,i,j);
   }
 
   KOKKOS_INLINE_FUNCTION
-  auto& access(int s, int a, int i, int j, int k) const {
+  auto& operator()(int s, int a, int i, int j, int k) const {
     return slice.access(s,a,i,j,k);
   }
 };
