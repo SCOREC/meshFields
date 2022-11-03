@@ -6,9 +6,8 @@
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
-
 void single_type(int num_tuples) {
-  using Controller = CabSliceController<ExecutionSpace, MemorySpace, double>;
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
@@ -28,8 +27,8 @@ void single_type(int num_tuples) {
 }
 
 void multi_type(int num_tuples) {
-  using Controller = CabSliceController<ExecutionSpace, MemorySpace, double,
-					double, float, int, char>;
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+						   double,double, float, int, char>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
@@ -66,7 +65,7 @@ void multi_type(int num_tuples) {
 
 void many_type(int num_tuples) {
   
-  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 					double, double, float, float, int,
 					short int, char>;
 
@@ -113,7 +112,8 @@ void many_type(int num_tuples) {
 
 void rank1_arr(int num_tuples) {
   const int width = 3;
-  using Controller = CabSliceController<ExecutionSpace, MemorySpace, double[width]>;
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+						   double[width]>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
@@ -138,8 +138,8 @@ void rank1_arr(int num_tuples) {
 void rank2_arr(int num_tuples) {
   const int width = 3;
   const int height = 4;
-  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
-					double[width][height]>;
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+						   double[width][height]>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
@@ -167,8 +167,8 @@ void rank3_arr(int num_tuples) {
   const int width = 3;
   const int height = 4;
   const int depth = 2;
-  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
-					double[width][height][depth]>;
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+						   double[width][height][depth]>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
@@ -200,10 +200,10 @@ void mix_arr(int num_tuples) {
   const int width = 3;
   const int height = 4;
   const int depth = 2;
-  using Controller = CabSliceController<ExecutionSpace, MemorySpace,
-					double[width][height][depth],
-				        float[width][height], int[width],
-					char>;
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+						   double[width][height][depth],
+						   float[width][height],
+						   int[width], char>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);

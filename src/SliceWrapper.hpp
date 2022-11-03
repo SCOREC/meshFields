@@ -3,6 +3,8 @@
 
 #include <Cabana_Core.hpp>
 
+namespace SliceWrapper {
+
 template< class SliceType, class T >
 struct SliceWrapper {
 
@@ -84,6 +86,7 @@ public:
   }
 };
 
+}
 
 #endif
 
