@@ -8,7 +8,7 @@ int rank1_array_test(int num_tuples) {
   const int width = 3;
   
   // Slice Wrapper Controller
-  CabSliceController<ExecutionSpace, MemorySpace,
+  SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 		  double[width]> cabSliceController(num_tuples);
   
   auto slice_wrapper0 = cabSliceController.makeSlice<0>();
@@ -33,7 +33,7 @@ int rank2_array_test(int num_tuples) {
   const int height = 4;
   
   // Slice Wrapper Controller
-  CabSliceController<ExecutionSpace, MemorySpace,
+  SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 		  double[width][height]> cabSliceController(num_tuples);
   
   auto slice_wrapper0 = cabSliceController.makeSlice<0>();
@@ -61,7 +61,7 @@ int rank3_array_test(int num_tuples) {
   const int depth = 2;
   
   // Slice Wrapper Controller
-  CabSliceController<ExecutionSpace, MemorySpace,
+  SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 		     double[width][height][depth]> cabSliceController(num_tuples);
   
   auto slice_wrapper0 = cabSliceController.makeSlice<0>();
@@ -92,7 +92,7 @@ int mix_arrays_test(int num_tuples) {
   const int depth = 2;
   
   // Slice Wrapper Controller
-  CabSliceController<ExecutionSpace, MemorySpace,
+  SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 		  double[width], char, double[width][height][depth],
 		  float[width][height]> cabSliceController(num_tuples);
   
@@ -134,7 +134,7 @@ int single_type_test(int num_tuples) {
   using MemorySpace = ExecutionSpace::memory_space;
   
   // Slice Wrapper Controller
-  CabSliceController<ExecutionSpace, MemorySpace,
+  SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 		  double> cabSliceController(num_tuples);
   
   auto slice_wrapper0 = cabSliceController.makeSlice<0>();
@@ -155,7 +155,7 @@ int multi_type_test(int num_tuples) {
   using MemorySpace = ExecutionSpace::memory_space;
   
   // Slice Wrapper Controller
-  CabSliceController<ExecutionSpace, MemorySpace,
+  SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 		  double, int, float, char> cabSliceController(num_tuples);
   
   auto slice_wrapper0 = cabSliceController.makeSlice<0>();
@@ -187,7 +187,7 @@ int many_type_test(int num_tuples) {
   using MemorySpace = ExecutionSpace::memory_space;
   
   // Slice Wrapper Controller
-  CabSliceController<ExecutionSpace, MemorySpace,
+  SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
 		  long double, double, double,
 		  long unsigned int, float, int,
 		  short int, char, char> cabSliceController(num_tuples);
