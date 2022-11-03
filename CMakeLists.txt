@@ -55,16 +55,16 @@ install(
 
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/meshFields-config.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/meshfields-config.cmake"
   INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields
 )
 write_basic_package_version_file(
-  "${PROJECT_BINARY_DIR}/meshFields-config-version.cmake"
+  "${PROJECT_BINARY_DIR}/meshfields-config-version.cmake"
   COMPATIBILITY AnyNewerVersion)
 
 install(FILES
-  "${PROJECT_BINARY_DIR}/meshFields-config.cmake"
-  "${PROJECT_BINARY_DIR}/meshFields-config-version.cmake"
+  "${PROJECT_BINARY_DIR}/meshfields-config.cmake"
+  "${PROJECT_BINARY_DIR}/meshfields-config-version.cmake"
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields)
 
 install(
