@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/meshFields-targets.cmake")
+
+check_required_components(meshFields)
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Omega_h)
+find_dependency(Cabana)
+

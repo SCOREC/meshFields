@@ -2,12 +2,27 @@ cmake_minimum_required(VERSION 3.13.0)
 
 project(meshFields VERSION 0.1.0 LANGUAGES CXX)
 
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
+
 find_package(Omega_h REQUIRED)
 #Clear the omegah compilation flags that it passes to cuda.  Using the
 # kokkos target, and nvcc_wrapper, provide sufficient flags.
 set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
 find_package(Cabana REQUIRED)
+
+set(MESHFIELD_HEADERS src/SliceWrapper.hpp src/MeshField.hpp)
+
+#create header only library
+add_library(meshFields INTERFACE)
+target_include_directories(meshFields
+  INTERFACE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
+  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
+target_link_libraries(meshFields INTERFACE Cabana::cabanacore)
+target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 
 #Settings options for testing
 enable_testing()
@@ -16,17 +31,42 @@ include(CTest)
 option(IS_TESTING "Build for CTest" OFF)
 message(STATUS "IS_TESTING: ${IS_TESTING}")
 
+#tests
 add_executable(SliceWrapper test/testSliceWrapper.cpp)
-target_include_directories(SliceWrapper PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src) #hack - this should be a header-only library
-target_link_libraries(SliceWrapper Omega_h::omega_h)
-target_link_libraries(SliceWrapper Cabana::cabanacore)
-target_compile_definitions(SliceWrapper PUBLIC ENABLE_CABANA)
+target_link_libraries(SliceWrapper PRIVATE meshFields)
 
 add_executable(MeshField test/testMeshField.cpp)
-target_include_directories(MeshField PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src) #hack - this should be a header-only library
-target_link_libraries(MeshField Omega_h::omega_h)
-target_link_libraries(MeshField Cabana::cabanacore)
-target_compile_definitions(MeshField PUBLIC ENABLE_CABANA)
+target_link_libraries(MeshField PRIVATE meshFields)
 
 add_test(sliceWrapper50 ./SliceWrapper 50)
 add_test(meshField ./MeshField)
+
+## export the library
+set_target_properties(meshFields PROPERTIES PUBLIC_HEADER "${MESHFIELD_HEADERS}")
+install(
+  TARGETS meshFields
+  EXPORT meshFields-targets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/meshFields-config.cmake"
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields
+)
+write_basic_package_version_file(
+  "${PROJECT_BINARY_DIR}/meshFields-config-version.cmake"
+  COMPATIBILITY AnyNewerVersion)
+
+install(FILES
+  "${PROJECT_BINARY_DIR}/meshFields-config.cmake"
+  "${PROJECT_BINARY_DIR}/meshFields-config-version.cmake"
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields)
+
+install(
+  EXPORT meshFields-targets
+  NAMESPACE meshFields::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields)
