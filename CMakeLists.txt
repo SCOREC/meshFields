@@ -16,7 +16,7 @@ set(MESHFIELD_HEADERS src/SliceWrapper.hpp src/MeshField.hpp)
 
 #create header only library
 add_library(meshFields INTERFACE)
-target_compile_features(meshFields PUBLIC cxx_std_17)
+target_compile_features(meshFields INTERFACE cxx_std_17)
 target_include_directories(meshFields
   INTERFACE
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
