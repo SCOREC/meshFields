@@ -80,6 +80,7 @@ jobs:
       shell: bash
       run: cmake -S $GITHUB_WORKSPACE/cabana -B ${{runner.workspace}}/build-cabana
            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake
            -DCabana_ENABLE_MPI=OFF
            -DCabana_ENABLE_CAJITA=OFF
            -DCabana_ENABLE_TESTING=OFF
