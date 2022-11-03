@@ -117,7 +117,7 @@ jobs:
         
     - name: MeshFields Build
       shell: bash
-      run: cmake --build ${{runner.workspace}}/build-meshFields --parallel 2 --target install
+      run: cmake --build ${{runner.workspace}}/build-meshFields --verbose --parallel 2 --target install
 
     - name: MeshFields Test
       working-directory: ${{runner.workspace}}/build-meshFields
