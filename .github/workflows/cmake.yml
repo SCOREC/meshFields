@@ -80,7 +80,7 @@ jobs:
       shell: bash
       run: cmake -S $GITHUB_WORKSPACE/cabana -B ${{runner.workspace}}/build-cabana
            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
-           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake
+           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
            -DCabana_ENABLE_MPI=OFF
            -DCabana_ENABLE_CAJITA=OFF
            -DCabana_ENABLE_TESTING=OFF
@@ -102,8 +102,8 @@ jobs:
       shell: bash
       run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
-           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake
-           -DCabana_DIR=${{runner.workspace}}/build-cabana/install/
+           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
+           -DCabana_DIR=${{runner.workspace}}/build-cabana/install/lib/cmake/Cabana
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
 
     # Initializes the CodeQL tools for scanning.  This must be done before the code is built.
