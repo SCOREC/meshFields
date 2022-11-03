@@ -61,7 +61,7 @@ jobs:
            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
            -DBUILD_SHARED_LIBS=OFF
            -DOmega_h_USE_Kokkos=ON
-           -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib64/cmake
+           -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib/cmake
            -DOmega_h_USE_MPI=OFF
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-omegah/install
 
@@ -101,7 +101,7 @@ jobs:
       shell: bash
       run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
-           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib64/cmake
+           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake
            -DCabana_DIR=${{runner.workspace}}/build-cabana/install/
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
 
