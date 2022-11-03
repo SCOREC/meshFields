@@ -11,9 +11,7 @@ class Field {
   Slice slice;
 
 public:
-  Field(Slice& s) {
-    slice = s;
-  }
+  Field(Slice s) : slice(s) {}
 
   KOKKOS_INLINE_FUNCTION
   auto& operator()(int s, int a) const {
@@ -47,7 +45,7 @@ public:
   template <std::size_t index>
   auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
-    return Field(slice);
+    return Field(std::move(slice));
   }
 
   template<typename FunctorType>
