@@ -9,6 +9,8 @@ struct SliceWrapper {
   SliceType st_; //store the underlying instance
 
   SliceWrapper(SliceType st) : st_(st)  {}
+
+  SliceWrapper() {}
   
   KOKKOS_INLINE_FUNCTION
   T& access(int s, int a) const {
@@ -25,14 +27,13 @@ struct SliceWrapper {
   KOKKOS_INLINE_FUNCTION
   auto& access(int s, int a, int i, int j, int k) const {
     return st_.access(s,a,i,j,k);
-  }
-  
+  }  
 };
 
 using namespace Cabana;
 
 template <class ExecutionSpace, class MemorySpace, class... Ts>
-class CabSliceFactory {
+class CabSliceController {
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
@@ -60,15 +61,23 @@ private:
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa; 
   
 public:
+  template<typename FunctorType>
+  void parallel_for(int lower_bound, int upper_bound, FunctorType vectorKernel, std::string tag) {
+    Cabana::SimdPolicy<vecLen, ExecutionSpace> simd_policy(lower_bound, upper_bound);
+    Cabana::simd_parallel_for(simd_policy, vectorKernel, tag);
+  }
+  
   template <std::size_t index>
-  auto makeSliceCab() {
+  auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;
     const int stride = sizeof(soa_t) / sizeof(member_value_t<index>);
     auto slice = Cabana::slice<index>(aosoa);
     return wrapper_slice_t< type, stride >(std::move(slice));
   }
+
+  CabSliceController() {}
   
-  CabSliceFactory(int n) : aosoa("sliceAoSoA", n) {
+  CabSliceController(int n) : aosoa("sliceAoSoA", n) {
     if (sizeof...(Ts) == 0) {
       throw std::invalid_argument("Must provide at least one member type in template definition");
     }
