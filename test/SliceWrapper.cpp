@@ -252,7 +252,6 @@ int main(int argc, char* argv[]) {
   rank3_array_test(num_tuples);
   mix_arrays_test(num_tuples);  
 
-  assert(cudaSuccess == cudaDeviceSynchronize());
   printf("done\n");
 
   return 0;
