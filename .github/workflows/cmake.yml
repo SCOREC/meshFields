@@ -104,6 +104,7 @@ jobs:
            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
            -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
            -DCabana_DIR=${{runner.workspace}}/build-cabana/install/lib/cmake/Cabana
+           -DOmega_h_DIR=${{runner.workspace}}/build-omegah/install/lib/cmake/Omega_h
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
 
     # Initializes the CodeQL tools for scanning.  This must be done before the code is built.
