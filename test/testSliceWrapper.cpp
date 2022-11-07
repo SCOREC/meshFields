@@ -1,6 +1,14 @@
 #include "SliceWrapper.hpp"
 #include <stdio.h>
 
+#define TOLERANCE 1e-10;
+
+KOKKOS_INLINE_FUNCTION
+bool doubleCompare(double d1, double d2) {
+  double diff = fabs(d1 - d2);
+  return diff < TOLERANCE;
+}
+
 int rank1_array_test(int num_tuples) {
   using ExecutionSpace = Kokkos::DefaultExecutionSpace;
   using MemorySpace = ExecutionSpace::memory_space;
@@ -18,7 +26,7 @@ int rank1_array_test(int num_tuples) {
     for (int i = 0; i < width; i++) {
       double x = 42/(s+a+i+1.3);
       slice_wrapper0.access(s,a,i) = x;
-      assert(slice_wrapper0.access(s,a,i) == x);
+      assert(doubleCompare(slice_wrapper0.access(s,a,i), x));
     }
   };
   cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_rank1_array");
@@ -44,7 +52,7 @@ int rank2_array_test(int num_tuples) {
       for (int j = 0; j < height; j++) {
 	double x = 42/(s+a+i+j+1.3);
         slice_wrapper0.access(s,a,i,j) = x;
-        assert(slice_wrapper0.access(s,a,i,j) == x);
+        assert(doubleCompare(slice_wrapper0.access(s,a,i,j), x));
       }
     }
   };
@@ -73,7 +81,7 @@ int rank3_array_test(int num_tuples) {
 	for (int k = 0; k < depth; k++) {
 	  double x = 42/(s+a+i+j+k+1.3);
           slice_wrapper0.access(s,a,i,j,k) = x;
-          assert(slice_wrapper0.access(s,a,i,j,k) == x);
+          assert(doubleCompare(slice_wrapper0.access(s,a,i,j,k), x));
 	}
       }
     }
@@ -110,17 +118,17 @@ int mix_arrays_test(int num_tuples) {
     for (int i = 0; i < width; i++) {
       double x1 = 42/(s+a+i+1.3);
       slice_wrapper0.access(s,a,i) = x1;
-      assert(slice_wrapper0.access(s,a,i) == x1);
+      assert(doubleCompare(slice_wrapper0.access(s,a,i), x1));
       
       for (int j = 0; j < height; j++) {
 	double x2 = float(x1/(j+1.2));
 	slice_wrapper3.access(s,a,i,j) = x2;
-        assert(slice_wrapper3.access(s,a,i,j) == x2);
+        assert(doubleCompare(slice_wrapper3.access(s,a,i,j), x2));
 	
 	for (int k = 0; k < depth; k++) {
 	  double x3 = x2*x1+k;
           slice_wrapper2.access(s,a,i,j,k) = x3;
-          assert(slice_wrapper2.access(s,a,i,j,k) == x3);
+          assert(doubleCompare(slice_wrapper2.access(s,a,i,j,k), x3));
 	}
       }
     }
@@ -143,7 +151,7 @@ int single_type_test(int num_tuples) {
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
     double x = 42/(s+a+1.3);
     slice_wrapper0.access(s,a) = x;
-    assert(slice_wrapper0.access(s,a) == x);
+    assert(doubleCompare(slice_wrapper0.access(s,a), x));
   };
   cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_single_type");
 
@@ -172,9 +180,9 @@ int multi_type_test(int num_tuples) {
     slice_wrapper2.access(s,a) = float(x);
     slice_wrapper3.access(s,a) = c;
     
-    assert(slice_wrapper0.access(s,a) == x);
+    assert(doubleCompare(slice_wrapper0.access(s,a), x));
     assert(slice_wrapper1.access(s,a) == s+a);
-    assert(slice_wrapper2.access(s,a) == float(x));
+    assert(doubleCompare(slice_wrapper2.access(s,a), float(x)));
     assert(slice_wrapper3.access(s,a) == c);
   };
   cabSliceController.parallel_for(0, num_tuples, vector_kernel, "parallel_for_multi_type");
@@ -223,11 +231,11 @@ int many_type_test(int num_tuples) {
     slice_wrapper7.access(s,a) = c0;
     slice_wrapper8.access(s,a) = c1;
     
-    assert(slice_wrapper0.access(s,a) == d0);
-    assert(slice_wrapper1.access(s,a) == d1);
-    assert(slice_wrapper2.access(s,a) == d2);
+    assert(doubleCompare(slice_wrapper0.access(s,a), d0));
+    assert(doubleCompare(slice_wrapper1.access(s,a), d1));
+    assert(doubleCompare(slice_wrapper2.access(s,a), d2));
     assert(slice_wrapper3.access(s,a) == i0);
-    assert(slice_wrapper4.access(s,a) == f0);
+    assert(doubleCompare(slice_wrapper4.access(s,a), f0));
     assert(slice_wrapper5.access(s,a) == i1);
     assert(slice_wrapper6.access(s,a) == i2);
     assert(slice_wrapper7.access(s,a) == c0);

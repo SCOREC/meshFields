@@ -3,6 +3,15 @@
 
 #include <Cabana_Core.hpp>
 
+#define TOLERANCE 1e-10;
+
+KOKKOS_INLINE_FUNCTION
+bool doubleCompare(double d1, double d2) {
+  double diff = fabs(d1 - d2);
+  return diff < TOLERANCE;
+}
+
+
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
@@ -19,7 +28,7 @@ void single_type(int num_tuples) {
   {
    double d0 = 10;
    field0(s,a) = d0;
-   assert(field0(s,a) == d0);
+   assert(doubleCompare(field0(s,a), d0));
   };
   
   cabMeshField.parallel_for(0,num_tuples,vector_kernel,"single_type_pfor");
@@ -53,9 +62,9 @@ void multi_type(int num_tuples) {
    char c0 = 'a';
    field4(s,a) = c0;
    
-   assert(field0(s,a) == d0);
-   assert(field1(s,a) == d1);
-   assert(field2(s,a) == f0);
+   assert(doubleCompare(field0(s,a), d0));
+   assert(doubleCompare(field1(s,a), d1));
+   assert(doubleCompare(field2(s,a), f0));
    assert(field3(s,a) == i0);
    assert(field4(s,a) == c0);
   };
@@ -98,10 +107,10 @@ void many_type(int num_tuples) {
    char c0 = 'h';
    field6(s,a) = c0;
    
-   assert(field0(s,a) == d0);
-   assert(field1(s,a) == d1);
-   assert(field2(s,a) == f0);
-   assert(field3(s,a) == f1);
+   assert(doubleCompare(field0(s,a), d0));
+   assert(doubleCompare(field1(s,a), d1));
+   assert(doubleCompare(field2(s,a), f0));
+   assert(doubleCompare(field3(s,a), f1));
    assert(field4(s,a) == i0);
    assert(field5(s,a) == i1);
    assert(field6(s,a) == c0);
@@ -128,7 +137,7 @@ void rank1_arr(int num_tuples) {
    {
     double d0 = 10+i;
     field0(s,a,i) = d0;
-    assert(field0(s,a,i) == d0);
+    assert(doubleCompare(field0(s,a,i), d0));
    }
   };
   
@@ -155,7 +164,7 @@ void rank2_arr(int num_tuples) {
     {
      double d0 = (10+i)/(j+1);
      field0(s,a,i,j) = d0;
-     assert(field0(s,a,i,j) == d0);
+     assert(doubleCompare(field0(s,a,i,j), d0));
     }
    }
   };
@@ -186,7 +195,7 @@ void rank3_arr(int num_tuples) {
      {
       double d0 = ((10+i)*(k+1))/(j+1);
       field0(s,a,i,j,k) = d0;
-      assert(field0(s,a,i,j,k) == d0);
+      assert(doubleCompare(field0(s,a,i,j,k), d0));
      }
     }
    }
@@ -233,9 +242,9 @@ void mix_arr(int num_tuples) {
      {
       double d0 = ((10+i)*(k+1))/(j+1);
       field0(s,a,i,j,k) = d0;
-      assert(field0(s,a,i,j,k) == d0);
+      assert(doubleCompare(field0(s,a,i,j,k), d0));
      }
-     assert(field1(s,a,i,j) == f0);
+     assert(doubleCompare(field1(s,a,i,j), f0));
     }
     assert(field2(s,a,i) == i0);
    }
