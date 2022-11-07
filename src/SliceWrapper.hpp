@@ -64,7 +64,7 @@ private:
   
 public:
   template<typename FunctorType>
-  void parallel_for(int lower_bound, int upper_bound, FunctorType vectorKernel, std::string tag) {
+  void parallel_for(int lower_bound, int upper_bound, FunctorType& vectorKernel, std::string tag) {
     Cabana::SimdPolicy<vecLen, ExecutionSpace> simd_policy(lower_bound, upper_bound);
     Cabana::simd_parallel_for(simd_policy, vectorKernel, tag);
   }
