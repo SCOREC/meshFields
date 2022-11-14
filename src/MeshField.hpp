@@ -64,6 +64,11 @@ public:
       }, result);
     return result;
   }
+
+  template<class FieldType>
+  double mean(FieldType& field) {
+    return sum(field) / sliceController.size();
+  }
   
   template<typename FunctorType>
   void parallel_for(int lower_bound, int upper_bound,
