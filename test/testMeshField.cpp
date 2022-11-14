@@ -11,9 +11,30 @@ bool doubleCompare(double d1, double d2) {
   return diff < TOLERANCE;
 }
 
-
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
+
+void test_reductions(int num_tuples) {
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+  
+  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
+  {
+   double d0 = 10;
+   field0(s,a) = d0;
+   assert(doubleCompare(field0(s,a), d0));
+  };
+
+  cabMeshField.parallel_for(0,num_tuples, vector_kernel, "reduction_pfor");
+  
+  double sum = cabMeshField.sum(field0);
+  printf("min: %lf", sum);
+}
 
 void single_type(int num_tuples) {
   using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double>;
@@ -266,6 +287,8 @@ int main(int argc, char* argv[]) {
   rank2_arr(num_tuples);
   rank3_arr(num_tuples);
   mix_arr(num_tuples);
+
+  test_reductions(num_tuples);
   
   return 0;
 }

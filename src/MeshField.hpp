@@ -2,6 +2,8 @@
 #define meshfield_hpp
 
 #include "SliceWrapper.hpp"
+#include <Kokkos_Core.hpp>
+#include <Kokkos_StdAlgorithms.hpp>
 
 namespace MeshField {
 
@@ -9,10 +11,10 @@ template <class Slice>
 class Field {
 
   Slice slice;
-
+  
 public:
   Field(Slice s) : slice(s) {}
-
+  
   KOKKOS_INLINE_FUNCTION
   auto& operator()(int s, int a) const {
     return slice.access(s,a);
@@ -48,6 +50,21 @@ public:
     return Field(std::move(slice));
   }
 
+  template<class FieldType>
+  double sum(FieldType& field) {
+    int num_tuples = sliceController.size();
+    int vec_len = sliceController.vecLen;
+    double result;
+    Kokkos::parallel_reduce("Loop1", num_tuples, KOKKOS_LAMBDA (const int i, double& lsum )
+      {
+	int numSoa = num_tuples / vec_len;
+	const int s = i / vec_len;
+	const int a = i % numSoa;
+	lsum += field(s, a);
+      }, result);
+    return result;
+  }
+  
   template<typename FunctorType>
   void parallel_for(int lower_bound, int upper_bound,
 		    FunctorType& vector_kernel,

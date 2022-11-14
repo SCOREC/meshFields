@@ -36,6 +36,7 @@ using namespace Cabana;
 
 template <class ExecutionSpace, class MemorySpace, class... Ts>
 class CabSliceController {
+  // type definitions
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
@@ -60,9 +61,15 @@ private:
   template <class T, int stride>
   using wrapper_slice_t = SliceWrapper<member_slice_t<T, stride>, T>;
 
+  // member vaiables
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa; 
+  int num_tuples;
   
 public:
+  int size() {
+    return num_tuples;
+  }
+  
   template<typename FunctorType>
   void parallel_for(int lower_bound, int upper_bound, FunctorType& vectorKernel, std::string tag) {
     Cabana::SimdPolicy<vecLen, ExecutionSpace> simd_policy(lower_bound, upper_bound);
@@ -83,6 +90,7 @@ public:
     if (sizeof...(Ts) == 0) {
       throw std::invalid_argument("Must provide at least one member type in template definition");
     }
+    num_tuples = n;
   }
 };
 
