@@ -52,6 +52,7 @@ public:
   double sum(FieldType& field) {
     int num_tuples = sliceController.size();
     int vec_len = sliceController.vecLen;
+    const int numSoa = num_tuples / vec_len;
     double result;
     Kokkos::parallel_reduce("Loop1", num_tuples, KOKKOS_LAMBDA (const int i, double& lsum )
       {
