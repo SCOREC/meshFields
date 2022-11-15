@@ -63,7 +63,7 @@ private:
 
   // member vaiables
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa; 
-  int num_tuples;
+  const int num_tuples;
   
 public:
   int size() {
