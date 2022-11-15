@@ -25,7 +25,7 @@ void test_reductions(int num_tuples) {
   
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
   {
-   field0(s,a) = d0;
+   field0(s,a) = 10.0;
   };
 
   cabMeshField.parallel_for(0,num_tuples, initField, "initField");
