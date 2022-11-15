@@ -31,9 +31,12 @@ void test_reductions(int num_tuples) {
   cabMeshField.parallel_for(0,num_tuples, initField, "initField");
   
   double sum = cabMeshField.sum(field0);
-  printf("sum: %lf\n", sum);
+  assert(doubleCompare(sum, 10.0*num_tuples));
+  
   double mean = cabMeshField.mean(field0);
-  printf("mean: %lf\n", mean);
+  assert(doubleCompare(mean, 10.0));
+
+  
 }
 
 void single_type(int num_tuples) {
