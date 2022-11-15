@@ -23,7 +23,7 @@ void test_reductions(int num_tuples) {
 
   auto field0 = cabMeshField.makeField<0>();
   
-  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
+  auto initField = KOKKOS_LAMBDA(const int s, const int a)
   {
    field0(s,a) = 10.0;
   };
