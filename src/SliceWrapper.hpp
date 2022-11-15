@@ -90,7 +90,6 @@ public:
     if (sizeof...(Ts) == 0) {
       throw std::invalid_argument("Must provide at least one member type in template definition");
     }
-    num_tuples = n;
   }
 };
 
