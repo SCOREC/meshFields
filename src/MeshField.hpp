@@ -11,7 +11,6 @@ template <class Slice>
 class Field {
 
   Slice slice;
-  
 public:
   Field(Slice s) : slice(s) {}
   
