@@ -27,7 +27,6 @@ void test_reductions(int num_tuples) {
   {
    double d0 = 10;
    field0(s,a) = d0;
-   assert(doubleCompare(field0(s,a), d0));
   };
 
   cabMeshField.parallel_for(0,num_tuples, vector_kernel, "reduction_pfor");
