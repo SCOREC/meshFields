@@ -86,7 +86,7 @@ public:
 
   CabSliceController() {}
   
-  CabSliceController(int n) : aosoa("sliceAoSoA", n) {
+  CabSliceController(int n) : aosoa("sliceAoSoA", n), num_tuples(n) {
     if (sizeof...(Ts) == 0) {
       throw std::invalid_argument("Must provide at least one member type in template definition");
     }

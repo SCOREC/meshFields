@@ -54,7 +54,7 @@ public:
     int vec_len = sliceController.vecLen;
     const int numSoa = num_tuples / vec_len;
     double result;
-    Kokkos::parallel_reduce("Loop1", num_tuples, KOKKOS_LAMBDA (const int i, double& lsum )
+    Kokkos::parallel_reduce("sum_reduce", num_tuples, KOKKOS_LAMBDA (const int i, double& lsum )
       {
 	const int s = i / vec_len;
 	const int a = i % numSoa;
