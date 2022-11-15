@@ -13,7 +13,6 @@ class Field {
   Slice slice;
 public:
   Field(Slice s) : slice(s) {}
-  
   KOKKOS_INLINE_FUNCTION
   auto& operator()(int s, int a) const {
     return slice.access(s,a);
