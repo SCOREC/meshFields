@@ -29,7 +29,7 @@ void test_reductions(int num_tuples) {
    field0(s,a) = d0;
   };
 
-  cabMeshField.parallel_for(0,num_tuples, vector_kernel, "reduction_pfor");
+  cabMeshField.parallel_for(0,num_tuples, initField, "initField");
   
   double sum = cabMeshField.sum(field0);
   printf("sum: %lf\n", sum);
