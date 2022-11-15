@@ -55,7 +55,6 @@ public:
     double result;
     Kokkos::parallel_reduce("Loop1", num_tuples, KOKKOS_LAMBDA (const int i, double& lsum )
       {
-	int numSoa = num_tuples / vec_len;
 	const int s = i / vec_len;
 	const int a = i % numSoa;
 	lsum += field(s, a);
