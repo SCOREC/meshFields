@@ -22,7 +22,7 @@ void test_reductions(int num_tuples) {
   MeshField::MeshField<Controller> cabMeshField(c);
 
   auto field0 = cabMeshField.makeField<0>();
-  
+
   auto initField = KOKKOS_LAMBDA(const int s, const int a)
   {
    field0(s,a) = 10.0;
@@ -31,12 +31,16 @@ void test_reductions(int num_tuples) {
   cabMeshField.parallel_for(0,num_tuples, initField, "initField");
   
   double sum = cabMeshField.sum(field0);
-  assert(doubleCompare(sum, 10.0*num_tuples));
+  double expected_sum = 10.0*num_tuples;
+  assert(doubleCompare(sum, expected_sum));
   
   double mean = cabMeshField.mean(field0);
-  assert(doubleCompare(mean, 10.0));
+  double expected_mean = 10.0;
+  assert(doubleCompare(mean, expected_mean));
 
-  
+  double min = cabMeshField.min(field0);
+  double expected_min = 10.0;
+  assert(doubleCompare(min, expected_min));
 }
 
 void single_type(int num_tuples) {

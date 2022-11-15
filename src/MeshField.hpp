@@ -4,6 +4,7 @@
 #include "SliceWrapper.hpp"
 #include <Kokkos_Core.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
+#include <cstdio>
 
 namespace MeshField {
 
@@ -62,6 +63,22 @@ public:
       }, result);
     return result;
   }
+  
+  template<class FieldType>
+  double min(FieldType& field) {
+    int num_tuples = sliceController.size();
+    int vec_len = sliceController.vecLen;
+    const int numSoa = num_tuples / vec_len;
+    double min;
+    Kokkos::parallel_reduce("min_reduce", num_tuples, KOKKOS_LAMBDA (const int& i, double& lmin )
+    {
+      const int s = i / vec_len;
+      const int a = i % numSoa;
+      lmin = lmin < field(s,a) ? lmin : field(s,a);
+    },Kokkos::Min<double>(min));
+    return min;
+  }
+  
 
   template<class FieldType>
   double mean(FieldType& field) {
