@@ -25,7 +25,6 @@ void test_reductions(int num_tuples) {
   
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a)
   {
-   double d0 = 10;
    field0(s,a) = d0;
   };
 
