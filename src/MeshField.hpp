@@ -78,7 +78,22 @@ public:
     },Kokkos::Min<double>(min));
     return min;
   }
-  
+
+  template<class FieldType>
+  double max(FieldType& field) {
+    int num_tuples = sliceController.size();
+    int vec_len = sliceController.vecLen;
+    const int numSoa = num_tuples / vec_len;
+    double max;
+    Kokkos::parallel_reduce("max_reduce", num_tuples, KOKKOS_LAMBDA (const int& i, double& lmax )
+    {
+      const int s = i / vec_len;
+      const int a = i % numSoa;
+      lmax = lmax > field(s,a) ? lmax : field(s,a);
+    },Kokkos::Max<double>(max));
+    return max;
+  }
+
 
   template<class FieldType>
   double mean(FieldType& field) {

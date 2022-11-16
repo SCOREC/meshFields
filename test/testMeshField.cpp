@@ -41,6 +41,11 @@ void test_reductions(int num_tuples) {
   double min = cabMeshField.min(field0);
   double expected_min = 10.0;
   assert(doubleCompare(min, expected_min));
+  
+  double max = cabMeshField.max(field0);
+  double expected_max = 10.0;
+  assert(doubleCompare(max, expected_max));
+
 }
 
 void single_type(int num_tuples) {
