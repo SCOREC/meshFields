@@ -68,12 +68,11 @@ public:
   double min(FieldType& field) {
     int num_tuples = sliceController.size();
     int vec_len = sliceController.vecLen;
-    const int numSoa = num_tuples / vec_len;
     double min;
     Kokkos::parallel_reduce("min_reduce", num_tuples, KOKKOS_LAMBDA (const int& i, double& lmin )
     {
       const int s = i / vec_len;
-      const int a = i % numSoa;
+      const int a = i % vec_len;
       lmin = lmin < field(s,a) ? lmin : field(s,a);
     },Kokkos::Min<double>(min));
     return min;
