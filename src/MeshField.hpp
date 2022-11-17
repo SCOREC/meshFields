@@ -53,12 +53,11 @@ public:
   double sum(FieldType& field) {
     int num_tuples = sliceController.size();
     int vec_len = sliceController.vecLen;
-    const int numSoa = num_tuples / vec_len;
     double result;
     Kokkos::parallel_reduce("sum_reduce", num_tuples, KOKKOS_LAMBDA (const int i, double& lsum )
       {
 	const int s = i / vec_len;
-	const int a = i % numSoa;
+	const int a = i % vec_len;
 	lsum += field(s, a);
       }, result);
     return result;
@@ -82,12 +81,11 @@ public:
   double max(FieldType& field) {
     int num_tuples = sliceController.size();
     int vec_len = sliceController.vecLen;
-    const int numSoa = num_tuples / vec_len;
     double max;
     Kokkos::parallel_reduce("max_reduce", num_tuples, KOKKOS_LAMBDA (const int& i, double& lmax )
     {
       const int s = i / vec_len;
-      const int a = i % numSoa;
+      const int a = i % vec_len;
       lmax = lmax > field(s,a) ? lmax : field(s,a);
     },Kokkos::Max<double>(max));
     return max;
