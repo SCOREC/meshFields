@@ -69,6 +69,18 @@ public:
   int size() {
     return num_tuples;
   }
+
+  KOKKOS_INLINE_FUNCTION
+  void indexToSA(const int i, int& s, int& a) {
+    s = i / vecLen;
+    a = i % vecLen;
+  }
+  
+  template <typename FunctorType, typename ReductionType>
+  void parallel_reduce(FunctorType& reduceKernel, ReductionType& reductionType, std::string tag) {
+    Kokkos::RangePolicy<ExecutionSpace> policy(0, num_tuples);
+    Kokkos::parallel_reduce(tag, policy, reduceKernel, reductionType);
+  }
   
   template<typename FunctorType>
   void parallel_for(int lower_bound, int upper_bound, FunctorType& vectorKernel, std::string tag) {

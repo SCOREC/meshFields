@@ -51,43 +51,46 @@ public:
 
   template<class FieldType>
   double sum(FieldType& field) {
-    int num_tuples = sliceController.size();
-    int vec_len = sliceController.vecLen;
     double result;
-    Kokkos::parallel_reduce("sum_reduce", num_tuples, KOKKOS_LAMBDA (const int i, double& lsum )
-      {
-	const int s = i / vec_len;
-	const int a = i % vec_len;
-	lsum += field(s, a);
-      }, result);
+    auto reduction_kernel = KOKKOS_LAMBDA (const int i, double& lsum )
+    {
+      int s;
+      int a;
+      sliceController.indexToSA(i,s,a);
+      //      printf("s: %d, a: %d\n", s,a);
+      lsum += field(s, a);
+    };
+    sliceController.parallel_reduce(reduction_kernel, result, "sum_reduce");
     return result;
   }
   
   template<class FieldType>
   double min(FieldType& field) {
-    int num_tuples = sliceController.size();
-    int vec_len = sliceController.vecLen;
     double min;
-    Kokkos::parallel_reduce("min_reduce", num_tuples, KOKKOS_LAMBDA (const int& i, double& lmin )
+    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lmin )
     {
-      const int s = i / vec_len;
-      const int a = i % vec_len;
+      int s;
+      int a;
+      sliceController.indexToSA(i,s,a);
       lmin = lmin < field(s,a) ? lmin : field(s,a);
-    },Kokkos::Min<double>(min));
+    };
+    auto reducer = Kokkos::Min<double>(min);
+    sliceController.parallel_reduce(reduce_kernel, reducer, "min_reduce");
     return min;
   }
 
   template<class FieldType>
   double max(FieldType& field) {
-    int num_tuples = sliceController.size();
-    int vec_len = sliceController.vecLen;
     double max;
-    Kokkos::parallel_reduce("max_reduce", num_tuples, KOKKOS_LAMBDA (const int& i, double& lmax )
+    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lmax )
     {
-      const int s = i / vec_len;
-      const int a = i % vec_len;
+      int s;
+      int a;
+      sliceController.indexToSA(i,s,a);
       lmax = lmax > field(s,a) ? lmax : field(s,a);
-    },Kokkos::Max<double>(max));
+    };
+    auto reducer = Kokkos::Max<double>(max);
+    sliceController.parallel_reduce(reduce_kernel, reducer, "max_reduce");
     return max;
   }
 

@@ -32,20 +32,23 @@ void test_reductions(int num_tuples) {
   
   double sum = cabMeshField.sum(field0);
   double expected_sum = 10.0*num_tuples;
+  printf("sum: %lf\n", sum);
   assert(doubleCompare(sum, expected_sum));
   
   double mean = cabMeshField.mean(field0);
   double expected_mean = 10.0;
+  printf("mean: %lf\n", mean);
   assert(doubleCompare(mean, expected_mean));
 
   double min = cabMeshField.min(field0);
   double expected_min = 10.0;
+  printf("min: %lf\n", min);
   assert(doubleCompare(min, expected_min));
   
   double max = cabMeshField.max(field0);
   double expected_max = 10.0;
+  printf("max: %lf\n", max);
   assert(doubleCompare(max, expected_max));
-
 }
 
 void single_type(int num_tuples) {
