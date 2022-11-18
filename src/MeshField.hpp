@@ -52,12 +52,12 @@ public:
   template<class FieldType>
   double sum(FieldType& field) {
     double result;
+    Controller* sc = &sliceController;
     auto reduction_kernel = KOKKOS_LAMBDA (const int i, double& lsum )
     {
       int s;
       int a;
-      sliceController.indexToSA(i,s,a);
-      //      printf("s: %d, a: %d\n", s,a);
+      sc->indexToSA(i,s,a);
       lsum += field(s, a);
     };
     sliceController.parallel_reduce(reduction_kernel, result, "sum_reduce");
@@ -67,11 +67,12 @@ public:
   template<class FieldType>
   double min(FieldType& field) {
     double min;
+    Controller* sc = &sliceController;
     auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lmin )
     {
       int s;
       int a;
-      sliceController.indexToSA(i,s,a);
+      sc->indexToSA(i,s,a);
       lmin = lmin < field(s,a) ? lmin : field(s,a);
     };
     auto reducer = Kokkos::Min<double>(min);
@@ -82,11 +83,12 @@ public:
   template<class FieldType>
   double max(FieldType& field) {
     double max;
+    Controller* sc = &sliceController;
     auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lmax )
     {
       int s;
       int a;
-      sliceController.indexToSA(i,s,a);
+      sc->indexToSA(i,s,a);
       lmax = lmax > field(s,a) ? lmax : field(s,a);
     };
     auto reducer = Kokkos::Max<double>(max);
