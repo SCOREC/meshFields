@@ -4,7 +4,7 @@
 #include <Cabana_Core.hpp>
 
 namespace SliceWrapper {
-
+  
 template< class SliceType, class T >
 struct SliceWrapper {
 
@@ -66,14 +66,20 @@ private:
   const int num_tuples;
   
 public:
+  struct IndexToSA {
+    IndexToSA(int vecLen_in) : vecLen(vecLen_in) {}
+    int vecLen;
+    KOKKOS_INLINE_FUNCTION
+    void operator()(const int i, int& s, int& a) const {
+      s = i / vecLen;
+      a = i % vecLen;
+    }
+  };
+
+  IndexToSA indexToSA;
+  
   int size() {
     return num_tuples;
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  void indexToSA(const int i, int& s, int& a) {
-    s = i / vecLen;
-    a = i % vecLen;
   }
   
   template <typename FunctorType, typename ReductionType>
@@ -98,7 +104,8 @@ public:
 
   CabSliceController() {}
   
-  CabSliceController(int n) : aosoa("sliceAoSoA", n), num_tuples(n) {
+  CabSliceController(int n) : aosoa("sliceAoSoA", n), num_tuples(n),
+			      indexToSA(aosoa.vector_length) {
     if (sizeof...(Ts) == 0) {
       throw std::invalid_argument("Must provide at least one member type in template definition");
     }
