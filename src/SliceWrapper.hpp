@@ -10,6 +10,8 @@ struct SliceWrapper {
 
   SliceType st_; //store the underlying instance
 
+  typedef T Type;
+  
   SliceWrapper(SliceType st) : st_(st)  {}
 
   SliceWrapper() {}

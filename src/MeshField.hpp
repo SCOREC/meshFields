@@ -13,7 +13,10 @@ class Field {
 
   Slice slice;
 public:
+  typedef typename Slice::Type Type;
+  
   Field(Slice s) : slice(s) {}
+
   KOKKOS_INLINE_FUNCTION
   auto& operator()(int s, int a) const {
     return slice.access(s,a);
@@ -49,11 +52,11 @@ public:
     return Field(std::move(slice));
   }
 
-  template<class FieldType>
-  double sum(FieldType& field) {
-    double result;
+  template<class FieldType, class T = typename FieldType::Type>
+   T sum(FieldType& field) {
+    T result;
     auto indexToSA = sliceController.indexToSA;
-    auto reduction_kernel = KOKKOS_LAMBDA (const int& i, double& lsum )
+    auto reduction_kernel = KOKKOS_LAMBDA (const int& i, T& lsum )
     {
       int s;
       int a;
@@ -64,42 +67,42 @@ public:
     return result;
   }
   
-  template<class FieldType>
-  double min(FieldType& field) {
-    double min;
+  template<class FieldType, class T = typename FieldType::Type>
+  T min(FieldType& field) {
+    T min;
     auto indexToSA = sliceController.indexToSA;
-    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lmin )
+    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, T& lmin )
     {
       int s;
       int a;
       indexToSA(i,s,a);
       lmin = lmin < field(s,a) ? lmin : field(s,a);
     };
-    auto reducer = Kokkos::Min<double>(min);
+    auto reducer = Kokkos::Min<T>(min);
     sliceController.parallel_reduce(reduce_kernel, reducer, "min_reduce");
     return min;
   }
 
-  template<class FieldType>
-  double max(FieldType& field) {
-    double max;
+  template<class FieldType, class T = typename FieldType::Type>
+  T max(FieldType& field) {
+    T max;
     auto indexToSA = sliceController.indexToSA;
-    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lmax )
+    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, T& lmax )
     {
       int s;
       int a;
       indexToSA(i,s,a);
       lmax = lmax > field(s,a) ? lmax : field(s,a);
     };
-    auto reducer = Kokkos::Max<double>(max);
+    auto reducer = Kokkos::Max<T>(max);
     sliceController.parallel_reduce(reduce_kernel, reducer, "max_reduce");
     return max;
   }
 
 
-  template<class FieldType>
+  template<class FieldType, class T = typename FieldType::Type>
   double mean(FieldType& field) {
-    return sum(field) / sliceController.size();
+    return static_cast<double>(sum(field)) / sliceController.size();
   }
   
   template<typename FunctorType>
