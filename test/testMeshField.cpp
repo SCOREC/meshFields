@@ -62,10 +62,10 @@ void test_reductions(int num_tuples) {
     printf("sum: %d\n", sum);
     assert(sum == expected_sum);
 
-    int mean = cabMeshField.mean(field1);
-    int expected_mean = 22;
-    printf("mean: %d\n", mean);
-    assert(mean == expected_mean);
+    double mean = cabMeshField.mean(field1);
+    double expected_mean = 22;
+    printf("mean: %lf\n", mean);
+    assert(doubleCompare(mean, expected_mean));
     
     int min = cabMeshField.min(field1);
     int expected_min = 22;
