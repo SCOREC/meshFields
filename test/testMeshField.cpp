@@ -15,40 +15,68 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
 void test_reductions(int num_tuples) {
-  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double>;
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double, int>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
   MeshField::MeshField<Controller> cabMeshField(c);
 
   auto field0 = cabMeshField.makeField<0>();
+  auto field1 = cabMeshField.makeField<1>();
 
   auto initField = KOKKOS_LAMBDA(const int s, const int a)
   {
    field0(s,a) = 10.0;
+   field1(s,a) = 22;
   };
 
   cabMeshField.parallel_for(0,num_tuples, initField, "initField");
-  
-  double sum = cabMeshField.sum(field0);
-  double expected_sum = 10.0*num_tuples;
-  printf("sum: %lf\n", sum);
-  assert(doubleCompare(sum, expected_sum));
-  
-  double mean = cabMeshField.mean(field0);
-  double expected_mean = 10.0;
-  printf("mean: %lf\n", mean);
-  assert(doubleCompare(mean, expected_mean));
 
-  double min = cabMeshField.min(field0);
-  double expected_min = 10.0;
-  printf("min: %lf\n", min);
-  assert(doubleCompare(min, expected_min));
+  // double reductions
+  {
+    double sum = cabMeshField.sum(field0);
+    double expected_sum = 10.0*num_tuples;
+    printf("sum: %lf\n", sum);
+    assert(doubleCompare(sum, expected_sum));
+    
+    double mean = cabMeshField.mean(field0);
+    double expected_mean = 10.0;
+    printf("mean: %lf\n", mean);
+    assert(doubleCompare(mean, expected_mean));
+    
+    double min = cabMeshField.min(field0);
+    double expected_min = 10.0;
+    printf("min: %lf\n", min);
+    assert(doubleCompare(min, expected_min));
+    
+    double max = cabMeshField.max(field0);
+    double expected_max = 10.0;
+    printf("max: %lf\n", max);
+    assert(doubleCompare(max, expected_max));
+  }
   
-  double max = cabMeshField.max(field0);
-  double expected_max = 10.0;
-  printf("max: %lf\n", max);
-  assert(doubleCompare(max, expected_max));
+  // int reductions
+  {
+    int sum = cabMeshField.sum(field1);
+    int expected_sum = 22*num_tuples;
+    printf("sum: %d\n", sum);
+    assert(sum == expected_sum);
+
+    int mean = cabMeshField.mean(field1);
+    int expected_mean = 22;
+    printf("mean: %d\n", mean);
+    assert(mean == expected_mean);
+    
+    int min = cabMeshField.min(field1);
+    int expected_min = 22;
+    printf("min: %d\n", min);
+    assert(min == expected_min);
+    
+    int max = cabMeshField.max(field1);
+    int expected_max = 22;
+    printf("max: %d\n", max);
+    assert(max == expected_max);
+  }
 }
 
 void single_type(int num_tuples) {
