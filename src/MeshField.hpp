@@ -52,6 +52,19 @@ public:
     return Field(std::move(slice));
   }
 
+  template <class Field, class View>
+  void fillFieldFromView(Field& field, View& view) {
+    auto indexToSA = sliceController.indexToSA;
+    Kokkos::parallel_for("FillFieldFromViewLoop", sliceController.size(),
+    KOKKOS_LAMBDA (const int& i)
+    {
+      int s;
+      int a;
+      indexToSA(i,s,a);
+      field(s,a) = view(i);
+    });
+  }
+  
   template<class FieldType, class T = typename FieldType::Type>
    T sum(FieldType& field) {
     T result;
