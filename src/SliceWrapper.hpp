@@ -4,12 +4,14 @@
 #include <Cabana_Core.hpp>
 
 namespace SliceWrapper {
-
+  
 template< class SliceType, class T >
 struct SliceWrapper {
 
   SliceType st_; //store the underlying instance
 
+  typedef T Type;
+  
   SliceWrapper(SliceType st) : st_(st)  {}
 
   SliceWrapper() {}
@@ -36,6 +38,7 @@ using namespace Cabana;
 
 template <class ExecutionSpace, class MemorySpace, class... Ts>
 class CabSliceController {
+  // type definitions
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
@@ -60,9 +63,33 @@ private:
   template <class T, int stride>
   using wrapper_slice_t = SliceWrapper<member_slice_t<T, stride>, T>;
 
+  // member vaiables
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa; 
+  const int num_tuples;
   
 public:
+  struct IndexToSA {
+    IndexToSA(int vecLen_in) : vecLen(vecLen_in) {}
+    int vecLen;
+    KOKKOS_INLINE_FUNCTION
+    void operator()(const int i, int& s, int& a) const {
+      s = i / vecLen;
+      a = i % vecLen;
+    }
+  };
+
+  IndexToSA indexToSA;
+  
+  int size() {
+    return num_tuples;
+  }
+  
+  template <typename FunctorType, typename ReductionType>
+  void parallel_reduce(FunctorType& reduceKernel, ReductionType& reductionType, std::string tag) {
+    Kokkos::RangePolicy<ExecutionSpace> policy(0, num_tuples);
+    Kokkos::parallel_reduce(tag, policy, reduceKernel, reductionType);
+  }
+  
   template<typename FunctorType>
   void parallel_for(int lower_bound, int upper_bound, FunctorType& vectorKernel, std::string tag) {
     Cabana::SimdPolicy<vecLen, ExecutionSpace> simd_policy(lower_bound, upper_bound);
@@ -79,7 +106,8 @@ public:
 
   CabSliceController() {}
   
-  CabSliceController(int n) : aosoa("sliceAoSoA", n) {
+  CabSliceController(int n) : aosoa("sliceAoSoA", n), num_tuples(n),
+			      indexToSA(aosoa.vector_length) {
     if (sizeof...(Ts) == 0) {
       throw std::invalid_argument("Must provide at least one member type in template definition");
     }

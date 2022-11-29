@@ -11,9 +11,84 @@ bool doubleCompare(double d1, double d2) {
   return diff < TOLERANCE;
 }
 
-
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
+
+int simpleSum(int num_tuples) {
+  int sum = 0;
+  for (int i = 0; i < num_tuples; i++)
+  {
+    sum += i;
+  }
+  return sum;
+}
+
+void test_reductions(int num_tuples) {
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double, int>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+  auto field1 = cabMeshField.makeField<1>();
+
+  Kokkos::View<double*> initView0("InitView", num_tuples);
+  Kokkos::View<int*> initView1("InitView", num_tuples);
+  Kokkos::parallel_for("InitViewLoop", num_tuples, KOKKOS_LAMBDA (const int& i) {
+    initView0(i) = i;
+    initView1(i) = i;
+  });
+  
+  cabMeshField.setField(field0, initView0);
+  cabMeshField.setField(field1, initView1);
+  
+  // double reductions
+  {
+    double sum = cabMeshField.sum(field0);
+    double expected_sum = static_cast<double>(simpleSum(num_tuples));
+    printf("sum: %lf\n", sum);
+    assert(doubleCompare(sum, expected_sum));
+    
+    double mean = cabMeshField.mean(field0);
+    double expected_mean = expected_sum / num_tuples;
+    printf("mean: %lf\n", mean);
+    assert(doubleCompare(mean, expected_mean));
+    
+    double min = cabMeshField.min(field0);
+    double expected_min = 0;
+    printf("min: %lf\n", min);
+    assert(doubleCompare(min, expected_min));
+    
+    double max = cabMeshField.max(field0);
+    double expected_max = num_tuples-1;
+    printf("max: %lf\n", max);
+    assert(doubleCompare(max, expected_max));
+  }
+  
+  // int reductions
+  {
+    int sum = cabMeshField.sum(field1);
+    int expected_sum = simpleSum(num_tuples);
+    printf("sum: %d\n", sum);
+    assert(sum == expected_sum);
+
+    double mean = cabMeshField.mean(field1);
+    double expected_mean = static_cast<double>(expected_sum) / num_tuples;
+    printf("mean: %lf\n", mean);
+    assert(doubleCompare(mean, expected_mean));
+    
+    int min = cabMeshField.min(field1);
+    int expected_min = 0;
+    printf("min: %d\n", min);
+    assert(min == expected_min);
+    
+    int max = cabMeshField.max(field1);
+    int expected_max = num_tuples-1;
+    printf("max: %d\n", max);
+    assert(max == expected_max);
+  }
+}
 
 void single_type(int num_tuples) {
   using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double>;
@@ -266,6 +341,8 @@ int main(int argc, char* argv[]) {
   rank2_arr(num_tuples);
   rank3_arr(num_tuples);
   mix_arr(num_tuples);
+
+  test_reductions(num_tuples);
   
   return 0;
 }
