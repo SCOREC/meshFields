@@ -53,7 +53,7 @@ public:
   }
 
   template <class Field, class View>
-  void fillFieldFromView(Field& field, View& view) {
+  void setField(Field& field, View& view) {
     auto indexToSA = sliceController.indexToSA;
     Kokkos::parallel_for("FillFieldFromViewLoop", sliceController.size(),
     KOKKOS_LAMBDA (const int& i)
@@ -113,7 +113,7 @@ public:
   }
 
 
-  template<class FieldType, class T = typename FieldType::Type>
+  template<class FieldType>
   double mean(FieldType& field) {
     return static_cast<double>(sum(field)) / sliceController.size();
   }

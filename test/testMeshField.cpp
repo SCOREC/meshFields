@@ -40,8 +40,8 @@ void test_reductions(int num_tuples) {
     initView1(i) = i;
   });
   
-  cabMeshField.fillFieldFromView(field0, initView0);
-  cabMeshField.fillFieldFromView(field1, initView1);
+  cabMeshField.setField(field0, initView0);
+  cabMeshField.setField(field1, initView1);
   
   // double reductions
   {
