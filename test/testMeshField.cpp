@@ -69,7 +69,7 @@ void test_reductions(int num_tuples) {
   // int reductions
   {
     int sum = cabMeshField.sum(field1);
-    int expected_sum = simple_sum(num_tuples);
+    int expected_sum = static_cast<int>(simple_sum(num_tuples));
     printf("sum: %d\n", sum);
     assert(sum == expected_sum);
 
