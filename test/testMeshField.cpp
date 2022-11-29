@@ -14,7 +14,7 @@ bool doubleCompare(double d1, double d2) {
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
-double simple_sum(int num_tuples) {
+int simpleSum(int num_tuples) {
   int sum = 0;
   for (int i = 0; i < num_tuples; i++)
   {
@@ -46,7 +46,7 @@ void test_reductions(int num_tuples) {
   // double reductions
   {
     double sum = cabMeshField.sum(field0);
-    double expected_sum = simple_sum(num_tuples);
+    double expected_sum = static_cast<double>(simpleSum(num_tuples));
     printf("sum: %lf\n", sum);
     assert(doubleCompare(sum, expected_sum));
     
@@ -69,7 +69,7 @@ void test_reductions(int num_tuples) {
   // int reductions
   {
     int sum = cabMeshField.sum(field1);
-    int expected_sum = static_cast<int>(simple_sum(num_tuples));
+    int expected_sum = simpleSum(num_tuples);
     printf("sum: %d\n", sum);
     assert(sum == expected_sum);
 
