@@ -124,6 +124,11 @@ public:
 		    std::string tag) {
     sliceController.parallel_for(lower_bound, upper_bound, vector_kernel, tag);
   }
+
+  template<typename FunctorType, class ReducerType>
+  void parallel_reduce(FunctorType& reduction_kernel, ReducerType& reducer, std::string tag) {
+    sliceController.parallel_reduce(reduction_kernel, reducer, tag);
+  }
   
 };
 
