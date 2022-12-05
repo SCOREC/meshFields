@@ -23,6 +23,44 @@ int simpleSum(int num_tuples) {
   return sum;
 }
 
+void test_scan(int num_tuples) {
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, int, int>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+  auto field1 = cabMeshField.makeField<1>();
+
+  Kokkos::View<int*> initView0("InitView0", num_tuples);
+  Kokkos::View<int*> initView1("InitView1", num_tuples);
+  Kokkos::parallel_for("InitViewLoop", num_tuples, KOKKOS_LAMBDA (const int& i) {
+    initView0(i) = i;
+    initView1(i) = i;
+  });
+  
+  cabMeshField.setField(field0, initView0);
+  cabMeshField.setField(field1, initView1);
+
+  Kokkos::View<int*> scan_result0("ScanView0", num_tuples+1); 
+
+  int result = 0;
+  
+  auto indexToSA = c.indexToSA;
+  auto binOp0 = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
+    {
+     int s,a;
+     indexToSA(i,s,a);
+     if (is_final) {
+       scan_result0(i) = partial_sum;
+       printf("%d\n", partial_sum);
+     }
+     partial_sum += field0(s,a);
+    };
+  Kokkos::parallel_scan("fug", num_tuples+1, binOp0, result);
+}
+
 void test_reductions(int num_tuples) {
   using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double, int>;
 
@@ -33,8 +71,8 @@ void test_reductions(int num_tuples) {
   auto field0 = cabMeshField.makeField<0>();
   auto field1 = cabMeshField.makeField<1>();
 
-  Kokkos::View<double*> initView0("InitView", num_tuples);
-  Kokkos::View<int*> initView1("InitView", num_tuples);
+  Kokkos::View<double*> initView0("InitView0", num_tuples);
+  Kokkos::View<int*> initView1("InitView1", num_tuples);
   Kokkos::parallel_for("InitViewLoop", num_tuples, KOKKOS_LAMBDA (const int& i) {
     initView0(i) = i;
     initView1(i) = i;
@@ -331,7 +369,7 @@ void mix_arr(int num_tuples) {
 }
 
 int main(int argc, char* argv[]) {
-  int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
+  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
   
   single_type(num_tuples);
@@ -343,6 +381,7 @@ int main(int argc, char* argv[]) {
   mix_arr(num_tuples);
 
   test_reductions(num_tuples);
+  test_scan(num_tuples);
   
   return 0;
 }
