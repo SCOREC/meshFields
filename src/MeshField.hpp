@@ -129,8 +129,23 @@ public:
   void parallel_reduce(FunctorType& reduction_kernel, ReducerType& reducer, std::string tag) {
     sliceController.parallel_reduce(reduction_kernel, reducer, tag);
   }
-  
-};
 
+  template <typename FieldType, typename ViewType>
+  void parallel_scan(FieldType& field, ViewType& result, std::string tag) {
+    
+    auto indexToSA = sliceController.indexToSA;
+    auto binOp = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
+      {
+       int s,a;
+       indexToSA(i,s,a);
+       if (is_final) {
+	 result(i) = partial_sum;
+	 printf("%d\n", partial_sum);
+       }
+       partial_sum += field(s,a);
+      };
+    Kokkos::parallel_scan(tag, sliceController.size()+1, binOp, result);
+  }
+};
 }
 #endif
