@@ -45,20 +45,8 @@ void test_scan(int num_tuples) {
 
   Kokkos::View<int*> scan_result0("ScanView0", num_tuples+1); 
 
-  int result = 0;
+  cabMeshField.parallel_scan(field0, scan_result0, "parallel_scan");
   
-  auto indexToSA = c.indexToSA;
-  auto binOp0 = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
-    {
-     int s,a;
-     indexToSA(i,s,a);
-     if (is_final) {
-       scan_result0(i) = partial_sum;
-       printf("%d\n", partial_sum);
-     }
-     partial_sum += field0(s,a);
-    };
-  Kokkos::parallel_scan("fug", num_tuples+1, binOp0, result);
 }
 
 void test_reductions(int num_tuples) {
