@@ -14,9 +14,19 @@ bool doubleCompare(double d1, double d2) {
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
-int simpleSum(int num_tuples) {
+int simpleSum(int n) {
   int sum = 0;
-  for (int i = 0; i < num_tuples; i++)
+  for (int i = 0; i < n; i++)
+  {
+    sum += i;
+  }
+  return sum;
+}
+
+KOKKOS_INLINE_FUNCTION
+int simpleSumDevice(int n) {
+  int sum = 0;
+  for (int i = 0; i < n; i++)
   {
     sum += i;
   }
@@ -45,7 +55,25 @@ void test_scan(int num_tuples) {
 
   Kokkos::View<int*> scan_result0("ScanView0", num_tuples+1); 
 
-  cabMeshField.parallel_scan(field0, scan_result0, "parallel_scan");
+  auto indexToSA = c.indexToSA;
+  auto binOp = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
+  {
+     int s,a;
+     indexToSA(i,s,a);
+     if (is_final) {
+       scan_result0(i) = partial_sum;
+       printf("%d\n", partial_sum);
+     }
+     partial_sum += field0(s,a);
+  };
+
+  
+  cabMeshField.parallel_scan(binOp, "parallel_scan");
+
+  Kokkos::parallel_for("test_scan_check", num_tuples, KOKKOS_LAMBDA(const int& i)
+  {
+    assert(scan_result0(i) == simpleSumDevice(i));
+  });
   
 }
 
