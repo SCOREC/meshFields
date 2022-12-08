@@ -14,17 +14,8 @@ bool doubleCompare(double d1, double d2) {
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
-int simpleSum(int n) {
-  int sum = 0;
-  for (int i = 0; i < n; i++)
-  {
-    sum += i;
-  }
-  return sum;
-}
-
 KOKKOS_INLINE_FUNCTION
-int simpleSumDevice(int n) {
+int simpleSum(int n) {
   int sum = 0;
   for (int i = 0; i < n; i++)
   {
@@ -71,7 +62,7 @@ void test_scan(int num_tuples) {
 
   Kokkos::parallel_for("test_scan_check", num_tuples, KOKKOS_LAMBDA(const int& i)
   {
-    assert(scan_result0(i) == simpleSumDevice(i));
+    assert(scan_result0(i) == simpleSum(i));
   });
   
 }
