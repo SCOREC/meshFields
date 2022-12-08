@@ -44,10 +44,11 @@ void test_scan(int num_tuples) {
   cabMeshField.setField(field0, initView0);
   cabMeshField.setField(field1, initView1);
 
-  Kokkos::View<int*> scan_result0("ScanView0", num_tuples+1); 
+  Kokkos::View<int*> scan_result0("ScanView0", num_tuples+1);
+  Kokkos::View<int*> scan_result1("ScanView1", num_tuples+1);
 
   auto indexToSA = c.indexToSA;
-  auto binOp = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
+  auto binOp0 = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
   {
      int s,a;
      indexToSA(i,s,a);
@@ -56,13 +57,24 @@ void test_scan(int num_tuples) {
      }
      partial_sum += field0(s,a);
   };
-
   
-  cabMeshField.parallel_scan(binOp, "parallel_scan");
+  auto binOp1 = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
+  {
+     int s,a;
+     indexToSA(i,s,a);
+     partial_sum += field0(s,a);
+     if (is_final) {
+       scan_result1(i) = partial_sum;
+     }
+  };
 
+  cabMeshField.parallel_scan(binOp0, "parallel_scan0");
+  cabMeshField.parallel_scan(binOp1, "parallel_scan1");
+  
   Kokkos::parallel_for("test_scan_check", num_tuples, KOKKOS_LAMBDA(const int& i)
   {
     assert(scan_result0(i) == simpleSum(i));
+    assert(scan_result1(i) == simpleSum(i+1));
   });
   
 }
