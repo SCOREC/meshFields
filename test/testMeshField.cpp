@@ -62,7 +62,6 @@ void test_scan(int num_tuples) {
      indexToSA(i,s,a);
      if (is_final) {
        scan_result0(i) = partial_sum;
-       printf("%d\n", partial_sum);
      }
      partial_sum += field0(s,a);
   };
@@ -101,22 +100,18 @@ void test_reductions(int num_tuples) {
   {
     double sum = cabMeshField.sum(field0);
     double expected_sum = static_cast<double>(simpleSum(num_tuples));
-    printf("sum: %lf\n", sum);
     assert(doubleCompare(sum, expected_sum));
     
     double mean = cabMeshField.mean(field0);
     double expected_mean = expected_sum / num_tuples;
-    printf("mean: %lf\n", mean);
     assert(doubleCompare(mean, expected_mean));
     
     double min = cabMeshField.min(field0);
     double expected_min = 0;
-    printf("min: %lf\n", min);
     assert(doubleCompare(min, expected_min));
     
     double max = cabMeshField.max(field0);
     double expected_max = num_tuples-1;
-    printf("max: %lf\n", max);
     assert(doubleCompare(max, expected_max));
   }
   
@@ -124,22 +119,18 @@ void test_reductions(int num_tuples) {
   {
     int sum = cabMeshField.sum(field1);
     int expected_sum = simpleSum(num_tuples);
-    printf("sum: %d\n", sum);
     assert(sum == expected_sum);
 
     double mean = cabMeshField.mean(field1);
     double expected_mean = static_cast<double>(expected_sum) / num_tuples;
-    printf("mean: %lf\n", mean);
     assert(doubleCompare(mean, expected_mean));
     
     int min = cabMeshField.min(field1);
     int expected_min = 0;
-    printf("min: %d\n", min);
     assert(min == expected_min);
     
     int max = cabMeshField.max(field1);
     int expected_max = num_tuples-1;
-    printf("max: %d\n", max);
     assert(max == expected_max);
   }
 }
@@ -385,7 +376,7 @@ void mix_arr(int num_tuples) {
 }
 
 int main(int argc, char* argv[]) {
-  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
+  int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
   
   single_type(num_tuples);
