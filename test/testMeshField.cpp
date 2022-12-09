@@ -44,8 +44,8 @@ void test_scan(int num_tuples) {
   cabMeshField.setField(field0, initView0);
   cabMeshField.setField(field1, initView1);
 
-  Kokkos::View<int*> scan_result0("ScanView0", num_tuples+1);
-  Kokkos::View<int*> scan_result1("ScanView1", num_tuples+1);
+  Kokkos::View<int*> resultView0("ScanView0", num_tuples+1);
+  Kokkos::View<int*> resultView1("ScanView1", num_tuples);
 
   auto indexToSA = c.indexToSA;
   auto binOp0 = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
@@ -53,7 +53,7 @@ void test_scan(int num_tuples) {
      int s,a;
      indexToSA(i,s,a);
      if (is_final) {
-       scan_result0(i) = partial_sum;
+       resultView0(i) = partial_sum;
      }
      partial_sum += field0(s,a);
   };
@@ -64,19 +64,47 @@ void test_scan(int num_tuples) {
      indexToSA(i,s,a);
      partial_sum += field0(s,a);
      if (is_final) {
-       scan_result1(i) = partial_sum;
+       resultView1(i) = partial_sum;
      }
   };
 
   cabMeshField.parallel_scan(binOp0, "parallel_scan0");
   cabMeshField.parallel_scan(binOp1, "parallel_scan1");
+
+  std::vector<int> testData(num_tuples);
+  std::iota(testData.begin(), testData.end(), 0);
+  std::vector<int> scanResult0(num_tuples);
+  std::vector<int> scanResult1(num_tuples);
   
-  Kokkos::parallel_for("test_scan_check", num_tuples, KOKKOS_LAMBDA(const int& i)
-  {
-    assert(scan_result0(i) == simpleSum(i));
-    assert(scan_result1(i) == simpleSum(i+1));
-  });
+  // run std scans to compare results
+  std::exclusive_scan(testData.begin(), testData.end(), scanResult0.begin(), 0);
+  std::inclusive_scan(testData.begin(), testData.end(), scanResult1.begin());
   
+  // add final sum manually because std::exclusive_scan doesn't
+  scanResult0.push_back(simpleSum(num_tuples));
+
+  // convert results of std scans into host views
+  Kokkos::View<int*, Kokkos::HostSpace> h_expectedView0(std::string("host_expectedView0"), num_tuples+1);
+  Kokkos::View<int*, Kokkos::HostSpace> h_expectedView1(std::string("host_expectedView1"), num_tuples);
+
+  for (int i = 0; i < num_tuples+1; i++) {
+    h_expectedView0(i) = scanResult0[i];
+  }
+  
+  for (int i = 0; i < num_tuples+1; i++) {
+    h_expectedView1(i) = scanResult1[i];
+  }
+
+  // create views on the device to copy from host views be used in the final validity check
+  Kokkos::View<int*> expectedView0(std::string("expectedView0"), num_tuples+1);
+  Kokkos::View<int*> expectedView1(std::string("expectedView1"), num_tuples);
+  
+  Kokkos::deep_copy(expectedView0, h_expectedView0);
+  Kokkos::deep_copy(expectedView1, h_expectedView1);
+
+  // final validity check
+  assert(Kokkos::Experimental::equal(Kokkos::DefaultExecutionSpace(), expectedView0, resultView0));
+  assert(Kokkos::Experimental::equal(Kokkos::DefaultExecutionSpace(), expectedView1, resultView1));
 }
 
 void test_reductions(int num_tuples) {
@@ -379,7 +407,7 @@ void mix_arr(int num_tuples) {
 }
 
 int main(int argc, char* argv[]) {
-  int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
+  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
   
   single_type(num_tuples);
