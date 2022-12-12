@@ -124,8 +124,11 @@ public:
 		    std::string tag) {
     sliceController.parallel_for(lower_bound, upper_bound, vector_kernel, tag);
   }
-  
-};
 
+  template <typename KernelType>
+  void parallel_scan(KernelType& binOp, std::string tag) {    
+    Kokkos::parallel_scan(tag, sliceController.size()+1, binOp);
+  }
+};
 }
 #endif

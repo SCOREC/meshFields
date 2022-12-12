@@ -14,13 +14,94 @@ bool doubleCompare(double d1, double d2) {
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
-int simpleSum(int num_tuples) {
+KOKKOS_INLINE_FUNCTION
+int simpleSum(int n) {
   int sum = 0;
-  for (int i = 0; i < num_tuples; i++)
+  for (int i = 0; i < n; i++)
   {
     sum += i;
   }
   return sum;
+}
+
+void test_scan(int num_tuples) {
+  using Controller = SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, int, int>;
+
+  // Slice Wrapper Controller
+  Controller c(num_tuples);
+  MeshField::MeshField<Controller> cabMeshField(c);
+
+  auto field0 = cabMeshField.makeField<0>();
+  auto field1 = cabMeshField.makeField<1>();
+
+  Kokkos::View<int*> initView0("InitView0", num_tuples);
+  Kokkos::View<int*> initView1("InitView1", num_tuples);
+  Kokkos::parallel_for("InitViewLoop", num_tuples, KOKKOS_LAMBDA (const int& i) {
+    initView0(i) = i;
+    initView1(i) = i;
+  });
+  
+  cabMeshField.setField(field0, initView0);
+  cabMeshField.setField(field1, initView1);
+
+  Kokkos::View<int*> resultView0("ScanView0", num_tuples+1);
+  Kokkos::View<int*> resultView1("ScanView1", num_tuples);
+
+  auto indexToSA = c.indexToSA;
+  auto binOp0 = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
+  {
+     int s,a;
+     indexToSA(i,s,a);
+     if (is_final) {
+       resultView0(i) = partial_sum;
+     }
+     partial_sum += field0(s,a);
+  };
+  
+  auto binOp1 = KOKKOS_LAMBDA(int i, int& partial_sum, bool is_final)
+  {
+     int s,a;
+     indexToSA(i,s,a);
+     partial_sum += field0(s,a);
+     if (is_final) {
+       resultView1(i) = partial_sum;
+     }
+  };
+
+  cabMeshField.parallel_scan(binOp0, "parallel_scan0");
+  cabMeshField.parallel_scan(binOp1, "parallel_scan1");
+
+  std::vector<int> testData(num_tuples);
+  std::iota(testData.begin(), testData.end(), 0);
+  std::vector<int> scanResult0(num_tuples);
+  std::vector<int> scanResult1(num_tuples);
+  
+  // run std scans to compare results
+  std::exclusive_scan(testData.begin(), testData.end(), scanResult0.begin(), 0);
+  std::inclusive_scan(testData.begin(), testData.end(), scanResult1.begin());
+  
+  // add final sum manually because std::exclusive_scan doesn't
+  scanResult0.push_back(simpleSum(num_tuples));
+
+  // convert results of std scans into host views
+  Kokkos::View<int*, Kokkos::HostSpace> h_expectedView0(std::string("host_expectedView0"), num_tuples+1);
+  Kokkos::View<int*, Kokkos::HostSpace> h_expectedView1(std::string("host_expectedView1"), num_tuples);
+
+  for (int i = 0; i < num_tuples+1; i++) {
+    h_expectedView0(i) = scanResult0[i];
+  }
+  
+  for (int i = 0; i < num_tuples+1; i++) {
+    h_expectedView1(i) = scanResult1[i];
+  }
+
+  // create views on the device to copy from host views be used in the final validity check
+  auto expectedView0 = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), h_expectedView0);
+  auto expectedView1 = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), h_expectedView1);
+
+  // final validity check
+  assert(Kokkos::Experimental::equal(Kokkos::DefaultExecutionSpace(), expectedView0, resultView0));
+  assert(Kokkos::Experimental::equal(Kokkos::DefaultExecutionSpace(), expectedView1, resultView1));
 }
 
 void test_reductions(int num_tuples) {
@@ -33,8 +114,8 @@ void test_reductions(int num_tuples) {
   auto field0 = cabMeshField.makeField<0>();
   auto field1 = cabMeshField.makeField<1>();
 
-  Kokkos::View<double*> initView0("InitView", num_tuples);
-  Kokkos::View<int*> initView1("InitView", num_tuples);
+  Kokkos::View<double*> initView0("InitView0", num_tuples);
+  Kokkos::View<int*> initView1("InitView1", num_tuples);
   Kokkos::parallel_for("InitViewLoop", num_tuples, KOKKOS_LAMBDA (const int& i) {
     initView0(i) = i;
     initView1(i) = i;
@@ -47,22 +128,18 @@ void test_reductions(int num_tuples) {
   {
     double sum = cabMeshField.sum(field0);
     double expected_sum = static_cast<double>(simpleSum(num_tuples));
-    printf("sum: %lf\n", sum);
     assert(doubleCompare(sum, expected_sum));
     
     double mean = cabMeshField.mean(field0);
     double expected_mean = expected_sum / num_tuples;
-    printf("mean: %lf\n", mean);
     assert(doubleCompare(mean, expected_mean));
     
     double min = cabMeshField.min(field0);
     double expected_min = 0;
-    printf("min: %lf\n", min);
     assert(doubleCompare(min, expected_min));
     
     double max = cabMeshField.max(field0);
     double expected_max = num_tuples-1;
-    printf("max: %lf\n", max);
     assert(doubleCompare(max, expected_max));
   }
   
@@ -70,22 +147,18 @@ void test_reductions(int num_tuples) {
   {
     int sum = cabMeshField.sum(field1);
     int expected_sum = simpleSum(num_tuples);
-    printf("sum: %d\n", sum);
     assert(sum == expected_sum);
 
     double mean = cabMeshField.mean(field1);
     double expected_mean = static_cast<double>(expected_sum) / num_tuples;
-    printf("mean: %lf\n", mean);
     assert(doubleCompare(mean, expected_mean));
     
     int min = cabMeshField.min(field1);
     int expected_min = 0;
-    printf("min: %d\n", min);
     assert(min == expected_min);
     
     int max = cabMeshField.max(field1);
     int expected_max = num_tuples-1;
-    printf("max: %d\n", max);
     assert(max == expected_max);
   }
 }
@@ -343,6 +416,7 @@ int main(int argc, char* argv[]) {
   mix_arr(num_tuples);
 
   test_reductions(num_tuples);
+  test_scan(num_tuples);
   
   return 0;
 }
