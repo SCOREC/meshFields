@@ -96,11 +96,8 @@ void test_scan(int num_tuples) {
   }
 
   // create views on the device to copy from host views be used in the final validity check
-  Kokkos::View<int*> expectedView0(std::string("expectedView0"), num_tuples+1);
-  Kokkos::View<int*> expectedView1(std::string("expectedView1"), num_tuples);
-  
-  Kokkos::deep_copy(expectedView0, h_expectedView0);
-  Kokkos::deep_copy(expectedView1, h_expectedView1);
+  auto expectedView0 = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), h_expectedView0);
+  auto expectedView1 = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), h_expectedView1);
 
   // final validity check
   assert(Kokkos::Experimental::equal(Kokkos::DefaultExecutionSpace(), expectedView0, resultView0));
