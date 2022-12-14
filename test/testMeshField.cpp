@@ -161,6 +161,21 @@ void test_reductions(int num_tuples) {
     int expected_max = num_tuples-1;
     assert(max == expected_max);
   }
+
+  // user defined reductions
+  {
+    double result;
+    auto indexToSA = c.indexToSA;
+    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lresult )
+    {
+      int s,a;
+      indexToSA(i,s,a);
+      lresult += field0(s,a) * 10;
+    };
+    cabMeshField.parallel_reduce(reduce_kernel, result, "user_def_reduce");
+    int expected_result = 10 * simpleSum(num_tuples);
+    assert(doubleCompare(result, expected_result));
+  }
 }
 
 void single_type(int num_tuples) {
@@ -404,7 +419,7 @@ void mix_arr(int num_tuples) {
 }
 
 int main(int argc, char* argv[]) {
-  int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
+  int num_tuples = (argc < 2) ? (10) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
   
   single_type(num_tuples);
