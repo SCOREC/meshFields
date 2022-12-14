@@ -174,11 +174,10 @@ void test_reductions(int num_tuples) {
   {
     double result;
     auto indexToSA = c.indexToSA;
-    auto reduce_kernel = KOKKOS_LAMBDA (const int& i, double& lresult )
-    {
-      int s,a;
-      indexToSA(i,s,a);
-      lresult += field0(s,a) * 10;
+    auto reduce_kernel = KOKKOS_LAMBDA(const int &i, double &lresult) {
+      int s, a;
+      indexToSA(i, s, a);
+      lresult += field0(s, a) * 10;
     };
     cabMeshField.parallel_reduce(reduce_kernel, result, "user_def_reduce");
     int expected_result = 10 * simpleSum(num_tuples);
