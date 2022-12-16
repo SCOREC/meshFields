@@ -9,9 +9,11 @@ bool doubleCompare(double d1, double d2) {
   return diff < TOLERANCE;
 }
 
+using ExecutionSpace = Kokkos::DefaultExecutionSpace;
+using MemorySpace = ExecutionSpace::memory_space;
+
+
 int rank1_array_test(int num_tuples) {
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
 
   const int width = 3;
 
@@ -35,8 +37,6 @@ int rank1_array_test(int num_tuples) {
 }
 
 int rank2_array_test(int num_tuples) {
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
 
   const int width = 3;
   const int height = 4;
@@ -64,8 +64,6 @@ int rank2_array_test(int num_tuples) {
 }
 
 int rank3_array_test(int num_tuples) {
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
 
   const int width = 3;
   const int height = 4;
@@ -97,8 +95,6 @@ int rank3_array_test(int num_tuples) {
 }
 
 int mix_arrays_test(int num_tuples) {
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
 
   const int width = 3;
   const int height = 4;
@@ -145,8 +141,6 @@ int mix_arrays_test(int num_tuples) {
 }
 
 int single_type_test(int num_tuples) {
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
 
   // Slice Wrapper Controller
   SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double>
@@ -167,8 +161,6 @@ int single_type_test(int num_tuples) {
 }
 
 int multi_type_test(int num_tuples) {
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
 
   // Slice Wrapper Controller
   SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double, int,
@@ -201,8 +193,6 @@ int multi_type_test(int num_tuples) {
 }
 
 int many_type_test(int num_tuples) {
-  using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-  using MemorySpace = ExecutionSpace::memory_space;
 
   // Slice Wrapper Controller
   SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, long double,
@@ -270,8 +260,6 @@ int main(int argc, char *argv[]) {
   rank2_array_test(num_tuples);
   rank3_array_test(num_tuples);
   mix_arrays_test(num_tuples);
-
-  printf("done\n");
 
   return 0;
 }
