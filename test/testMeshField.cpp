@@ -5,6 +5,9 @@
 
 #define TOLERANCE 1e-10;
 
+// helper testing functions
+
+// compare doubles within a tolerance
 KOKKOS_INLINE_FUNCTION
 bool doubleCompare(double d1, double d2) {
   double diff = fabs(d1 - d2);
@@ -14,6 +17,7 @@ bool doubleCompare(double d1, double d2) {
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
+// sum of all values from 0 to n-1
 KOKKOS_INLINE_FUNCTION
 int simpleSum(int n) {
   int sum = 0;
@@ -31,9 +35,11 @@ void test_scan(int num_tuples) {
   Controller c(num_tuples);
   MeshField::MeshField<Controller> cabMeshField(c);
 
+  // create fields
   auto field0 = cabMeshField.makeField<0>();
   auto field1 = cabMeshField.makeField<1>();
 
+  // create views to initialize our fields with
   Kokkos::View<int *> initView0("InitView0", num_tuples);
   Kokkos::View<int *> initView1("InitView1", num_tuples);
   Kokkos::parallel_for(
@@ -42,12 +48,15 @@ void test_scan(int num_tuples) {
         initView1(i) = i;
       });
 
+  // initialize fields with views
   cabMeshField.setField(field0, initView0);
   cabMeshField.setField(field1, initView1);
 
+  // create result view
   Kokkos::View<int *> resultView0("ScanView0", num_tuples + 1);
   Kokkos::View<int *> resultView1("ScanView1", num_tuples);
 
+  // define exclusive scan kernel
   auto indexToSA = c.indexToSA;
   auto binOp0 = KOKKOS_LAMBDA(int i, int &partial_sum, bool is_final) {
     int s, a;
@@ -58,6 +67,7 @@ void test_scan(int num_tuples) {
     partial_sum += field0(s, a);
   };
 
+  // define inclusive scan kernel
   auto binOp1 = KOKKOS_LAMBDA(int i, int &partial_sum, bool is_final) {
     int s, a;
     indexToSA(i, s, a);
@@ -67,9 +77,11 @@ void test_scan(int num_tuples) {
     }
   };
 
+  // do scans
   cabMeshField.parallel_scan(binOp0, "parallel_scan0");
   cabMeshField.parallel_scan(binOp1, "parallel_scan1");
 
+  // create test data
   std::vector<int> testData(num_tuples);
   std::iota(testData.begin(), testData.end(), 0);
   std::vector<int> scanResult0(num_tuples);
@@ -96,8 +108,7 @@ void test_scan(int num_tuples) {
     h_expectedView1(i) = scanResult1[i];
   }
 
-  // create views on the device to copy from host views be used in the final
-  // validity check
+  // create device views copied from host views to be used in the final
   auto expectedView0 =
       Kokkos::create_mirror_view_and_copy(ExecutionSpace(), h_expectedView0);
   auto expectedView1 =
