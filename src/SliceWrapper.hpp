@@ -23,19 +23,19 @@ template <class SliceType, class T> struct SliceWrapper {
   */
   
   KOKKOS_INLINE_FUNCTION
-  T &access(int s, int a) const { return st_.access(s, a); }
+  T &access(int s, int a) const { return slice.access(s, a); }
   
   KOKKOS_INLINE_FUNCTION
-  auto &access(int s, int a, int i) const { return st_.access(s, a, i); }
+  auto &access(int s, int a, int i) const { return slice.access(s, a, i); }
 
   KOKKOS_INLINE_FUNCTION
   auto &access(int s, int a, int i, int j) const {
-    return st_.access(s, a, i, j);
+    return slice.access(s, a, i, j);
   }
 
   KOKKOS_INLINE_FUNCTION
   auto &access(int s, int a, int i, int j, int k) const {
-    return st_.access(s, a, i, j, k);
+    return slice.access(s, a, i, j, k);
   }
 };
 
