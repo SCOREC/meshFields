@@ -7,11 +7,11 @@ namespace SliceWrapper {
 
 template <class SliceType, class T> struct SliceWrapper {
 
-  SliceType st_;
+  SliceType slice;
 
   typedef T Type;
 
-  SliceWrapper(SliceType st) : st_(st) {}
+  SliceWrapper(SliceType slice_in) : slice(slice_in) {}
 
   SliceWrapper() {}
 
