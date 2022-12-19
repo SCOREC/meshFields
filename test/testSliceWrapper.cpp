@@ -12,7 +12,6 @@ bool doubleCompare(double d1, double d2) {
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = ExecutionSpace::memory_space;
 
-
 int rank1_array_test(int num_tuples) {
 
   const int width = 3;
