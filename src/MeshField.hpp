@@ -85,7 +85,7 @@ public:
      sum - the sum of all the values in the field
      min - the minimum value in the field
      max - the maximum value in the field
-     mean - the average value of the field (will alwyas be a double)
+     mean - the average value of the field (will always be a double)
   */
 
   template <class FieldType, class T = typename FieldType::Type>
