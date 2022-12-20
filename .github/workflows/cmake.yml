@@ -129,6 +129,6 @@ jobs:
       
       
     - name: Formatting check
-      working-directory: $GITHUB_WORKSPACE/meshFields
+      working-directory: meshFields
       shell: bash
       run: clang-format --dry-run -Werror src/* test/*
