@@ -139,7 +139,8 @@ public:
      (unless the execution space is serial)
      parallel_for - a for loop that will iterate from lowerBound to upperbound
      parallel_reduce - a way for a user to pass in a reduction kernel and a
-     reducer to make their own reductions parallel_scan - a scan can be used to
+     reducer to make their own reductions
+     parallel_scan - a scan can be used to
      create a view where each value is the sum of the previous values.
   */
 
