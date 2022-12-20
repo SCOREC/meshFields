@@ -126,9 +126,4 @@ jobs:
       
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
-      
-      
-    - name: Formatting check
-      working-directory: meshFields
-      shell: bash
-      run: clang-format --dry-run -Werror src/* test/*
+
