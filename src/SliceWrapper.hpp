@@ -24,7 +24,8 @@ template <class SliceType, class T> struct SliceWrapper {
   */
 
   KOKKOS_INLINE_FUNCTION
-  T &access(int s, int a) const { return slice.access(s, a); }
+  T &access(int s, int a) const 
+  { return slice.access(s, a); }
 
   KOKKOS_INLINE_FUNCTION
   auto &access(int s, int a, int i) const { return slice.access(s, a, i); }
