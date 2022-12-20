@@ -1,0 +1,23 @@
+name: Format check
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '23 14 * * 3'
+
+jobs:
+  formatCheck:
+    runs-on: ubuntu-latest
+    steps:
+    - name: MeshFields Checkout repo
+      uses: actions/checkout@v2
+      with:
+        repository: SCOREC/meshFields
+        path: meshFields
+        
+    - name: Format check
+      working-directory: meshFields
+      shell: bash
+      run: clang-format --dry-run -Werror src/* test/*
