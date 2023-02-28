@@ -1,5 +1,5 @@
 #include "MeshField.hpp"
-#include "SliceWrapper.hpp"
+#include "CabanaSliceWrapper.hpp"
 
 #include <Cabana_Core.hpp>
 
@@ -29,7 +29,7 @@ int simpleSum(int n) {
 
 void test_scan(int num_tuples) {
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, int, int>;
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace, int, int>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
@@ -122,7 +122,7 @@ void test_scan(int num_tuples) {
 }
 
 void test_reductions(int num_tuples) {
-  using Controller = SliceWrapper::CabSliceController<ExecutionSpace,
+  using Controller = SliceWrapper::CabPackedController<ExecutionSpace,
                                                       MemorySpace, double, int>;
 
   // Slice Wrapper Controller
@@ -198,7 +198,7 @@ void test_reductions(int num_tuples) {
 
 void single_type(int num_tuples) {
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double>;
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace, double>;
 
   // Slice Wrapper Controller
   Controller c(num_tuples);
@@ -217,7 +217,7 @@ void single_type(int num_tuples) {
 
 void multi_type(int num_tuples) {
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double,
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace, double,
                                        double, float, int, char>;
 
   // Slice Wrapper Controller
@@ -255,7 +255,7 @@ void multi_type(int num_tuples) {
 void many_type(int num_tuples) {
 
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace, double,
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace, double,
                                        double, float, float, int, short int,
                                        char>;
 
@@ -302,7 +302,7 @@ void many_type(int num_tuples) {
 void rank1_arr(int num_tuples) {
   const int width = 3;
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace,
                                        double[width]>;
 
   // Slice Wrapper Controller
@@ -326,7 +326,7 @@ void rank2_arr(int num_tuples) {
   const int width = 3;
   const int height = 4;
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace,
                                        double[width][height]>;
 
   // Slice Wrapper Controller
@@ -353,7 +353,7 @@ void rank3_arr(int num_tuples) {
   const int height = 4;
   const int depth = 2;
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace,
                                        double[width][height][depth]>;
 
   // Slice Wrapper Controller
@@ -382,7 +382,7 @@ void mix_arr(int num_tuples) {
   const int height = 4;
   const int depth = 2;
   using Controller =
-      SliceWrapper::CabSliceController<ExecutionSpace, MemorySpace,
+      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace,
                                        double[width][height][depth],
                                        float[width][height], int[width], char>;
 

@@ -1,0 +1,35 @@
++--namespace SliceWrapper------------------------------------+
+|                                                            |
+| +-CabanaSliceWrapper.hpp---------------------------------+ |
+| | <class SliceType, class T>                             | |
+| | [struct] CabanaSliceWrapper                            | |
+| |                                                        | |
+| | <class ExecutionSpace, class MemorySpace, class... TS> | |
+| | [class]  CabPackedController                           | |
+| | //       ^^^^^ currently named CabSliceController      | |
+| |                                                        | |
+| | <class ExecutionSpace, class MemorySpace, class... TS> | |
+| | [class]  CabSplitController // TODO                    | |
+| +--------------------------------------------------------+ |
+|                                                            |
+| +-KokkosSliceWrapper.hpp-------//TODO--------------------+ |
+| | <class SliceType, class T>                             | |
+| | [struct] KokkosSliceWrapper // TODO                    | |
+| |                                                        | |
+| | <class ExecutionSpace, class MemorySpace, class... TS> | |
+| | [class]  KokkosController   // TODO                    | |
+| +--------------------------------------------------------+ |
+|                                                            |
++------------------------------------------------------------+
+
++--namespace MeshField------------------------+
+|                                             |
+|  +-MeshField.hpp------------------------+   |
+|  | <class Slice> [class] Field          |   |
+|  | <class Controller> [class] MeshField |   |
+|  +--------------------------------------+   |
+|  +-MeshFieldFactory.hpp--(IDEA)---------+   |
+|  | [class] MeshFieldFactory             |   |
+|  +--------------------------------------+   |
+|                                             |
++---------------------------------------------+

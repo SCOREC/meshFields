@@ -1,19 +1,19 @@
-#ifndef slicewrapper_hpp
-#define slicewrapper_hpp
+#ifndef cabanaslicewrapper_hpp
+#define cabanaslicewrapper_hpp
 
 #include <Cabana_Core.hpp>
 
 namespace SliceWrapper {
 
-template <class SliceType, class T> struct SliceWrapper {
+template <class SliceType, class T> struct CabanaSliceWrapper {
 
   SliceType slice;
 
   typedef T Type;
 
-  SliceWrapper(SliceType slice_in) : slice(slice_in) {}
+  CabanaSliceWrapper(SliceType slice_in) : slice(slice_in) {}
 
-  SliceWrapper() {}
+  CabanaSliceWrapper() {}
 
   /* access functions
 
@@ -43,7 +43,7 @@ template <class SliceType, class T> struct SliceWrapper {
 using namespace Cabana;
 
 template <class ExecutionSpace, class MemorySpace, class... Ts>
-class CabSliceController {
+class CabPackedController {
 
   // type definitions
   using TypeTuple = std::tuple<Ts...>;
@@ -72,7 +72,7 @@ private:
       Cabana::Slice<T, DeviceType, Cabana::DefaultAccessMemory, vecLen, stride>;
 
   template <class T, int stride>
-  using wrapper_slice_t = SliceWrapper<member_slice_t<T, stride>, T>;
+  using wrapper_slice_t = CabanaSliceWrapper<member_slice_t<T, stride>, T>;
 
   // member vaiables
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa;
@@ -95,9 +95,9 @@ public:
 
   // constructors (default constructor necessary)
 
-  CabSliceController() {}
+  CabPackedController() {}
 
-  CabSliceController(int n)
+  CabPackedController(int n)
       : aosoa("sliceAoSoA", n), num_tuples(n), indexToSA(aosoa.vector_length) {}
 
   // size function to get the number of tuples

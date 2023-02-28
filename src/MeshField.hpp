@@ -5,7 +5,7 @@
 #include <Kokkos_StdAlgorithms.hpp>
 #include <cstdio>
 
-#include "SliceWrapper.hpp"
+//#include "CabanaSliceWrapper.hpp"
 
 namespace MeshField {
 
