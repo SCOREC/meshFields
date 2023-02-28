@@ -144,6 +144,47 @@ public:
   }
 };
 
+template <class ExecutionSpace, class MemorySpace, class... Ts>
+class CabSplitController {
+
+public:
+  using TypeTuple = std::tuple<Ts...>;
+  using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
+  using DataTypes = Cabana::MemberTypes<Ts...>;
+
+  CabSplitController() {}
+  CabSplitController( int splits_in, int n ) : num_tuples(n), splits(splits_in) {
+    aosoas = new Cabana::AoSoA<DataTypes,DeviceType,vecLen>[splits_in];
+    for( int i = 0; i < splits_in; i++ ){
+      aosoas[i] = Cabana::AoSoA<DataTypes,DeviceType,vecLec>( n );
+    }
+  }
+  ~CabSplitController() { delete[] aosoas; }
+ 
+  // size()
+  const int size() const { return num_tuples; }
+  // indexToSA 
+  // parallel_for TODO
+  // parallel_reduce TODO
+  // parallel_scan TODO
+  // makeSlice TODO
+private:
+  // Maybe some pointer manip?
+  // so, read data like so
+  // long x = * ( long * ) &data;
+  // to get raw bytes? (replace long w/ some contiguious piece of memory)
+  // Meta programming?
+  // For each Ts we have to construct a distinct aosoa w/
+  // specific Cabana::MemberTypes<Ts[x]>
+  // -> Overarhing type. Type erasure?
+  //  -> Have to guarentee common return type...
+  Cabana::AoSoA<DataTypes,DeviceType,vecLen>* aosoas;
+  const int num_tuples;
+  const int splits;
+};
+
+
+
 } // namespace SliceWrapper
 
 #endif

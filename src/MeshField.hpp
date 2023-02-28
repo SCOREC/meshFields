@@ -57,14 +57,14 @@ public:
      makeField makes a field from the underlying controller using the index
      given by the user
   */
-
+  // TODO: Use index for kokkos view(s), given <Ts...> in the controller
+  // create based on Ts... data types?
   template <std::size_t index> auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
     return Field(std::move(slice));
   }
-
-  /* setField
-
+  /* 
+     setField
      fills a field from a Kokkos::View with a parallel_for
   */
 

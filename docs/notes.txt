@@ -6,13 +6,9 @@
 | |                                                        | |
 | | <class ExecutionSpace, class MemorySpace, class... TS> | |
 | | [class]  CabPackedController                           | |
-| | //       ^^^^^ currently named CabSliceController      | |
-| |                                                        | |
-| | <class ExecutionSpace, class MemorySpace, class... TS> | |
-| | [class]  CabSplitController // TODO                    | |
 | +--------------------------------------------------------+ |
 |                                                            |
-| +-KokkosSliceWrapper.hpp-------//TODO--------------------+ |
+| +-KokkosSliceWrapper.hpp---------------------------------+ |
 | | <class SliceType, class T>                             | |
 | | [struct] KokkosSliceWrapper // TODO                    | |
 | |                                                        | |
@@ -21,7 +17,17 @@
 | +--------------------------------------------------------+ |
 |                                                            |
 +------------------------------------------------------------+
-
+// Dependency inversion
+Create a common interface for Kokkos/Cabana
+-> Cabana requires parameter pack of types
+-> Kokkos requires single object type.
+How to abstract away A/B controller and access memebers
+whose return types are compile-time.
+// Look at how Cabana stores multiple objects
+    inside the same container... (AoSoA construction)
+      (AoSoA::MemberTypes<Ts...>)
+#Include <type_traits> 
+  if constexpr(std::same_v<T1,T2>) {...}
 +--namespace MeshField------------------------+
 |                                             |
 |  +-MeshField.hpp------------------------+   |
