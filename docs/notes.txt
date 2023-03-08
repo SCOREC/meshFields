@@ -27,7 +27,7 @@ whose return types are compile-time.
     inside the same container... (AoSoA construction)
       (AoSoA::MemberTypes<Ts...>)
 #Include <type_traits> 
-  if constexpr(std::same_v<T1,T2>) {...}
+  if constexpr(std::same_v<T1,T2>) { ... }
 +--namespace MeshField------------------------+
 |                                             |
 |  +-MeshField.hpp------------------------+   |

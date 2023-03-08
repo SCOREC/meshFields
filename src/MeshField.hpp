@@ -4,6 +4,7 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
 #include <cstdio>
+#include <type_traits> // std::same_v<t1,t2>
 
 //#include "CabanaSliceWrapper.hpp"
 
@@ -25,6 +26,8 @@ public:
      index of the array. If the user craetes a field of a 2d array, the third
      and fourth argument will indexes the two arrays, and so on
   */
+  KOKKOS_INLINE_FUNCTION
+  auto &operator()(int s) const { return slice.access(s); }
 
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int s, int a) const { return slice.access(s, a); }
@@ -57,8 +60,7 @@ public:
      makeField makes a field from the underlying controller using the index
      given by the user
   */
-  // TODO: Use index for kokkos view(s), given <Ts...> in the controller
-  // create based on Ts... data types?
+
   template <std::size_t index> auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
     return Field(std::move(slice));
@@ -160,6 +162,8 @@ public:
   void parallel_scan(KernelType &scanKernel, std::string tag) {
     Kokkos::parallel_scan(tag, sliceController.size() + 1, scanKernel);
   }
+  // depending on size of dimensions, take variable number of arguements
+  // that give pairs of lower and upper bound for the multi-dim views.
 };
 
 } // namespace MeshField

@@ -74,7 +74,7 @@ int rank3_array_test(int num_tuples) {
       cabSliceController(num_tuples);
 
   auto slice_wrapper0 = cabSliceController.makeSlice<0>();
-
+  
   // kernel that reads and writes
   auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
     for (int i = 0; i < width; i++) {
@@ -89,7 +89,6 @@ int rank3_array_test(int num_tuples) {
   };
   cabSliceController.parallel_for(0, num_tuples, vector_kernel,
                                   "parallel_for_rank3_array");
-
   return 0;
 }
 
