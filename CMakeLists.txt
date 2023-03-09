@@ -33,14 +33,19 @@ option(IS_TESTING "Build for CTest" OFF)
 message(STATUS "IS_TESTING: ${IS_TESTING}")
 
 #tests
-add_executable(SliceWrapper test/testSliceWrapper.cpp)
-target_link_libraries(SliceWrapper PRIVATE meshFields)
+#add_executable(SliceWrapper test/testSliceWrapper.cpp)
+#target_link_libraries(SliceWrapper PRIVATE meshFields)
 
-add_executable(MeshField test/testMeshField.cpp)
-target_link_libraries(MeshField PRIVATE meshFields)
+#add_executable(MeshField test/testMeshField.cpp)
+#target_link_libraries(MeshField PRIVATE meshFields)
 
-add_test(sliceWrapper50 ./SliceWrapper 50)
-add_test(meshField ./MeshField)
+add_executable(Main test/testMain.cpp)
+target_link_libraries(Main PRIVATE meshFields)
+
+
+#add_test(sliceWrapper50 ./SliceWrapper 50)
+#add_test(meshField ./MeshField)
+add_test(main ./Main)
 
 ## export the library
 set_target_properties(meshFields PROPERTIES PUBLIC_HEADER "${MESHFIELD_HEADERS}")

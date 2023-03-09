@@ -13,37 +13,49 @@ namespace MeshField {
 template <class Slice> class Field {
 
   Slice slice;
-
-public:
   typedef typename Slice::Type Type;
 
+public:
+
   Field(Slice s) : slice(s) {}
-
-  /* access functions
-
-     The access functions are used to get a specific element from a Field.
-     If the user creates a field of an array, the third argument will be the
-     index of the array. If the user craetes a field of a 2d array, the third
-     and fourth argument will indexes the two arrays, and so on
-  */
-  KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s) const { return slice.access(s); }
+  
+  /* operator() -> 1D Access */
+  /* access() -> 2D Access */
 
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a) const { return slice.access(s, a); }
+  auto &operator()(int s) const { return slice(s); }
 
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i) const { return slice.access(s, a, i); }
+  auto &operator()(int s, int a) const { return slice(s, a); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &operator()(int s, int a, int i) const { return slice(s, a, i); }
 
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int s, int a, int i, int j) const {
-    return slice.access(s, a, i, j);
+    return slice(s, a, i, j);
+  }
+  KOKKOS_INLINE_FUNCTION
+  auto &operator()(int s, int a, int i, int j, int k) const {
+    return slice(s, a, i, j, k);
   }
 
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i, int j, int k) const {
-    return slice.access(s, a, i, j, k);
-  }
+  auto &access( int s ) const { return slice.access(s); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a ) const { return slice.access(s,a); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a, int i ) const { return slice.access(s,a,i); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a, int i, int j ) 
+    const { return slice.access(s,a,i,j); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a, int i, int j, int k)
+    const {return slice.access(s,a,i,j,k); }
 };
 
 template <class Controller> class MeshField {
@@ -51,25 +63,14 @@ template <class Controller> class MeshField {
   Controller sliceController;
 
 public:
-  // constructor
 
   MeshField(Controller controller) : sliceController(std::move(controller)) {}
-
-  /* makeField
-
-     makeField makes a field from the underlying controller using the index
-     given by the user
-  */
 
   template <std::size_t index> auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
     return Field(std::move(slice));
   }
-  /* 
-     setField
-     fills a field from a Kokkos::View with a parallel_for
-  */
-
+  /*
   template <class Field, class View> void setField(Field &field, View &view) {
     auto indexToSA = sliceController.indexToSA;
     Kokkos::parallel_for(
@@ -81,14 +82,6 @@ public:
         });
   }
 
-  /* pre-defined reductions
-
-     These reductions take as input a field and return a single value
-     sum - the sum of all the values in the field
-     min - the minimum value in the field
-     max - the maximum value in the field
-     mean - the average value of the field (will always be a double)
-  */
 
   template <class FieldType, class T = typename FieldType::Type>
   T sum(FieldType &field) {
@@ -135,17 +128,6 @@ public:
     return static_cast<double>(sum(field)) / sliceController.size();
   }
 
-  /* Parallel functions
-
-     These functions run the given kernel in parallel on the GPU
-     (unless the execution space is serial)
-     parallel_for - a for loop that will iterate from lowerBound to upperbound
-     parallel_reduce - a way for a user to pass in a reduction kernel and a
-     reducer to make their own reductions
-     parallel_scan - a scan can be used to
-     create a view where each value is the sum of the previous values.
-  */
-
   template <typename FunctorType>
   void parallel_for(int lowerBound, int upperBound, FunctorType &vectorKernel,
                     std::string tag) {
@@ -164,6 +146,7 @@ public:
   }
   // depending on size of dimensions, take variable number of arguements
   // that give pairs of lower and upper bound for the multi-dim views.
+  */
 };
 
 } // namespace MeshField

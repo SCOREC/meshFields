@@ -3,49 +3,60 @@
 
 #include <Cabana_Core.hpp>
 
-namespace SliceWrapper {
+namespace Controller {
 
-template <class SliceType, class T> struct CabanaSliceWrapper {
-
+template<class SliceType, class T>
+struct CabanaSliceWrapper {
+  
   SliceType slice;
-
   typedef T Type;
 
-  CabanaSliceWrapper(SliceType slice_in) : slice(slice_in) {}
-
-  CabanaSliceWrapper() {}
-
-  /* access functions
-
-     The access functions are used to get a specific element from a Field.
-     If the user creates a field of an array, the third argument will be the
-     index of the array. If the user craetes a field of a 2d array, the third
-     and fourth argument will indexes the two arrays, and so on
-  */
-  KOKKOS_INLINE_FUNCTION
-  T &access(int s) const { return slice.access(s); }
-
-  KOKKOS_INLINE_FUNCTION
-  T &access(int s, int a) const { return slice.access(s, a); }
+  CabanaSliceWrapper( SliceType slice_in ) : slice(slice_in) {}
+  CabanaSliceWrapper( ) {}
   
+  /* 1D access */
   KOKKOS_INLINE_FUNCTION
-  auto &access(int s, int a, int i) const { return slice.access(s, a, i); }
+  T &operator()(int s) const { return slice(s); }
 
   KOKKOS_INLINE_FUNCTION
-  auto &access(int s, int a, int i, int j) const {
-    return slice.access(s, a, i, j);
-  }
+  auto &operator()(int s, int a) const { return slice(s,a); }
 
   KOKKOS_INLINE_FUNCTION
-  auto &access(int s, int a, int i, int j, int k) const {
-    return slice.access(s, a, i, j, k);
-  }
+  auto &operator()(int s, int a, int i) const { return slice(s,a,i); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &operator()(int s, int a, int i, int j) 
+    const { return slice(s,a,i,j); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &operator()(int s, int a, int i, int j, int k) 
+    const { return slice(s,a,i,j,k); }
+
+  /* 2D access */
+  KOKKOS_INLINE_FUNCTION
+  T &access( int s ) const { return slice.access(s); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a ) const { return slice.access(s,a); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a, int i ) const { return slice.access(s,a,i); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a, int i, int j ) 
+    const { return slice.access(s,a,i,j); }
+
+  KOKKOS_INLINE_FUNCTION
+  auto &access( int s, int a, int i, int j, int k ) 
+    const { return slice.access(s,a,i,j,k); }
+
 };
+
 
 using namespace Cabana;
 
 template <class ExecutionSpace, class MemorySpace, class... Ts>
-class CabPackedController {
+class CabanaController {
 
   // type definitions
   using TypeTuple = std::tuple<Ts...>;
@@ -81,38 +92,14 @@ private:
   const int num_tuples;
 
 public:
-  // a tool that allows a single index to be converted into two indexes that can
-  // be used for slice traversal
-  struct IndexToSA {
-    IndexToSA(int vecLen_in) : vecLen(vecLen_in) {}
-    int vecLen;
-    KOKKOS_INLINE_FUNCTION
-    void operator()(const int i, int &s, int &a) const {
-      s = i / vecLen;
-      a = i % vecLen;
-    }
-  };
 
-  IndexToSA indexToSA;
+  CabanaController() : num_tuples(0) {}
 
-  // constructors (default constructor necessary)
+  CabanaController(int n)
+      : aosoa("sliceAoSoA", n), num_tuples(n) {}
 
-  CabPackedController() {}
+  int size() const { return num_tuples; }
 
-  CabPackedController(int n)
-      : aosoa("sliceAoSoA", n), num_tuples(n), indexToSA(aosoa.vector_length) {}
-
-  // size function to get the number of tuples
-
-  int size() { return num_tuples; }
-
-  /* make a slice of the underlying AoSoA based on a user specified index
-
-     get the type of the value in the slice at the index
-     calculate the 'stride' value, needed for construction of the slice
-     create the slice
-     return the wrapped slice
-  */
 
   template <std::size_t index> auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;
@@ -120,16 +107,7 @@ public:
     auto slice = Cabana::slice<index>(aosoa);
     return wrapper_slice_t<type, stride>(std::move(slice));
   }
-
-  /* Parallel functions
-
-     These functions run the given kernel in parallel on the GPU
-     (unless the execution space is serial)
-     parallel_for - a for loop that will iterate from lowerBound to upperbound
-     parallel_reduce - a way for a user to pass in a reduction kernel and a
-     reducer to make their own reductions
-  */
-
+  /*
   template <typename FunctorType, typename ReductionType>
   void parallel_reduce(FunctorType &reductionKernel,
                        ReductionType &reductionType, std::string tag) {
@@ -144,6 +122,7 @@ public:
                                                           upperBound);
     Cabana::simd_parallel_for(simdPolicy, vectorKernel, tag);
   }
+  */
 };
 } // namespace SliceWrapper
 

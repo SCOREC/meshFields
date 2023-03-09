@@ -1,0 +1,53 @@
+- User calls parallel_for w/ numitems + 
+    each rank dimension
+
+check input index is within range
+ -> convert logical indices field(item,d2,d3);
+
+  <double[extent]*, double***>
+
+  parallel_for( item, rankdim... )
+
+  parallel_for( n, 3, 2 );
+
+  n = num_tuples
+
+  slice<1> (double***) -> field(n-3,3,2);
+  slice<0> (double[extent]*) -> field(n-3,2);
+
+  solution: Make specific accessors based only on
+            the rank of the slice/field.
+namespace MeshField:
+   MeshField:                
+    + SliceController::type  
+    - makeField() -> Field<Slice,T>
+    - setField() -> void
+    - sum() -> FieldType::Type
+    - min() -> FieldType::Type
+    - max() -> FieldType::Type
+    - mean() -> FieldType::Type (double?)
+    - parallel_for() -> void
+    - parallel_reduce() -> void
+    - parallel_scan() -> void
+  Field:
+    + Slice
+    + Slice-type
+    - operator()(...) // (up to 5 ranks)
+namespace Controller:
+  KokkosController:
+    + values_
+    + num_tuples
+    + indexToSA
+    - makeSlice() -> Kokkos::View<Exe,Mem,T>
+    - size() -> const int
+    - parallel_for() -> void
+    - parallel_reduce() -> void
+  CabanaController:
+    + vectorLength
+    + aosoa
+    + num_tuples
+    + indexToSA
+    - makeSlice() -> Cabana::Slice
+    - size() -> const int
+    - parallel_for() -> void
+    - parallel_reduce() -> void

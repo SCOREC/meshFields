@@ -1,0 +1,32 @@
+[ 50%] Building CXX object CMakeFiles/Main.dir/test/testMain.cpp.o
+/users/miklun/develop/meshFieldWorkspace/build-kokkos-cranium-cuda/install/include/Kokkos_View.hpp(195): error: static assertion failed with "Only one View Execution or Memory Space template argument"
+          detected during:
+            instantiation of class "Kokkos::ViewTraits<std::enable_if_t<Kokkos::is_space<Space>::value, void>, Space, Prop...> [with Space=ExecutionSpace, Prop=<MemorySpace>]" 
+(251): here
+            instantiation of class "Kokkos::ViewTraits<DataType, Properties...> [with DataType=std::tuple_element_t<0UL, std::tuple<double *>>, Properties=<ExecutionSpace, MemorySpace>]" 
+(574): here
+            instantiation of class "Kokkos::View<DataType, Properties...> [with DataType=std::tuple_element_t<0UL, std::tuple<double *>>, Properties=<ExecutionSpace, MemorySpace>]" 
+/users/miklun/develop/meshFieldWorkspace/meshFields/src/KokkosController.hpp(11): here
+            instantiation of class "Controller::KokkosSliceWrapper<SliceType, T> [with SliceType=Kokkos::View<std::tuple_element_t<0UL, std::tuple<double *>>, ExecutionSpace, MemorySpace>, T=std::tuple_element_t<0UL, std::tuple<double *>>]" 
+/users/miklun/develop/meshFieldWorkspace/meshFields/src/KokkosController.hpp(100): here
+            instantiation of "auto Controller::KokkosController<ExecutionSpace, MemorySpace, Ts...>::makeSlice<index>() [with ExecutionSpace=ExecutionSpace, MemorySpace=MemorySpace, Ts=<double *>, index=0UL]" 
+/users/miklun/develop/meshFieldWorkspace/meshFields/src/MeshField.hpp(70): here
+            instantiation of "auto MeshField::MeshField<Controller>::makeField<index>() [with Controller=Controller::KokkosController<ExecutionSpace, MemorySpace, double *>, index=0UL]" 
+/users/miklun/develop/meshFieldWorkspace/meshFields/test/testMain.cpp(170): here
+
+/users/miklun/develop/meshFieldWorkspace/meshFields/src/KokkosController.hpp(82): error: no instance of constructor "Kokkos::View<DataType, Properties...>::View [with DataType=std::tuple_element_t<0UL, std::tuple<double *>>, Properties=<ExecutionSpace, MemorySpace>]" matches the argument list
+            argument types are: (int)
+          detected during:
+            instantiation of "auto Controller::KokkosController<ExecutionSpace, MemorySpace, Ts...>::construct<Tx...>(int) [with ExecutionSpace=ExecutionSpace, MemorySpace=MemorySpace, Ts=<double *>, Tx=<double *>]" 
+(94): here
+            instantiation of "Controller::KokkosController<ExecutionSpace, MemorySpace, Ts...>::KokkosController(int) [with ExecutionSpace=ExecutionSpace, MemorySpace=MemorySpace, Ts=<double *>]" 
+/users/miklun/develop/meshFieldWorkspace/meshFields/test/testMain.cpp(167): here
+
+/users/miklun/develop/meshFieldWorkspace/meshFields/src/KokkosController.hpp(20): error: a reference of type "std::tuple_element_t<0UL, std::tuple<double *>> &" (not const-qualified) cannot be initialized with a value of type "double"
+          detected during instantiation of "T &Controller::KokkosSliceWrapper<SliceType, T>::operator()(int) const [with SliceType=Kokkos::View<std::tuple_element_t<0UL, std::tuple<double *>>, ExecutionSpace, MemorySpace>, T=std::tuple_element_t<0UL, std::tuple<double *>>]" 
+/users/miklun/develop/meshFieldWorkspace/meshFields/src/MeshField.hpp(26): here
+
+3 errors detected in the compilation of "/users/miklun/develop/meshFieldWorkspace/meshFields/test/testMain.cpp".
+gmake[2]: *** [CMakeFiles/Main.dir/test/testMain.cpp.o] Error 1
+gmake[1]: *** [CMakeFiles/Main.dir/all] Error 2
+gmake: *** [all] Error 2
