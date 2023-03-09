@@ -36,19 +36,19 @@ struct KokkosSliceWrapper{
   /* TODO 2D access /w vectorization */
 
   KOKKOS_INLINE_FUNCTION
-  T &access( int s ) const { return NULL };
+  T &access( int s ) const { return NULL; }
   
   KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a ) const { return NULL };
+  auto &access( int s, int a ) const { return NULL; }
   
   KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a, int i ) const { return NULL };
+  auto &access( int s, int a, int i ) const { return NULL; }
 
   KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a, int i, int j ) const { return NULL };
+  auto &access( int s, int a, int i, int j ) const { return NULL; }
 
   KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a, int i, int j, int k ) const { return NULL };
+  auto &access( int s, int a, int i, int j, int k ) const { return NULL; }
 
 };
 
@@ -79,25 +79,39 @@ private:
 
   template< typename... Tx>
   auto construct( int size_) {
-    return std::make_tuple( Kokkos::View<Tx,ExecutionSpace,MemorySpace>(size_)... );
+    //return std::make_tuple( Kokkos::View<Tx,ExecutionSpace,MemorySpace>("view",size_)... );
+    return std::make_tuple( Kokkos::View<Tx,MemorySpace>("view",size_)... );
+   // return std::make_tuple( Kokkos::View<Tx>("view",size_)... );
   }
-
   // member vaiables
   const int num_tuples;
+  //std::tuple<Kokkos::View<Ts,ExecutionSpace,MemorySpace>...> values_;
   std::tuple<Kokkos::View<Ts,MemorySpace>...> values_;
 
 public:
 
   KokkosController() : values_(construct<Ts...>(1)) {}
-
-  KokkosController(int n)
-      : num_tuples(n), values_(construct<Ts...>(n)) {}
   
+  /* TODO: accept runtime dimensions and place into array...
+   *        - make sure that they're used in the construct
+   *          function when creating views.
+   *
+   *    KokkosController(int... indices)
+   */
+  
+  KokkosController(int n)
+      : num_tuples(n), values_(construct<Ts...>(n)) {
+        printf("Hello"); 
+        //auto x = std::get<0>(values_);
+      }
+  
+  
+
   int size() const { return num_tuples; }
   
   template<std::size_t index> auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;
-    return wrapper_slice_t<type>(std::move(std::get<index>(values_)));
+    return wrapper_slice_t<type>(std::get<index>(values_));
   }
   /*
   template <typename FunctorType, typename ReductionType>
