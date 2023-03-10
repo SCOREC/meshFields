@@ -32,24 +32,6 @@ struct CabanaSliceWrapper {
   auto &operator()(int s, int a, int i, int j, int k) 
     const { return slice(s,a,i,j,k); }
 
-  /* 2D access */
-  KOKKOS_INLINE_FUNCTION
-  T &access( int s ) const { return slice.access(s); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a ) const { return slice.access(s,a); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a, int i ) const { return slice.access(s,a,i); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a, int i, int j ) 
-    const { return slice.access(s,a,i,j); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &access( int s, int a, int i, int j, int k ) 
-    const { return slice.access(s,a,i,j,k); }
-
 };
 
 

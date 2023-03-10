@@ -17,6 +17,15 @@ check input index is within range
 
   solution: Make specific accessors based only on
             the rank of the slice/field.
+
+  *** Only give users access to the logical access operator
+      - convert to simd-type stuffs in backend using private
+      operators.
+  *** Kokkos only use MDRange, Cabana use simd.
+      -> possible in future to case analyze
+          for nested loops in Kokkos
+
+
 namespace MeshField:
    MeshField:                
     + SliceController::type  
@@ -34,6 +43,10 @@ namespace MeshField:
     + Slice-type
     - operator()(...) // (up to 5 ranks)
 namespace Controller:
+  KokkosSliceWrapper<SliceType,T>:
+  + SliceType slice
+  + T Type
+  - operator()(...) -> auto& 
   KokkosController:
     + values_
     + num_tuples
@@ -42,6 +55,10 @@ namespace Controller:
     - size() -> const int
     - parallel_for() -> void
     - parallel_reduce() -> void
+  CabanaSliceWrapper<SliceType,T>
+    + SliceType slice
+    + T Type
+    - operator()(...) -> auto&
   CabanaController:
     + vectorLength
     + aosoa
@@ -51,3 +68,19 @@ namespace Controller:
     - size() -> const int
     - parallel_for() -> void
     - parallel_reduce() -> void
+
+field<double*>
+KOKKOS_LAMBDA x =( int i ) {
+  field(i) -> access(s,a);
+  //indextosa based on vectorlength
+};
+
+                      -> 0,n-1
+parallel_for( n, x );
+
+*** Lambda has to match parallel_for
+    compile-time error if field access
+    doesnt match rank of field.
+
+
+
