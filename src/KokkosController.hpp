@@ -2,10 +2,10 @@
 #define kokkosslicewrapper_hpp
 
 #define MeshFields_BUILD1(x) x[0]
-#define MeshFields_BUILD2(x) MeshFields_BUILD1, x[1]
-#define MeshFields_BUILD3(x) MeshFields_BUILD2, x[2]
-#define MeshFields_BUILD4(x) MeshFields_BUILD3, x[3]
-#define MeshFields_BUILD5(x) MeshFields_BUILD4, x[4]
+#define MeshFields_BUILD2(x) MeshFields_BUILD1(x), x[1]
+#define MeshFields_BUILD3(x) MeshFields_BUILD2(x), x[2]
+#define MeshFields_BUILD4(x) MeshFields_BUILD3(x), x[3]
+#define MeshFields_BUILD5(x) MeshFields_BUILD4(x), x[4]
 #define MeshFields_BUILD(i,x) MeshFields_BUILD##i(x)
 
 #include <tuple>
@@ -73,22 +73,64 @@ private:
   auto construct( int size_ ) {
     return std::make_tuple( Kokkos::View<Tx,MemorySpace>("view",size_)... );
   }*/
+  /*
   template< typename... Tx>
   auto construct( std::vector<int> runtime_ds ) {
     return std::make_tuple( Kokkos::View<Tx,MemorySpace>("MeshFieldView",
           ( 
-           /*  TODO:
-               HERE, need indices to
-               the vector for runtime dimensions...
-               maybe add a helper function
-               to the compiler definitions at
-               the top? 
-            */
+             //TODO:
+             //HERE, need indices to
+             //the vector for runtime dimensions...
+             //maybe add a helper function
+             //to the compiler definitions at
+             //the top? 
+            
             
             ( MeshFields_BUILD(std::rank<Tx>{},runtime_ds) )  
           )
           )... );
-  }             
+  }
+  */
+
+
+  template<class MS,typename... Tx>
+  auto construct( std::vector<int> dims ) {
+    return std::make_tuple( create_view<Tx,MS>("view", dims)... );
+  }
+
+  template<typename Tx,typename MemSpace>
+  Kokkos::View<Tx,MemSpace>
+  create_view( std::string tag, std::vector<int> &dims ) {
+    std::size_t rank = std::rank<Tx>::value;
+    if( rank == 0 ) return Kokkos::View<Tx,MemSpace>(tag);
+    int k = 0;
+    for( int i = (int)(rank-1); i >= 0; i-- ) {
+      if( std::extent<Tx,i>::value == 0 ) k++;
+    }
+    Kokkos::View<Tx,MemorySpace> rt;
+    switch( k ) {
+      case 1:
+        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(1,dims) );
+        break;
+      case 2:
+        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(2,dims) );
+        break;
+      case 3:
+        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(3,dims) );
+        break;
+      case 4:
+        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(4,dims) );
+        break;
+      case 5:
+        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(5,dims) );
+        break;
+      default:
+        rt = Kokkos::View<Tx,MemSpace>(tag);
+    }
+    
+    dims.erase( dims.begin(), dims.begin()+k );
+    return rt;
+  }
   // x = double***[extent]
   // rank = 4
   // extent<x,3> = extent
@@ -99,11 +141,6 @@ private:
   
   //MeshFields_BUILD5(x) -> [0], [1], [2], ...
 
-  int construct_helper() {
-    return 0; 
-  }
-    
-  
 
   // member vaiables
   const int* num_tuples;
@@ -112,7 +149,10 @@ private:
 
 public:
 
-  KokkosController() : values_(construct<Ts...>()) {}
+  KokkosController()  {
+    std::vector<int> obj;
+    values_ = construct<MemorySpace,Ts...>(obj);
+  }
   
   /* TODO: accept runtime dimensions and place into array...
    *        - make sure that they're used in the construct
@@ -138,8 +178,8 @@ public:
    *
    */
   
-  KokkosController(int* n)
-      : num_tuples(std::move(n)), values_(construct<Ts...>(n)) {}
+  KokkosController(std::vector<int> items)
+      : values_(construct<MemorySpace,Ts...>(items)) {}
   //KokkosController(int n) : num_tuples(n), values_(construct<Ts...>(n)) {}
 /*
   1 to 1
