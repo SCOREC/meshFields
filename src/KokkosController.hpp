@@ -93,16 +93,16 @@ private:
   */
 
 
-  template<class MS,typename... Tx>
+  template<typename... Tx>
   auto construct( std::vector<int> dims ) {
-    return std::make_tuple( create_view<Tx,MS>("view", dims)... );
+    return std::make_tuple( create_view<Tx>("view", dims)... );
   }
 
-  template<typename Tx,typename MemSpace>
-  Kokkos::View<Tx,MemSpace>
+  template<typename Tx>
+  Kokkos::View<Tx,MemorySpace>
   create_view( std::string tag, std::vector<int> &dims ) {
     std::size_t rank = std::rank<Tx>::value;
-    if( rank == 0 ) return Kokkos::View<Tx,MemSpace>(tag);
+    if( rank == 0 ) return Kokkos::View<Tx,MemorySpace>(tag);
     int k = 0;
     for( int i = (int)(rank-1); i >= 0; i-- ) {
       if( std::extent<Tx,i>::value == 0 ) k++;
@@ -110,22 +110,22 @@ private:
     Kokkos::View<Tx,MemorySpace> rt;
     switch( k ) {
       case 1:
-        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(1,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(1,dims) );
         break;
       case 2:
-        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(2,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(2,dims) );
         break;
       case 3:
-        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(3,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(3,dims) );
         break;
       case 4:
-        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(4,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(4,dims) );
         break;
       case 5:
-        rt = Kokkos::View<Tx,MemSpace>(tag, MeshFields_BUILD(5,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(5,dims) );
         break;
       default:
-        rt = Kokkos::View<Tx,MemSpace>(tag);
+        rt = Kokkos::View<Tx,MemorySpace>(tag);
     }
     
     dims.erase( dims.begin(), dims.begin()+k );
@@ -151,7 +151,7 @@ public:
 
   KokkosController()  {
     std::vector<int> obj;
-    values_ = construct<MemorySpace,Ts...>(obj);
+    values_ = construct<Ts...>(obj);
   }
   
   /* TODO: accept runtime dimensions and place into array...
@@ -179,7 +179,7 @@ public:
    */
   
   KokkosController(std::vector<int> items)
-      : values_(construct<MemorySpace,Ts...>(items)) {}
+      : values_(construct<Ts...>(items)) {}
   //KokkosController(int n) : num_tuples(n), values_(construct<Ts...>(n)) {}
 /*
   1 to 1
