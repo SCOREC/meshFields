@@ -96,15 +96,25 @@ public:
     Kokkos::RangePolicy<ExecutionSpace> policy(0, num_tuples);
     Kokkos::parallel_reduce(tag, policy, reductionKernel, reductionType);
   }
-
-  template <typename FunctorType>
-  void parallel_for(int lowerBound, int upperBound, FunctorType &vectorKernel,
+  */
+  template <std::size_t rank, typename FunctorType>
+  void parallel_for(const std::initializer_list<int> start,
+                    const std::initializer_list<int> end,
+                    FunctorType &vectorKernel,
                     std::string tag) {
+    /*
+    if constexpr ( rank > 1 ) {
+    
     Cabana::SimdPolicy<vecLen, ExecutionSpace> simdPolicy(lowerBound,
                                                           upperBound);
     Cabana::simd_parallel_for(simdPolicy, vectorKernel, tag);
+    } else {
+      Kokkos::RangePolicy<ExecutionSpace> linear_policy(start.begin(), start.end());
+      Kokkos::parallel_for( linear_policy, vectorKernel, tag);
+    }
+    */
   }
-  */
+  
 };
 } // namespace SliceWrapper
 

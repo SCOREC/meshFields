@@ -111,13 +111,17 @@ public:
   template <class FieldType> double mean(FieldType &field) {
     return static_cast<double>(sum(field)) / sliceController.size();
   }
+  */
 
-  template <typename FunctorType>
-  void parallel_for(int lowerBound, int upperBound, FunctorType &vectorKernel,
+  template <std::size_t rank, typename FunctorType>
+  void parallel_for(const std::initializer_list<int> start, 
+                   const std::initializer_list<int> end,
+                   FunctorType &vectorKernel,
                     std::string tag) {
-    sliceController.parallel_for(lowerBound, upperBound, vectorKernel, tag);
+    sliceController.parallel_for<rank>(start, end, vectorKernel, tag);
   }
 
+  /*
   template <typename FunctorType, class ReducerType>
   void parallel_reduce(FunctorType &reductionKernel, ReducerType &reducer,
                        std::string tag) {

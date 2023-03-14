@@ -10,6 +10,8 @@
 
 #include <tuple>
 #include <vector>
+#include <type_traits>
+#include <cassert>
 
 namespace Controller {
 
@@ -67,31 +69,6 @@ private:
 
   template <class T>
   using wrapper_slice_t = KokkosSliceWrapper<member_slice_t<T>, T>;
-  
-  /*
-  template< typename... Tx>
-  auto construct( int size_ ) {
-    return std::make_tuple( Kokkos::View<Tx,MemorySpace>("view",size_)... );
-  }*/
-  /*
-  template< typename... Tx>
-  auto construct( std::vector<int> runtime_ds ) {
-    return std::make_tuple( Kokkos::View<Tx,MemorySpace>("MeshFieldView",
-          ( 
-             //TODO:
-             //HERE, need indices to
-             //the vector for runtime dimensions...
-             //maybe add a helper function
-             //to the compiler definitions at
-             //the top? 
-            
-            
-            ( MeshFields_BUILD(std::rank<Tx>{},runtime_ds) )  
-          )
-          )... );
-  }
-  */
-
 
   template<typename... Tx>
   auto construct( std::vector<int> dims ) {
@@ -101,14 +78,14 @@ private:
   template<typename Tx>
   Kokkos::View<Tx,MemorySpace>
   create_view( std::string tag, std::vector<int> &dims ) {
-    std::size_t rank = std::rank<Tx>::value;
+    int rank = Kokkos::View<Tx>::rank;
+    int dynamic = Kokkos::View<Tx>::rank_dynamic;
+    assert( rank <= 5 );
+
     if( rank == 0 ) return Kokkos::View<Tx,MemorySpace>(tag);
-    int k = 0;
-    for( int i = (int)(rank-1); i >= 0; i-- ) {
-      if( std::extent<Tx,i>::value == 0 ) k++;
-    }
+    
     Kokkos::View<Tx,MemorySpace> rt;
-    switch( k ) {
+    switch( dynamic ) {
       case 1:
         rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(1,dims) );
         break;
@@ -128,23 +105,12 @@ private:
         rt = Kokkos::View<Tx,MemorySpace>(tag);
     }
     
-    dims.erase( dims.begin(), dims.begin()+k );
+    dims.erase( dims.begin(), dims.begin()+dynamic );
     return rt;
   }
-  // x = double***[extent]
-  // rank = 4
-  // extent<x,3> = extent
-  // extent<x,2> = 0
-  // extent<x,1> = 0
-  // extent<x,0> = 0
-  // KokkosController<MemorySpace,Tx...> x( int... y );
   
-  //MeshFields_BUILD5(x) -> [0], [1], [2], ...
-
-
   // member vaiables
   const int* num_tuples;
-
   std::tuple<Kokkos::View<Ts,MemorySpace>...> values_;
 
 public:
@@ -153,43 +119,10 @@ public:
     std::vector<int> obj;
     values_ = construct<Ts...>(obj);
   }
-  
-  /* TODO: accept runtime dimensions and place into array...
-   *        - make sure that they're used in the construct
-   *          function when creating views.
-   *
-   *    KokkosController(int... indices)?
-   *    
-   *    A way to determine runtime dimensions.
-   *    for example:
-   *      double***,doule**,double[extent]*
-   *
-   *
-   *    int header <type_traits>
-   *    std::rank<class T>{} -> How many dimensions
-   *    std::extent<class T, unsigned N>::value
-   *    
-   *    idea:
-   *      Calculate number of dimensions per Ts, then
-   *      loop through dimensions until we get returned 
-   *      0 which means that it is undefined (hence runime)
-   *      and then we fill it with that number of dimensions
-   *      from the array that is passed to the function.
-   *
-   */
-  
+    
   KokkosController(std::vector<int> items)
       : values_(construct<Ts...>(items)) {}
-  //KokkosController(int n) : num_tuples(n), values_(construct<Ts...>(n)) {}
-/*
-  1 to 1
-  double**
-  kernal ( int rank1, int rank2 ) {
-    ...
-    field0(rank1,rank2);
-    ...
-  }
-  */
+
   int size() const { return num_tuples; }
   
   template<std::size_t index> auto makeSlice() {
@@ -203,14 +136,21 @@ public:
     Kokkos::RangePolicy<ExecutionSpace> policy(0, num_tuples);
     Kokkos::parallel_reduce(tag, policy, reductionKernel, reductionType);
   }
-  
-  template <typename FunctorType>
-  void parallel_for(int lowerBound, int upperBound, FunctorType &vectorKernel,
-                    std::string tag) {
-    Kokkos::RangePolicy<ExecutionSpace> p(lowerBound, upperBound);
-    Kokkos::parallel_for(tag,p,vectorKernel);
-  }
   */
+  template <std::size_t rank,typename FunctorType>
+  void parallel_for(const std::initializer_list<int> start, 
+                    const std::initializer_list<int> end, 
+                    FunctorType &vectorKernel,
+                    std::string tag) {
+    if( rank <= 1 ) {
+      kokkos::rangepolicy<executionspace> p(start.begin(), end.begin());
+      kokkos::parallel_for(tag,p,vectorkernel);
+    } else {
+      kokkos::MDRangePolicy<Rank<rank>> policy(start,end);
+      kokkos::parallel_for( tag, policy, vectorkernel );
+    }
+  }
+  
 };
 } // namespace SliceWrapper
 

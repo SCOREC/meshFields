@@ -1,10 +1,12 @@
 #include "MeshField.hpp"
 #include "CabanaController.hpp"
 #include "KokkosController.hpp"
+#include "MeshField_Macros.hpp"
 
 #include <Cabana_Core.hpp>
 
 #include <vector>
+#include <iostream>
 
 #define TOLERANCE 1e-10;
 
@@ -184,12 +186,66 @@ void testMakeSliceKokkos( int num_tuples ) {
   
 }
 
+void testKokkosConstructor( int num_tuples ) {
+  
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,double**[3]>;
+    std::vector<int> theta;
+    theta.push_back(num_tuples);
+    theta.push_back(num_tuples);
+    Ctrlr c(theta);
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,double[3]>;
+    Ctrlr c;
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,int*****>;
+    std::vector<int> theta;
+    theta.push_back(10);
+    theta.push_back(10);
+    theta.push_back(10);
+    theta.push_back(10);
+    theta.push_back(10);
+    Ctrlr c(theta);
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,int>;
+    Ctrlr c;
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+}
+
+void testKokkosParallelFor() {
+  using Ctrlr = Controller::KokkosController<MemorySpace, int**>;
+  std::vector<int> dims;
+  dims.push_back(10);
+  dims.push_back(10);
+  Ctrlr c(dims);
+  MeshField::MeshField<Ctrlr> kok(c);
+  
+  auto field0 = kok.makeField<0>();
+
+  auto vectorKernel = MESHFIELD_LAMBDA( const int s, const int a ) {
+    field0(s,a) = s+a;
+    assert(field0(s,a) == s+a);
+  };
+
+  kok.parallel_for<2>({0,0},{10,10},vectorKernel, "testKokkosParallelFor()");
+}
+
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
-  
+    
+
+  testKokkosConstructor(num_tuples);
   testMakeSliceCabana(num_tuples);
   testMakeSliceKokkos(num_tuples);
+  testKokkosParallelFor();
 
   //single_type(num_tuples);
   //multi_type(num_tuples);
