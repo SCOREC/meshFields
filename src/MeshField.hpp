@@ -5,6 +5,9 @@
 #include <Kokkos_StdAlgorithms.hpp>
 #include <cstdio>
 #include <type_traits> // std::same_v<t1,t2>
+#include <array>
+
+#include "MeshField_Utility.hpp"
 
 //#include "CabanaSliceWrapper.hpp"
 
@@ -113,12 +116,19 @@ public:
   }
   */
 
-  template <std::size_t rank, typename FunctorType>
-  void parallel_for(const std::initializer_list<int> start, 
-                   const std::initializer_list<int> end,
-                   FunctorType &vectorKernel,
+  template <typename FunctorType, class IS, class IE>
+  void parallel_for(const std::initializer_list<IS>& start, 
+                    const std::initializer_list<IE>& end,
+                    FunctorType &vectorKernel,
                     std::string tag) {
-    sliceController.parallel_for<rank>(start, end, vectorKernel, tag);
+    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
+    Kokkos::Array<int64_t,RANK> a_start{};
+    Kokkos::Array<int64_t,RANK> a_end{};
+    auto x = start.begin();
+    auto y = end.begin();
+    for( std::size_t i = 0; i < RANK; i++ ) 
+      { a_start[i] = (*x); a_end[i] = (*y); x++; y++;}
+    sliceController.template parallel_for< RANK > (a_start, a_end, vectorKernel, tag);
   }
 
   /*

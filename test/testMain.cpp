@@ -2,11 +2,14 @@
 #include "CabanaController.hpp"
 #include "KokkosController.hpp"
 #include "MeshField_Macros.hpp"
+#include "MeshField_Utility.hpp"
 
 #include <Cabana_Core.hpp>
+#include <Kokkos_Core.hpp>
 
 #include <vector>
 #include <iostream>
+#include <initializer_list>
 
 #define TOLERANCE 1e-10;
 
@@ -20,7 +23,7 @@ bool doubleCompare(double d1, double d2) {
 }
 
 using ExecutionSpace = Kokkos::Cuda;
-using MemorySpace = Kokkos::CudaSpace;
+using MemorySpace = Kokkos::CudaUVMSpace;
 
 /*
 void single_type(int num_tuples) {
@@ -149,7 +152,7 @@ void rank1_arr(int num_tuples) {
   cabMeshField.parallel_for(0, num_tuples, vector_kernel, "rank1_arr_pfor");
 }
 */
-
+/*
 void testMakeSliceCabana( int num_tuples ) {
 
   using Ctrl = Controller::CabanaController<ExecutionSpace,MemorySpace,double>;
@@ -182,7 +185,7 @@ void testMakeSliceKokkos( int num_tuples ) {
     assert(doubleCompare(field0(x),gamma));
   };
 
-  //Kokkos::parallel_for("testMakeSliceKokkos()", num_tuples, testKernel);
+  Kokkos::parallel_for("testMakeSliceKokkos()", num_tuples, testKernel);
   
 }
 
@@ -219,6 +222,24 @@ void testKokkosConstructor( int num_tuples ) {
   }
 }
 
+*/
+/*
+void testingStufffs() {
+  using Ctrlr = Controller::KokkosController<MemorySpace, int*>;
+  std::vector<int> dims;
+  dims.push_back(10);
+  Ctrlr c(dims);
+  MeshField::MeshField<Ctrlr> kok(c);
+  
+  auto field0 = kok.makeField<0>();
+
+  auto vectorKernel = KOKKOS_LAMBDA(const int &s) {
+    field0(s) = 3;
+  };
+  Kokkos::parallel_for("tag", 10, vectorKernel );
+}
+*/
+
 void testKokkosParallelFor() {
   using Ctrlr = Controller::KokkosController<MemorySpace, int**>;
   std::vector<int> dims;
@@ -229,23 +250,36 @@ void testKokkosParallelFor() {
   
   auto field0 = kok.makeField<0>();
 
-  auto vectorKernel = MESHFIELD_LAMBDA( const int s, const int a ) {
+  auto vectorKernel = KOKKOS_LAMBDA (const int s, const int a) {
     field0(s,a) = s+a;
     assert(field0(s,a) == s+a);
   };
 
-  kok.parallel_for<2>({0,0},{10,10},vectorKernel, "testKokkosParallelFor()");
+  kok.parallel_for({0,0},{10,10},vectorKernel, "testKokkosParallelFor()");
+}
+
+void kokkosDocumentationLiesTest() { // They dont...
+  Kokkos::Array<int64_t,3> start = {0,0,0};
+  Kokkos::Array<int64_t,3> end = {3,3,3};
+  Kokkos::parallel_for("0_0", Kokkos::MDRangePolicy< Kokkos::Rank<3> >(start,end),
+    KOKKOS_LAMBDA (const int c, const int f, const int p) {
+      printf("Kokkos documentation lies!!!: c:%d f:%d p:%d\n",c,f,p);
+    });
 }
 
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
-    
+  
+  testKokkosParallelFor();
+  //kokkosDocumentationLiesTest();
 
+  /*
+  testingStufffs();
   testKokkosConstructor(num_tuples);
   testMakeSliceCabana(num_tuples);
   testMakeSliceKokkos(num_tuples);
-  testKokkosParallelFor();
+  */
 
   //single_type(num_tuples);
   //multi_type(num_tuples);

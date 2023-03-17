@@ -97,14 +97,15 @@ public:
     Kokkos::parallel_reduce(tag, policy, reductionKernel, reductionType);
   }
   */
-  template <std::size_t rank, typename FunctorType>
+  template <typename FunctorType>
   void parallel_for(const std::initializer_list<int> start,
                     const std::initializer_list<int> end,
                     FunctorType &vectorKernel,
                     std::string tag) {
     /*
-    if constexpr ( rank > 1 ) {
-    
+    typedef MeshField::function_traits<decltype(vectorKernel)> traits;
+    int rank = traits::arity;
+    if ( rank > 1 ) {
     Cabana::SimdPolicy<vecLen, ExecutionSpace> simdPolicy(lowerBound,
                                                           upperBound);
     Cabana::simd_parallel_for(simdPolicy, vectorKernel, tag);

@@ -12,6 +12,11 @@
 #include <vector>
 #include <type_traits>
 #include <cassert>
+#include <initializer_list>
+
+#include <Kokkos_Core.hpp>
+#include "MeshField_Utility.hpp"
+#include "MeshField_Macros.hpp"
 
 namespace Controller {
 
@@ -137,17 +142,19 @@ public:
     Kokkos::parallel_reduce(tag, policy, reductionKernel, reductionType);
   }
   */
-  template <std::size_t rank,typename FunctorType>
-  void parallel_for(const std::initializer_list<int> start, 
-                    const std::initializer_list<int> end, 
+
+  template <std::size_t rank, typename FunctorType>
+  void parallel_for(Kokkos::Array<int64_t,rank>& start, 
+                    Kokkos::Array<int64_t,rank>& end, 
                     FunctorType &vectorKernel,
                     std::string tag) {
-    if( rank <= 1 ) {
-      kokkos::rangepolicy<executionspace> p(start.begin(), end.begin());
-      kokkos::parallel_for(tag,p,vectorkernel);
+
+    if constexpr ( rank <= 1 ) {
+      Kokkos::RangePolicy<> p(*(start.begin()), *(end.begin()));
+      Kokkos::parallel_for(tag,p,vectorKernel);
     } else {
-      kokkos::MDRangePolicy<Rank<rank>> policy(start,end);
-      kokkos::parallel_for( tag, policy, vectorkernel );
+      Kokkos::MDRangePolicy<Kokkos::Rank<rank>> policy(start,end);
+      Kokkos::parallel_for( tag, policy, vectorKernel );
     }
   }
   
