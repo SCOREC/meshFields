@@ -169,9 +169,9 @@ void testMakeSliceCabana( int num_tuples ) {
   Kokkos::parallel_for("testMakeSliceCabana()", num_tuples, testKernel);
 
 }
-
+*/
 void testMakeSliceKokkos( int num_tuples ) {
-  using Ctrlr = Controller::KokkosController<MemorySpace,double*>;
+  using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double*>;
   std::vector<int> theta;
   theta.push_back(num_tuples);
   Ctrlr c(theta);
@@ -192,7 +192,7 @@ void testMakeSliceKokkos( int num_tuples ) {
 void testKokkosConstructor( int num_tuples ) {
   
   {
-    using Ctrlr = Controller::KokkosController<MemorySpace,double**[3]>;
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double**[3]>;
     std::vector<int> theta;
     theta.push_back(num_tuples);
     theta.push_back(num_tuples);
@@ -200,12 +200,12 @@ void testKokkosConstructor( int num_tuples ) {
     MeshField::MeshField<Ctrlr> kok(c);
   }
   {
-    using Ctrlr = Controller::KokkosController<MemorySpace,double[3]>;
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double[3]>;
     Ctrlr c;
     MeshField::MeshField<Ctrlr> kok(c);
   }
   {
-    using Ctrlr = Controller::KokkosController<MemorySpace,int*****>;
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*****>;
     std::vector<int> theta;
     theta.push_back(10);
     theta.push_back(10);
@@ -216,16 +216,15 @@ void testKokkosConstructor( int num_tuples ) {
     MeshField::MeshField<Ctrlr> kok(c);
   }
   {
-    using Ctrlr = Controller::KokkosController<MemorySpace,int>;
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int>;
     Ctrlr c;
     MeshField::MeshField<Ctrlr> kok(c);
   }
 }
 
-*/
-/*
+
 void testingStufffs() {
-  using Ctrlr = Controller::KokkosController<MemorySpace, int*>;
+  using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
   std::vector<int> dims;
   dims.push_back(10);
   Ctrlr c(dims);
@@ -238,10 +237,10 @@ void testingStufffs() {
   };
   Kokkos::parallel_for("tag", 10, vectorKernel );
 }
-*/
+
 
 void testKokkosParallelFor() {
-  using Ctrlr = Controller::KokkosController<MemorySpace, int**>;
+  using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace, int**>;
   std::vector<int> dims;
   dims.push_back(10);
   dims.push_back(10);

@@ -57,19 +57,23 @@ public:
     auto slice = sliceController.template makeSlice<index>();
     return Field(std::move(slice));
   }
-  /*
+  
   template <class Field, class View> void setField(Field &field, View &view) {
-    auto indexToSA = sliceController.indexToSA;
-    Kokkos::parallel_for(
-        "FillFieldFromViewLoop", sliceController.size(),
-        KOKKOS_LAMBDA(const int &i) {
-          int s, a;
-          indexToSA(i, s, a);
-          field(s, a) = view(i);
-        });
+    /*
+    auto view_rank = view::rank + view::rank_dynamic;
+    auto field_rank = Kokkos::View<field::ty>::rank + Kokkos::View<field::type>::rank_dynamic;
+    assert(view_rank == field_rank);
+    
+    if( view_rank <= 1 ) {
+      Kokkos::RangePolicy<> p(0,view.size()); 
+      Kokkos::parallel_for()
+    } else {
+    
+    }
+    */
   }
-
-
+  
+  /*
   template <class FieldType, class T = typename FieldType::Type>
   T sum(FieldType &field) {
     T result;
@@ -121,23 +125,33 @@ public:
                     const std::initializer_list<IE>& end,
                     FunctorType &vectorKernel,
                     std::string tag) {
-    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
-    Kokkos::Array<int64_t,RANK> a_start{};
-    Kokkos::Array<int64_t,RANK> a_end{};
-    auto x = start.begin();
-    auto y = end.begin();
-    for( std::size_t i = 0; i < RANK; i++ ) 
-      { a_start[i] = (*x); a_end[i] = (*y); x++; y++;}
-    sliceController.template parallel_for< RANK > (a_start, a_end, vectorKernel, tag);
+    sliceController.parallel_for(start,end, vectorKernel, tag);
   }
-
-  /*
-  template <typename FunctorType, class ReducerType>
-  void parallel_reduce(FunctorType &reductionKernel, ReducerType &reducer,
+  
+  
+  template <typename FunctorType, class ReducerType, class IS, class IE>
+  void parallel_reduce(const std::initializer_list<IS>& start,
+                       const std::initializer_list<IE>& end,
+                       FunctorType &reductionKernel, ReducerType &reducer,
                        std::string tag) {
-    sliceController.parallel_reduce(reductionKernel, reducer, tag);
-  }
+    /* RUN IT HERE */
+    /* TODO: Apply executionspace from controller to policy. */
+    /* TODO: infinite reducers */
+    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
+    assert( start.size() == end.size() );
+    if constexpr ( RANK <= 1 ) {
+      Kokkos::RangePolicy</*TODO*/> policy((*start.begin()), (*end.begin()) );
+      Kokkos::parallel_reduce( tag, policy, reductionKernel, reducer );
+    } else {
+      Kokkos::Array<int64_t,RANK> a_start = MeshFieldUtil::to_kokkos_array( start );
+      Kokkos::Array<int64_t,RANK> a_end = MeshFieldUtil::to_kokkos_array( end );
+      Kokkos::MDRangePolicy<Kokkos::Rank<RANK> /*TODO*/> policy(a_start, a_end);
+      Kokkos::parallel_reduce( tag, policy, reductionKernel, reducer );
+    }
 
+  }
+  
+  /*
   template <typename KernelType>
   void parallel_scan(KernelType &scanKernel, std::string tag) {
     Kokkos::parallel_scan(tag, sliceController.size() + 1, scanKernel);

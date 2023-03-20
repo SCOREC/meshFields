@@ -31,9 +31,8 @@ struct CabanaSliceWrapper {
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int s, int a, int i, int j, int k) 
     const { return slice(s,a,i,j,k); }
-
+  
 };
-
 
 using namespace Cabana;
 
@@ -89,31 +88,29 @@ public:
     auto slice = Cabana::slice<index>(aosoa);
     return wrapper_slice_t<type, stride>(std::move(slice));
   }
-  /*
+  
   template <typename FunctorType, typename ReductionType>
   void parallel_reduce(FunctorType &reductionKernel,
                        ReductionType &reductionType, std::string tag) {
+
+    /* BE ABLE TO SPECIFY MUTLIPLE DIMS */
     Kokkos::RangePolicy<ExecutionSpace> policy(0, num_tuples);
     Kokkos::parallel_reduce(tag, policy, reductionKernel, reductionType);
   }
-  */
-  template <typename FunctorType>
-  void parallel_for(const std::initializer_list<int> start,
-                    const std::initializer_list<int> end,
+  
+  template <typename FunctorType, class IS, class IE>
+  void parallel_for(const std::initializer_list<IS> start,
+                    const std::initializer_list<IE> end,
                     FunctorType &vectorKernel,
                     std::string tag) {
+    
     /*
-    typedef MeshField::function_traits<decltype(vectorKernel)> traits;
-    int rank = traits::arity;
-    if ( rank > 1 ) {
-    Cabana::SimdPolicy<vecLen, ExecutionSpace> simdPolicy(lowerBound,
-                                                          upperBound);
-    Cabana::simd_parallel_for(simdPolicy, vectorKernel, tag);
-    } else {
-      Kokkos::RangePolicy<ExecutionSpace> linear_policy(start.begin(), start.end());
-      Kokkos::parallel_for( linear_policy, vectorKernel, tag);
-    }
+        For loop that will iterate from (*start.begin())
+        to (*end.begin())
     */
+    Cabana::SimdPolicy<vecLen, ExecutionSpace> 
+      simdPolicy((*start.begin()), (*end.begin()));
+    Cabana::simd_parallel_for(simdPolicy,vectorKernel,tag);
   }
   
 };

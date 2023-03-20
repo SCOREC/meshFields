@@ -1,8 +1,10 @@
 #ifndef MESHFIELD_UTILITY_HPP
 #define MESHFIELD_UTILITY_HPP
 
+#include <Kokkos_Core.hpp>
 #include <type_traits>
 #include <tuple>
+#include <initializer_list>
 /*
 stackoverflow.com/questions/7943525/is-it-possible-to-figure-out-the-parameter-type-and-return-type-of-a-lambda
 */
@@ -23,7 +25,18 @@ struct function_traits<ReturnType(ClassType::*)(Args...) const> {
   };
 };
 
-
+template< std::size_t RANK, class T >
+Kokkos::Array<int64_t, RANK> 
+to_kokkos_array( const std::initializer_list<T>& item) {
+  assert( std::is_integral<T>::value );
+  Kokkos::Array<int64_t, RANK> rt{};
+  auto x = item.begin();
+  for( std::size_t i = 0; i < RANK; i++ ) {
+    rt[i] = (*x);
+    x++;
+  }
+  return rt;
+}
 
 
 

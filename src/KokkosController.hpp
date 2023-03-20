@@ -51,7 +51,7 @@ struct KokkosSliceWrapper{
 };
 
 
-template <class MemorySpace, class... Ts>
+template <class MemorySpace, class ExecutionSpace, class... Ts>
 class KokkosController {
 
   // type definitions
@@ -134,26 +134,30 @@ public:
     using type = std::tuple_element_t<index, TypeTuple>;
     return wrapper_slice_t<type>(std::get<index>(values_));
   }
-  /*
+  
   template <typename FunctorType, typename ReductionType>
   void parallel_reduce(FunctorType &reductionKernel,
                        ReductionType &reductionType, std::string tag) {
+    /*
     Kokkos::RangePolicy<ExecutionSpace> policy(0, num_tuples);
     Kokkos::parallel_reduce(tag, policy, reductionKernel, reductionType);
+    */
   }
-  */
-
-  template <std::size_t rank, typename FunctorType>
-  void parallel_for(Kokkos::Array<int64_t,rank>& start, 
-                    Kokkos::Array<int64_t,rank>& end, 
+  
+  template <typename FunctorType, class IS, class IE>
+  void parallel_for(const std::initializer_list<IS>& start,
+                    const std::initializer_list<IE>& end,
                     FunctorType &vectorKernel,
-                    std::string tag) {
-
-    if constexpr ( rank <= 1 ) {
-      Kokkos::RangePolicy<> p(*(start.begin()), *(end.begin()));
+                    std::string tag ) {
+  
+    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
+    Kokkos::Array<int64_t,RANK> a_start = MeshFieldUtil::to_kokkos_array<RANK>( start );
+    Kokkos::Array<int64_t,RANK> a_end = MeshFieldUtil::to_kokkos_array<RANK>( end );
+    if constexpr ( RANK <= 1 ) {
+      Kokkos::RangePolicy<> p(a_start[0], a_end[0]);
       Kokkos::parallel_for(tag,p,vectorKernel);
     } else {
-      Kokkos::MDRangePolicy<Kokkos::Rank<rank>> policy(start,end);
+      Kokkos::MDRangePolicy<Kokkos::Rank<RANK>> policy(a_start,a_end);
       Kokkos::parallel_for( tag, policy, vectorKernel );
     }
   }

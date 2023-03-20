@@ -82,5 +82,17 @@ parallel_for( n, x );
     compile-time error if field access
     doesnt match rank of field.
 
-
-
+IDEA:
+KokkosController<MemorySpace,ExecutionSpace, int, double, char> ctrl(20);
+                    -> Kokkos::View<int[20]>
+                    -> Kokkos::View<double[20]>
+                    -> Kokkos::View<char[20]>
+so given a type 'Tx', we add a pointer dimension to it:
+  int -> int*
+  double[5] -> double*[5]
+  char[10][20][30] -> char*[10][20][30]
+then make that dimension the number of tuples specified to the controller:
+  int* -> int[num_tuples]
+  double*[5] -> double[num_tuples][5]
+  char*[10][20][30] -> char[num_tuples][10][20][30]
+  
