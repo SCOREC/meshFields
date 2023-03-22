@@ -77,44 +77,36 @@ public:
   template <class FieldType, class T = typename FieldType::Type>
   T sum(FieldType &field) {
     T result;
-    auto indexToSA = sliceController.indexToSA;
     auto reductionKernel = KOKKOS_LAMBDA(const int &i, T &lsum) {
-      int s, a;
-      indexToSA(i, s, a);
-      lsum += field(s, a);
+      lsum += field(i);
     };
     sliceController.parallel_reduce(reductionKernel, result, "sum_reduce");
     return result;
   }
-
+  
   template <class FieldType, class T = typename FieldType::Type>
   T min(FieldType &field) {
     T min;
-    auto indexToSA = sliceController.indexToSA;
     auto reductionKernel = KOKKOS_LAMBDA(const int &i, T &lmin) {
-      int s, a;
-      indexToSA(i, s, a);
-      lmin = lmin < field(s, a) ? lmin : field(s, a);
+      lmin = lmin < field(i) ? lmin : field(i);
     };
     auto reducer = Kokkos::Min<T>(min);
-    sliceController.parallel_reduce(reductionKernel, reducer, "min_reduce");
+    this->parallel_reduce(reductionKernel, reducer, "min_reduce");
     return min;
   }
 
   template <class FieldType, class T = typename FieldType::Type>
   T max(FieldType &field) {
     T max;
-    auto indexToSA = sliceController.indexToSA;
     auto reductionKernel = KOKKOS_LAMBDA(const int &i, T &lmax) {
-      int s, a;
-      indexToSA(i, s, a);
-      lmax = lmax > field(s, a) ? lmax : field(s, a);
+      lmax = lmax > field(i) ? lmax : field(i);
     };
     auto reducer = Kokkos::Max<T>(max);
-    sliceController.parallel_reduce(reductionKernel, reducer, "max_reduce");
+    this->parallel_reduce("max_reduce", reductionKernel, reducer, "max_reduce");
     return max;
   }
-
+  */
+  /*
   template <class FieldType> double mean(FieldType &field) {
     return static_cast<double>(sum(field)) / sliceController.size();
   }
@@ -129,36 +121,42 @@ public:
   }
   
   
-  template <typename FunctorType, class ReducerType, class IS, class IE>
-  void parallel_reduce(const std::initializer_list<IS>& start,
+  template <typename FunctorType, class IS, class IE, class ReducerType>
+  void parallel_reduce(std::string tag,
+                       const std::initializer_list<IS>& start,
                        const std::initializer_list<IE>& end,
-                       FunctorType &reductionKernel, ReducerType &reducer,
-                       std::string tag) {
+                       FunctorType &reductionKernel,
+                       ReducerType &reducer) {
     /* RUN IT HERE */
     /* TODO: Apply executionspace from controller to policy. */
     /* TODO: infinite reducers */
-    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
+    /* Number of arguements to lambda should be equal to number of ranks + number of reducers
+     * -> adjust 'RANK' accordingly */
+    constexpr std::size_t reducer_count = 1;
+    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity - reducer_count; 
     assert( start.size() == end.size() );
     if constexpr ( RANK <= 1 ) {
       Kokkos::RangePolicy</*TODO*/> policy((*start.begin()), (*end.begin()) );
       Kokkos::parallel_reduce( tag, policy, reductionKernel, reducer );
     } else {
-      Kokkos::Array<int64_t,RANK> a_start = MeshFieldUtil::to_kokkos_array( start );
-      Kokkos::Array<int64_t,RANK> a_end = MeshFieldUtil::to_kokkos_array( end );
+      auto a_start = MeshFieldUtil::to_kokkos_array<RANK>( start );
+      auto a_end = MeshFieldUtil::to_kokkos_array<RANK>( end );
       Kokkos::MDRangePolicy<Kokkos::Rank<RANK> /*TODO*/> policy(a_start, a_end);
       Kokkos::parallel_reduce( tag, policy, reductionKernel, reducer );
     }
 
   }
   
-  /*
   template <typename KernelType>
-  void parallel_scan(KernelType &scanKernel, std::string tag) {
-    Kokkos::parallel_scan(tag, sliceController.size() + 1, scanKernel);
+  void parallel_scan(std::string tag,
+                     int64_t start_index,
+                     int64_t end_index, 
+                     KernelType &scanKernel ) {
+    Kokkos::RangePolicy p(start_index, end_index);
+    Kokkos::parallel_scan(tag, p, scanKernel);
   }
   // depending on size of dimensions, take variable number of arguements
   // that give pairs of lower and upper bound for the multi-dim views.
-  */
 };
 
 } // namespace MeshField

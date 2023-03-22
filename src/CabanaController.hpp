@@ -89,15 +89,6 @@ public:
     return wrapper_slice_t<type, stride>(std::move(slice));
   }
   
-  template <typename FunctorType, typename ReductionType>
-  void parallel_reduce(FunctorType &reductionKernel,
-                       ReductionType &reductionType, std::string tag) {
-
-    /* BE ABLE TO SPECIFY MUTLIPLE DIMS */
-    Kokkos::RangePolicy<ExecutionSpace> policy(0, num_tuples);
-    Kokkos::parallel_reduce(tag, policy, reductionKernel, reductionType);
-  }
-  
   template <typename FunctorType, class IS, class IE>
   void parallel_for(const std::initializer_list<IS> start,
                     const std::initializer_list<IE> end,
@@ -105,9 +96,19 @@ public:
                     std::string tag) {
     
     /*
-        For loop that will iterate from (*start.begin())
-        to (*end.begin())
+      Issue:
+        The simd_policy is fundamentally different than the parallel_for
+        and cannot be deduced as a case just from the input alone...
+        TODO: TALK ABOUT W/ CAMERON.
     */
+    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
+    assert( RANK >= 1 && RANK <= 5 );
+    if( RANK == 1 ) {
+      // LINEAR DISPATCH
+      
+    } else {
+      
+    }
     Cabana::SimdPolicy<vecLen, ExecutionSpace> 
       simdPolicy((*start.begin()), (*end.begin()));
     Cabana::simd_parallel_for(simdPolicy,vectorKernel,tag);

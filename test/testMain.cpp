@@ -10,6 +10,7 @@
 #include <vector>
 #include <iostream>
 #include <initializer_list>
+#include <stdio.h>
 
 #define TOLERANCE 1e-10;
 
@@ -266,16 +267,64 @@ void kokkosDocumentationLiesTest() { // They dont...
     });
 }
 
+void kokkosParallelReduceTest() {
+  /* Examples from Kokkos Documentation:
+   * https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/parallel_reduce.html?highlight=parallel_reduce*/
+  using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
+    std::vector<int> dims;
+    dims.push_back(10);
+    Ctrlr c(dims);
+    MeshField::MeshField<Ctrlr> kok(c);
+
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, double& lsum ) {
+      lsum += 1.0 * i;
+    };
+    kok.parallel_reduce("ReduceTest",{0},{N},kernel,result);
+    printf("Reduce test 1-D Result: %d %.2lf\n",N,result);
+  }
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, const int&j, double& lsum ) {
+      lsum += i * j;
+    };
+    kok.parallel_reduce("ReduceTest2",{0,0},{N,N},kernel,result);
+    printf("Reduce test 2-D Result: %d %.2lf\n",N,result);
+  }
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, const int& j, const int& k, double& lsum ) {
+      lsum += i * j * k;
+    };
+    kok.parallel_reduce("ReduceTest3",{0,0,0},{N,N,N},kernel,result);
+    printf("Reduce test 3-D Result: %d %.2lf\n",N,result);
+  }
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, const int& j, const int& k, const int& l, double& lsum ) {
+      lsum += i * j * k * l;
+    };
+    kok.parallel_reduce("ReduceTest4",{0,0,0,0},{N,N,N,N},kernel,result);
+    printf("Reduce test 4-D Result: %d %.2lf\n",N,result);
+  }
+}
+
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
   
-  testKokkosParallelFor();
+  testKokkosConstructor(num_tuples);
+  //testKokkosParallelFor();
+  //kokkosParallelReduceTest();
   //kokkosDocumentationLiesTest();
 
   /*
-  testingStufffs();
-  testKokkosConstructor(num_tuples);
+  testingStuff();
   testMakeSliceCabana(num_tuples);
   testMakeSliceKokkos(num_tuples);
   */
