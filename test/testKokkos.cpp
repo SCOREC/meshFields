@@ -29,9 +29,7 @@ using MemorySpace = Kokkos::CudaUVMSpace;
 void testMakeSliceKokkos( int num_tuples ) {
   printf("== START testMakeSliceKokkos ==\n");
   using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double*>;
-  std::vector<int> theta;
-  theta.push_back(num_tuples);
-  Ctrlr c(theta);
+  Ctrlr c({num_tuples});
   MeshField::MeshField<Ctrlr> kokkosMeshField(c);
 
   auto field0 = kokkosMeshField.makeField<0>();
@@ -50,10 +48,7 @@ void testKokkosConstructor( int num_tuples ) {
   printf("== START testKokkosConstructor ==\n");
   {
     using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double**[3]>;
-    std::vector<int> theta;
-    theta.push_back(num_tuples);
-    theta.push_back(num_tuples);
-    Ctrlr c(theta);
+    Ctrlr c({num_tuples,num_tuples});
     MeshField::MeshField<Ctrlr> kok(c);
   }
   {
@@ -63,13 +58,7 @@ void testKokkosConstructor( int num_tuples ) {
   }
   {
     using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*****>;
-    std::vector<int> theta;
-    theta.push_back(10);
-    theta.push_back(10);
-    theta.push_back(10);
-    theta.push_back(10);
-    theta.push_back(10);
-    Ctrlr c(theta);
+    Ctrlr c({10,10,10,10,10});
     MeshField::MeshField<Ctrlr> kok(c);
   }
   {
@@ -86,9 +75,7 @@ void testingStufffs() {
 
   printf("== START testingStufffs ==\n");
   using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
-  std::vector<int> dims;
-  dims.push_back(10);
-  Ctrlr c(dims);
+  Ctrlr c({10});
   MeshField::MeshField<Ctrlr> kok(c);
   
   auto field0 = kok.makeField<0>();
@@ -107,10 +94,7 @@ void testKokkosParallelFor() {
   printf("== START testKokkosParallelFor ==\n");
 
   using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace, int**>;
-  std::vector<int> dims;
-  dims.push_back(10);
-  dims.push_back(10);
-  Ctrlr c(dims);
+  Ctrlr c({10,10});
   MeshField::MeshField<Ctrlr> kok(c);
   
   auto field0 = kok.makeField<0>();
@@ -141,10 +125,8 @@ void kokkosParallelReduceTest() {
    * https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/parallel_reduce.html?highlight=parallel_reduce*/
 
   printf("== START kokkosParallelReduceTest ==\n");
-  std::vector<int> dims;
-  dims.push_back(10);
   using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
-  Ctrlr c1(dims);
+  Ctrlr c1({10});
   MeshField::MeshField<Ctrlr> kok(c1);
 
   {

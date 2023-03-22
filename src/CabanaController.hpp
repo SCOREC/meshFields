@@ -45,6 +45,7 @@ class CabanaController {
   using DataTypes = Cabana::MemberTypes<Ts...>;
 
 public:
+  typedef ExecutionSpace exe;
   static constexpr int vecLen =
       Cabana::AoSoA<DataTypes, DeviceType>::vector_length;
 

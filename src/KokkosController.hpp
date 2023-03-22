@@ -167,15 +167,18 @@ private:
 
 public:
 
+  typedef ExecutionSpace exe;
+
   KokkosController()  {
     //construct_sizes<Ts...>();
     std::vector<int> obj;
     values_ = construct<Ts...>(obj);
   }
     
-  KokkosController(std::vector<int> items) {
+  KokkosController(const std::initializer_list<int> items) {
+    std::vector<int> obj(items);
     //construct_sizes<Ts...>();
-    values_ = construct<Ts...>(items);
+    values_ = construct<Ts...>(obj);
   }
 
   

@@ -134,14 +134,16 @@ public:
      * -> adjust 'RANK' accordingly */
     constexpr std::size_t reducer_count = 1;
     constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity - reducer_count; 
+    
+    using EXE_SPACE = typename Controller::exe;
     assert( start.size() == end.size() );
     if constexpr ( RANK <= 1 ) {
-      Kokkos::RangePolicy</*TODO*/> policy((*start.begin()), (*end.begin()) );
+      Kokkos::RangePolicy<EXE_SPACE> policy((*start.begin()), (*end.begin()) );
       Kokkos::parallel_reduce( tag, policy, reductionKernel, reducer );
     } else {
       auto a_start = MeshFieldUtil::to_kokkos_array<RANK>( start );
       auto a_end = MeshFieldUtil::to_kokkos_array<RANK>( end );
-      Kokkos::MDRangePolicy<Kokkos::Rank<RANK> /*TODO*/> policy(a_start, a_end);
+      Kokkos::MDRangePolicy<Kokkos::Rank<RANK>, EXE_SPACE> policy(a_start, a_end);
       Kokkos::parallel_reduce( tag, policy, reductionKernel, reducer );
     }
 
