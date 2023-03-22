@@ -100,7 +100,9 @@ public:
         The simd_policy is fundamentally different than the parallel_for
         and cannot be deduced as a case just from the input alone...
         TODO: TALK ABOUT W/ CAMERON.
-    */
+        Always logical indices -> Create lambda wrapper.
+        // TODO AFTER SUM,MEAN,ETC
+    
     constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
     assert( RANK >= 1 && RANK <= 5 );
     if( RANK == 1 ) {
@@ -112,6 +114,7 @@ public:
     Cabana::SimdPolicy<vecLen, ExecutionSpace> 
       simdPolicy((*start.begin()), (*end.begin()));
     Cabana::simd_parallel_for(simdPolicy,vectorKernel,tag);
+    */
   }
   
 };

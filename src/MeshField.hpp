@@ -146,7 +146,7 @@ public:
     }
 
   }
-  
+  //TODO TEST
   template <typename KernelType>
   void parallel_scan(std::string tag,
                      int64_t start_index,

@@ -39,9 +39,11 @@ message(STATUS "IS_TESTING: ${IS_TESTING}")
 #add_executable(MeshField test/testMeshField.cpp)
 #target_link_libraries(MeshField PRIVATE meshFields)
 
-add_executable(Main test/testMain.cpp)
-target_link_libraries(Main PRIVATE meshFields)
+#add_executable(Main test/testMain.cpp)
+#target_link_libraries(Main PRIVATE meshFields)
 
+add_executable(KokkosTests test/testKokkos.cpp)
+target_link_libraries(KokkosTests PRIVATE meshFields)
 
 #add_test(sliceWrapper50 ./SliceWrapper 50)
 #add_test(meshField ./MeshField)

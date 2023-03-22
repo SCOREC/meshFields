@@ -1,0 +1,235 @@
+#include "MeshField.hpp"
+#include "CabanaController.hpp"
+#include "KokkosController.hpp"
+#include "MeshField_Macros.hpp"
+#include "MeshField_Utility.hpp"
+
+#include <Cabana_Core.hpp>
+#include <Kokkos_Core.hpp>
+
+#include <vector>
+#include <iostream>
+#include <initializer_list>
+#include <stdio.h>
+
+#define TOLERANCE 1e-10;
+
+// helper testing functions
+
+// compare doubles within a tolerance
+KOKKOS_INLINE_FUNCTION
+bool doubleCompare(double d1, double d2) {
+  double diff = fabs(d1 - d2);
+  return diff < TOLERANCE;
+}
+
+using ExecutionSpace = Kokkos::Cuda;
+using MemorySpace = Kokkos::CudaUVMSpace;
+
+void testMakeSliceKokkos( int num_tuples ) {
+  printf("== START testMakeSliceKokkos ==\n");
+  using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double*>;
+  std::vector<int> theta;
+  theta.push_back(num_tuples);
+  Ctrlr c(theta);
+  MeshField::MeshField<Ctrlr> kokkosMeshField(c);
+
+  auto field0 = kokkosMeshField.makeField<0>();
+  
+  auto testKernel = KOKKOS_LAMBDA( const int x ) {
+    double gamma = (double)x;
+    field0(x) = gamma;
+    assert(doubleCompare(field0(x),gamma));
+  };
+
+  Kokkos::parallel_for("testMakeSliceKokkos()", num_tuples, testKernel);
+  printf("== END testMakeSliceKokkos ==\n");
+}
+
+void testKokkosConstructor( int num_tuples ) {
+  printf("== START testKokkosConstructor ==\n");
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double**[3]>;
+    std::vector<int> theta;
+    theta.push_back(num_tuples);
+    theta.push_back(num_tuples);
+    Ctrlr c(theta);
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double[3]>;
+    Ctrlr c;
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*****>;
+    std::vector<int> theta;
+    theta.push_back(10);
+    theta.push_back(10);
+    theta.push_back(10);
+    theta.push_back(10);
+    theta.push_back(10);
+    Ctrlr c(theta);
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int>;
+    Ctrlr c;
+    MeshField::MeshField<Ctrlr> kok(c);
+  }
+
+  printf("== END testKokkosConstructor ==\n");
+}
+
+
+void testingStufffs() {
+
+  printf("== START testingStufffs ==\n");
+  using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
+  std::vector<int> dims;
+  dims.push_back(10);
+  Ctrlr c(dims);
+  MeshField::MeshField<Ctrlr> kok(c);
+  
+  auto field0 = kok.makeField<0>();
+
+  auto vectorKernel = KOKKOS_LAMBDA(const int &s) {
+    field0(s) = 3;
+  };
+  Kokkos::parallel_for("tag", 10, vectorKernel );
+
+  printf("== END testingStufffs ==\n");
+}
+
+
+void testKokkosParallelFor() {
+
+  printf("== START testKokkosParallelFor ==\n");
+
+  using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace, int**>;
+  std::vector<int> dims;
+  dims.push_back(10);
+  dims.push_back(10);
+  Ctrlr c(dims);
+  MeshField::MeshField<Ctrlr> kok(c);
+  
+  auto field0 = kok.makeField<0>();
+
+  auto vectorKernel = KOKKOS_LAMBDA (const int s, const int a) {
+    field0(s,a) = s+a;
+    assert(field0(s,a) == s+a);
+  };
+
+  kok.parallel_for({0,0},{10,10},vectorKernel, "testKokkosParallelFor()");
+
+  printf("== END testKokkosParallelFor ==\n");
+}
+
+void kokkosDocumentationLiesTest() { // They dont...
+  printf("== START kokkosDocumentationLiesTest ==\n");
+  Kokkos::Array<int64_t,3> start = {0,0,0};
+  Kokkos::Array<int64_t,3> end = {2,2,2};
+  Kokkos::parallel_for("0_0", Kokkos::MDRangePolicy< Kokkos::Rank<3> >(start,end),
+    KOKKOS_LAMBDA (const int c, const int f, const int p) {
+      printf("Kokkos documentation lies!!!: c:%d f:%d p:%d\n",c,f,p);
+    });
+  printf("== END kokkosDocumentationLiesTest ==\n");
+}
+
+void kokkosParallelReduceTest() {
+  /* Examples from Kokkos Documentation:
+   * https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/parallel_reduce.html?highlight=parallel_reduce*/
+
+  printf("== START kokkosParallelReduceTest ==\n");
+  std::vector<int> dims;
+  dims.push_back(10);
+  using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
+  Ctrlr c1(dims);
+  MeshField::MeshField<Ctrlr> kok(c1);
+
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, double& lsum ) {
+      lsum += 1.0 * i;
+    };
+    kok.parallel_reduce("ReduceTest",{0},{N},kernel,result);
+    double result_verify = 0;
+    for( int i = 0; i < N; i++ ) {
+      result_verify += 1.0*i;
+    }
+    assert( result_verify == result );
+    printf("Reduce test 1-D Result: %d %.2lf\n",N,result);
+  }
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, const int&j, double& lsum ) {
+      lsum += i * j;
+    };
+    kok.parallel_reduce("ReduceTest2",{0,0},{N,N},kernel,result);
+    double result_verify = 0;
+    for( int i = 0; i < N; i++ ) {
+      for( int j = 0; j < N; j++ ) {
+        result_verify += i*j;
+      }
+    }
+    assert( result_verify == result );
+
+    printf("Reduce test 2-D Result: %d %.2lf\n",N,result);
+  }
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, const int& j, const int& k, double& lsum ) {
+      lsum += i * j * k;
+    };
+    kok.parallel_reduce("ReduceTest3",{0,0,0},{N,N,N},kernel,result);
+    double result_verify = 0;
+    for( int i = 0; i < N; i++ ) {
+      for( int j = 0; j < N; j++ ) {
+        for( int k = 0; k < N; k++ ) {
+          result_verify += i*j*k;
+        }
+      }
+    }
+    assert( result_verify == result );
+    printf("Reduce test 3-D Result: %d %.2lf\n",N,result);
+  }
+  {
+    double result;
+    int N = 10;
+    auto kernel = KOKKOS_LAMBDA( const int& i, const int& j, const int& k, const int& l, double& lsum ) {
+      lsum += i * j * k * l;
+    };
+    kok.parallel_reduce("ReduceTest4",{0,0,0,0},{N,N,N,N},kernel,result);
+    double result_verify = 0;
+    for( int i = 0; i < N; i++ ) {
+      for( int j = 0; j < N; j++ ) {
+        for( int k = 0; k < N; k++ ) {
+          for( int l = 0; l < N; l++ ) {
+            result_verify += i*j*k*l;
+          }
+        }
+      }
+    }
+    assert( result_verify == result );
+    printf("Reduce test 4-D Result: %d %.2lf\n",N,result);
+  }
+
+  printf("== END kokkosParallelReduceTest ==\n");
+}
+
+int main(int argc, char *argv[]) {
+  int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
+  Kokkos::ScopeGuard scope_guard(argc, argv);
+  
+  testKokkosConstructor(num_tuples);
+  testKokkosParallelFor();
+  kokkosParallelReduceTest();
+  testMakeSliceKokkos(num_tuples);
+  
+
+  //kokkosDocumentationLiesTest();
+  return 0;
+}
