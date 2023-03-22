@@ -153,34 +153,11 @@ void rank1_arr(int num_tuples) {
   cabMeshField.parallel_for(0, num_tuples, vector_kernel, "rank1_arr_pfor");
 }
 */
-/*
-void testMakeSliceCabana( int num_tuples ) {
 
-  using Ctrl = Controller::CabanaController<ExecutionSpace,MemorySpace,double>;
-  Ctrl c( num_tuples );
-  MeshField::MeshField<Ctrl> cabanaMeshField(c);
-
-  auto field0 = cabanaMeshField.makeField<0>();
-
-  auto testKernel = KOKKOS_LAMBDA( const int x ) {
-    double gamma = (double)x;
-    field0(x) = gamma;
-    assert(doubleCompare(field0(x),gamma));
-  };
-  Kokkos::parallel_for("testMakeSliceCabana()", num_tuples, testKernel);
-
-}
-*/
 
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
-  
-
-  /*
-  testMakeSliceCabana(num_tuples);
-  testMakeSliceKokkos(num_tuples);
-  */
 
   //single_type(num_tuples);
   //multi_type(num_tuples);

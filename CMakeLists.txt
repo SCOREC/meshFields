@@ -45,9 +45,11 @@ message(STATUS "IS_TESTING: ${IS_TESTING}")
 add_executable(KokkosTests test/testKokkos.cpp)
 target_link_libraries(KokkosTests PRIVATE meshFields)
 
+add_executable(CabanaTests test/testCabana.cpp)
+target_link_libraries(CabanaTests PRIVATE meshFields)
 #add_test(sliceWrapper50 ./SliceWrapper 50)
 #add_test(meshField ./MeshField)
-add_test(main ./Main)
+#add_test(KokkosTests ./Main)
 
 ## export the library
 set_target_properties(meshFields PROPERTIES PUBLIC_HEADER "${MESHFIELD_HEADERS}")
