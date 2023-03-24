@@ -28,8 +28,9 @@ using MemorySpace = Kokkos::CudaUVMSpace;
 
 void testMakeSliceKokkos( int num_tuples ) {
   printf("== START testMakeSliceKokkos ==\n");
+  int N = 10;
   using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double*>;
-  Ctrlr c({num_tuples});
+  Ctrlr c({10});
   MeshField::MeshField<Ctrlr> kokkosMeshField(c);
 
   auto field0 = kokkosMeshField.makeField<0>();
@@ -40,7 +41,7 @@ void testMakeSliceKokkos( int num_tuples ) {
     assert(doubleCompare(field0(x),gamma));
   };
 
-  Kokkos::parallel_for("testMakeSliceKokkos()", num_tuples, testKernel);
+  Kokkos::parallel_for("testMakeSliceKokkos()", N, testKernel);
   printf("== END testMakeSliceKokkos ==\n");
 }
 
@@ -200,6 +201,25 @@ void kokkosParallelReduceTest() {
   }
 
   printf("== END kokkosParallelReduceTest ==\n");
+}
+
+void kokkosSizeTest() {
+  printf("== START kokkosSizeTest ==\n");
+  const int a = 5;
+  const int b = 4;
+  const int c = 3;
+  const int d = 2;
+  const int e = 1;
+
+  
+  using Ctrlr1 = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
+  using Ctrlr2 = Controller::KokkosController<MemorySpace,ExecutionSpace,int**[c], double[a][b][c][d][e],>;
+  Ctrlr1 c1({5});
+  Ctrlr2 c2({5,4});
+  MeshField::MeshField<Ctrlr1> kok1(c1);
+  MeshField::MeshField<Ctrlr2> kok2(c2);
+
+  printf("== END kokkosSizeTest ==\n");
 }
 
 int main(int argc, char *argv[]) {

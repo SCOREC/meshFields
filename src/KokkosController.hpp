@@ -51,7 +51,7 @@ struct KokkosSliceWrapper{
 };
 
 
-template <class MemorySpace, class ExecutionSpace, class... Ts>
+template <class MemorySpace, class ExecutionSpace, typename... Ts>
 class KokkosController {
 
   // type definitions
@@ -77,13 +77,12 @@ private:
 
   template<typename... Tx>
   auto construct( std::vector<int> dims ) {
-    //itr = extent_sizes.begin();
     return std::make_tuple( create_view<Tx>("view", dims)... );
   }
-
+  
   template<typename Tx>
-  Kokkos::View<Tx,MemorySpace>
-  create_view( std::string tag, std::vector<int> &dims ) {
+  Kokkos::View<Tx,MemorySpace> 
+  create_view( std::string tag, std::vector<int> &dims ) { 
     int rank = Kokkos::View<Tx>::rank;
     int dynamic = Kokkos::View<Tx>::rank_dynamic;
     assert( rank <= 5 );
@@ -109,59 +108,53 @@ private:
       default:
         rt = Kokkos::View<Tx,MemorySpace>(tag);
     }
-    /*
+    
     // Places all of the dyanmic ranks into the extent_sizes
     // -> pointed to by 'itr'
     for( int i = 0; i < dynamic; i++ ) {
-      (*itr)[i] = x[i]; // extent_sizes[Tx][0,...,dynamic_rank-1]
+      (*itr)[i] = dims[i]; // extent_sizes[Tx][0,...,dynamic_rank-1]
     }
     
     itr++;
-    */
+    
     dims.erase( dims.begin(), dims.begin()+dynamic );
     return rt;
   }
-  /*
+  
   // *[1][2][3][4] -> static_rank = 4 dynamic_rank = 1 -> [0,1,2,3,4]
   // **[5] -> static_rank = 1, dynamic_rank = 2 -> [0,0,5]
   template< typename T1, typename... Tx>
   void construct_sizes() {
     std::vector<int> sizes;
-    constexpr auto static_rank = Kokkos::View<T1>::rank;
-    constexpr auto dynamic_rank = Kokkos::View<T1>::rank_dynamic;
-    assert( static_rank + dynamic_rank <= 5 );
-    assert( static_rank + dynamic_rank >= 0 );
-    switch( static_rank ) {
-      case 5:
-        constexpr auto a = 4;
-        sizes.push_back( (int)std::extent<T1,dynamic_rank + a>::value );
-      case 4:
-        constexpr auto b = 3;
-        sizes.push_back( (int)std::extent<T1,dynamic_rank + b>::value );
-      case 3:
-        constexpr auto c = 2;
-        sizes.push_back( (int)std::extent<T1,dynamic_rank + c>::value );
-      case 2:
-        constexpr auto d = 1;
-        sizes.push_back( (int)std::extent<T1,dynamic_rank + d>::value );
-      case 1:
-        sizes.push_back( (int)std::extent<T1,dynamic_rank>::value );
-      case 0:
-        break;
-    }
-    for( int i = 0; i < dynamic_rank; i++ ) {
-      sizes.push_back( 0 );
-    }
-    std::reverse( sizes.begin(), sizes.end() );
+    int total_rank = Kokkos::View<T1>::rank;
+    assert( total_rank <= 5 );
+    assert( total_rank >= 0 );
+    sizes.push_back( (int)std::extent<T1,0>::value );
+    sizes.push_back( (int)std::extent<T1,1>::value );
+    sizes.push_back( (int)std::extent<T1,2>::value );
+    sizes.push_back( (int)std::extent<T1,3>::value );
+    sizes.push_back( (int)std::extent<T1,4>::value );
     extent_sizes.push_back(sizes);
-    if( sizeof...(Tx) != 0 ) {
-      construct_sizes_helper<Tx...>();
-    }
+    if constexpr ( sizeof...(Tx) > 1 ) construct_sizes<Tx...>();
+    else                    construct_final_size<Tx...>();
   }
-  */
+
+  template< typename T1 >
+  void construct_final_size() {
+    std::vector<int> sizes;
+    int total_rank = Kokkos::View<T1>::rank;
+    assert( total_rank <= 5 );
+    assert( total_rank >= 0 );
+    sizes.push_back( (int)std::extent<T1,0>::value );
+    sizes.push_back( (int)std::extent<T1,1>::value );
+    sizes.push_back( (int)std::extent<T1,2>::value );
+    sizes.push_back( (int)std::extent<T1,3>::value );
+    sizes.push_back( (int)std::extent<T1,4>::value );
+    extent_sizes.push_back(sizes);
+  }
   
   // member vaiables
-  //std::vector<std::vector<int>>::iterator itr;
+  std::vector<std::vector<int>>::iterator itr;
   std::vector<std::vector<int>> extent_sizes;
   std::tuple<Kokkos::View<Ts,MemorySpace>...> values_;
 
@@ -169,21 +162,25 @@ public:
 
   typedef ExecutionSpace exe;
 
-  KokkosController()  {
-    //construct_sizes<Ts...>();
+  KokkosController() {
+    if constexpr ( sizeof...(Ts) > 1 ) { construct_sizes<Ts...>(); }
+    else if constexpr ( sizeof...(Ts) == 1 ) { construct_final_size<Ts...>(); }
+    itr = extent_sizes.begin();
     std::vector<int> obj;
     values_ = construct<Ts...>(obj);
   }
     
   KokkosController(const std::initializer_list<int> items) {
+    if constexpr ( sizeof...(Ts) > 1 ) { construct_sizes<Ts...>(); }
+    else if constexpr ( sizeof...(Ts) == 1 ) { construct_final_size<Ts...>(); }
+    itr = extent_sizes.begin();
     std::vector<int> obj(items);
-    //construct_sizes<Ts...>();
     values_ = construct<Ts...>(obj);
   }
 
   
   // TODO update relative to datastructure
-  int size() const { return 0; }
+  std::vector<std::vector<int>> size() const { return extent_sizes; }
   
   template<std::size_t index> auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;

@@ -80,7 +80,8 @@ public:
   CabanaController(int n)
       : aosoa("sliceAoSoA", n), num_tuples(n) {}
 
-  int size() const { return num_tuples; }
+  //TODO: update
+  std::vector<std::vector<int>> size() const { std::vector<std::vector<int>> x; return x; }
 
 
   template <std::size_t index> auto makeSlice() {

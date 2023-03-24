@@ -52,6 +52,8 @@ template <class Controller> class MeshField {
 public:
 
   MeshField(Controller controller) : sliceController(std::move(controller)) {}
+  
+  std::vector<std::vector<int>> size() const { return sliceController.size(); }
 
   template <std::size_t index> auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
@@ -120,15 +122,12 @@ public:
     sliceController.parallel_for(start,end, vectorKernel, tag);
   }
   
-  
   template <typename FunctorType, class IS, class IE, class ReducerType>
   void parallel_reduce(std::string tag,
                        const std::initializer_list<IS>& start,
                        const std::initializer_list<IE>& end,
                        FunctorType &reductionKernel,
                        ReducerType &reducer) {
-    /* RUN IT HERE */
-    /* TODO: Apply executionspace from controller to policy. */
     /* TODO: infinite reducers */
     /* Number of arguements to lambda should be equal to number of ranks + number of reducers
      * -> adjust 'RANK' accordingly */
