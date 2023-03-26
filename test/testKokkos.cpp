@@ -211,13 +211,20 @@ void kokkosSizeTest() {
   const int d = 2;
   const int e = 1;
 
-  
-  using Ctrlr1 = Controller::KokkosController<MemorySpace,ExecutionSpace,int*>;
-  using Ctrlr2 = Controller::KokkosController<MemorySpace,ExecutionSpace,int**[c], double[a][b][c][d][e],>;
+  using Ctrlr1 = Controller::KokkosController<MemorySpace,ExecutionSpace,int*, double[a]>;
+  using Ctrlr2 = Controller::KokkosController<MemorySpace,ExecutionSpace,int****[e], double[a][b][c][d][e]>;
   Ctrlr1 c1({5});
-  Ctrlr2 c2({5,4});
-  MeshField::MeshField<Ctrlr1> kok1(c1);
-  MeshField::MeshField<Ctrlr2> kok2(c2);
+  Ctrlr2 c2({5,4,3,2});
+  MeshField::MeshField<Ctrlr1> kok1(c1); // sizes ->[[5,0,0,0,0],[5,0,0,0,0,0]]
+  MeshField::MeshField<Ctrlr2> kok2(c2); // sizes -> [[5,4,3,2,1]]
+
+  for( int i = 0; i < 2; i++ ) {
+    for( int j = 0; j < 5; j++ ) {
+      printf("kok1.size(%d,%d) = %d\n",i,j,kok1.size(i,j));
+      //assert( kok1_sizes[i][j] == psi[j] );
+    }
+  }
+
 
   printf("== END kokkosSizeTest ==\n");
 }
@@ -230,7 +237,7 @@ int main(int argc, char *argv[]) {
   testKokkosParallelFor();
   kokkosParallelReduceTest();
   testMakeSliceKokkos(num_tuples);
-  
+  kokkosSizeTest();
 
   //kokkosDocumentationLiesTest();
   return 0;

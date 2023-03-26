@@ -81,7 +81,7 @@ public:
       : aosoa("sliceAoSoA", n), num_tuples(n) {}
 
   //TODO: update
-  std::vector<std::vector<int>> size() const { std::vector<std::vector<int>> x; return x; }
+  int size() const { return 0; }
 
 
   template <std::size_t index> auto makeSlice() {

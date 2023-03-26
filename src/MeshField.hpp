@@ -53,7 +53,8 @@ public:
 
   MeshField(Controller controller) : sliceController(std::move(controller)) {}
   
-  std::vector<std::vector<int>> size() const { return sliceController.size(); }
+  int size(int type_index, int dimension_index) 
+  { return sliceController.size(type_index,dimension_index); }
 
   template <std::size_t index> auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
