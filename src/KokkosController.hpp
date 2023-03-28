@@ -1,17 +1,11 @@
 #ifndef kokkosslicewrapper_hpp
 #define kokkosslicewrapper_hpp
 
-#define MeshFields_BUILD1(x) x[0]
-#define MeshFields_BUILD2(x) MeshFields_BUILD1(x), x[1]
-#define MeshFields_BUILD3(x) MeshFields_BUILD2(x), x[2]
-#define MeshFields_BUILD4(x) MeshFields_BUILD3(x), x[3]
-#define MeshFields_BUILD5(x) MeshFields_BUILD4(x), x[4]
-#define MeshFields_BUILD(i,x) MeshFields_BUILD##i(x)
-
 #include <tuple>
 #include <vector>
 #include <cassert>
 #include <iterator>
+#include <typeinfo> // typeid
 #include <algorithm> // std::reverse
 #include <type_traits>
 #include <initializer_list>
@@ -93,51 +87,84 @@ private:
     Kokkos::View<Tx,MemorySpace> rt;
     switch( dynamic ) {
       case 1:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(1,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-1] );
         break;
       case 2:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(2,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-2],
+                                               dims[dims.size()-1] );
         break;
       case 3:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(3,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-3],
+                                               dims[dims.size()-2],
+                                               dims[dims.size()-1]);
         break;
       case 4:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(4,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-4],
+                                               dims[dims.size()-3],
+                                               dims[dims.size()-2],
+                                               dims[dims.size()-1]);
         break;
       case 5:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, MeshFields_BUILD(5,dims) );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-5],
+                                               dims[dims.size()-4],
+                                               dims[dims.size()-3],
+                                               dims[dims.size()-2],
+                                               dims[dims.size()-1]);
         break;
       default:
         rt = Kokkos::View<Tx,MemorySpace>(tag);
+        break;
     }
     
     // Places all of the dyanmic ranks into the extent_sizes
     for( int i = 0; i < dynamic; i++ ) {
-      //(*itr)[i] = dims[i]; // extent_sizes[Tx][0,...,dynamic_rank-1]
-      this->extent_sizes[theta][i] = dims[i];
-      //TODO REMOVE DEBUG
-      printf("extent_sizes[%d][%d] = %d\n", theta,i,extent_sizes[theta][i]);
-      printf("size(%d,%d) = %d\n",theta,i,this->size(theta,i));
-
+      this->extent_sizes[theta][i] = dims[dims.size()-dynamic+i];
     }
-    theta+=1;
-    dims.erase( dims.begin(), dims.begin()+dynamic );
+    this->theta-=1;
+    dims.erase( dims.end()-dynamic, dims.end());
     return rt;
   }
   
-  // *[1][2][3][4] -> static_rank = 4 dynamic_rank = 1 -> [0,1,2,3,4]
-  // **[5] -> static_rank = 1, dynamic_rank = 2 -> [0,0,5]
   template< typename T1, typename... Tx>
   void construct_sizes() {
     int total_rank = Kokkos::View<T1>::rank;
+    int dynamic_rank = Kokkos::View<T1>::rank_dynamic;
+    const int static_rank = total_rank - dynamic_rank;
     assert( total_rank <= 5 );
     assert( total_rank >= 0 );
-    extent_sizes[delta][0] = ( (int)std::extent<T1,0>::value );
-    extent_sizes[delta][1] = ( (int)std::extent<T1,1>::value );
-    extent_sizes[delta][2] = ( (int)std::extent<T1,2>::value );
-    extent_sizes[delta][3] = ( (int)std::extent<T1,3>::value );
-    extent_sizes[delta][4] = ( (int)std::extent<T1,4>::value );
-    delta+=1;
+
+    switch( static_rank ) {
+      case 1: 
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        break;
+      case 2:
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
+        break;
+      case 3:
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
+        extent_sizes[delta][dynamic_rank+2] = (int)std::extent<T1,2>::value;
+        break;
+      case 4:
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
+        extent_sizes[delta][dynamic_rank+2] = (int)std::extent<T1,2>::value;
+        extent_sizes[delta][dynamic_rank+3] = (int)std::extent<T1,3>::value;
+        break;
+      case 5:
+        extent_sizes[delta][0] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][1] = (int)std::extent<T1,1>::value;
+        extent_sizes[delta][2] = (int)std::extent<T1,2>::value;
+        extent_sizes[delta][3] = (int)std::extent<T1,3>::value;
+        extent_sizes[delta][4] = (int)std::extent<T1,4>::value;
+        break;
+      case 0:
+        break;
+      default:
+        break;
+    }
+    this->delta+=1;
     if constexpr ( sizeof...(Tx) > 1 ) construct_sizes<Tx...>();
     else                    construct_final_size<Tx...>();
   }
@@ -145,20 +172,49 @@ private:
   template< typename T1 >
   void construct_final_size() {
     int total_rank = Kokkos::View<T1>::rank;
+    int dynamic_rank = Kokkos::View<T1>::rank_dynamic;
+    const int static_rank = total_rank - dynamic_rank;
     assert( total_rank <= 5 );
     assert( total_rank >= 0 );
-    extent_sizes[delta][0] = ( (int)std::extent<T1,0>::value );
-    extent_sizes[delta][1] = ( (int)std::extent<T1,1>::value );
-    extent_sizes[delta][2] = ( (int)std::extent<T1,2>::value );
-    extent_sizes[delta][3] = ( (int)std::extent<T1,3>::value );
-    extent_sizes[delta][4] = ( (int)std::extent<T1,4>::value );
-    delta+=1;
+    switch( static_rank ) {
+      case 1: 
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        break;
+      case 2:
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
+        break;
+      case 3:
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
+        extent_sizes[delta][dynamic_rank+2] = (int)std::extent<T1,2>::value;
+        break;
+      case 4:
+        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
+        extent_sizes[delta][dynamic_rank+2] = (int)std::extent<T1,2>::value;
+        extent_sizes[delta][dynamic_rank+3] = (int)std::extent<T1,3>::value;
+        break;
+      case 5:
+        extent_sizes[delta][0] = (int)std::extent<T1,0>::value;
+        extent_sizes[delta][1] = (int)std::extent<T1,1>::value;
+        extent_sizes[delta][2] = (int)std::extent<T1,2>::value;
+        extent_sizes[delta][3] = (int)std::extent<T1,3>::value;
+        extent_sizes[delta][4] = (int)std::extent<T1,4>::value;
+        break;
+      default:
+        break;
+    }
+    for( int i = 0; i < dynamic_rank; i++ ) {
+      extent_sizes[delta][i] = 0;
+    }
+    this->delta+=1;
   }
   
   // member vaiables
-  unsigned short theta = 0; 
-  unsigned short delta = 0;
   const int num_types = sizeof...(Ts);
+  unsigned short delta = 0;
+  unsigned short theta = num_types-1; 
   int extent_sizes[sizeof...(Ts)][5];
   std::tuple<Kokkos::View<Ts,MemorySpace>...> values_;
 
@@ -188,6 +244,8 @@ public:
     assert(type_index < num_types);
     assert(dimension_index >= 0);
     assert(dimension_index < 5);
+    // TODO remove
+    //printf("DATA WHEN RETRIEVED: %d\n", extent_sizes[type_index][dimension_index]);
     return extent_sizes[type_index][dimension_index]; 
   }
   

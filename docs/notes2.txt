@@ -95,4 +95,13 @@ then make that dimension the number of tuples specified to the controller:
   int* -> int[num_tuples]
   double*[5] -> double[num_tuples][5]
   char*[10][20][30] -> char[num_tuples][10][20][30]
-  
+
+
+// TODO -> Testing suite on the use of std::extent
+            in construct_sizes and construct_final_size
+
+
+
+
+
+
