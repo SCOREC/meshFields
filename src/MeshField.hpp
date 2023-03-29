@@ -24,6 +24,9 @@ public:
   
   /* operator() -> 1D Access */
   /* access() -> 2D Access */
+  
+  KOKKOS_INLINE_FUNCTION
+  auto size(int i) const { return slice.size(i); }
 
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int s) const { return slice(s); }

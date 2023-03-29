@@ -1,6 +1,7 @@
 #ifndef cabanaslicewrapper_hpp
 #define cabanaslicewrapper_hpp
 
+#include <type_traits>
 #include <Cabana_Core.hpp>
 
 namespace Controller {
@@ -14,6 +15,14 @@ struct CabanaSliceWrapper {
   CabanaSliceWrapper( SliceType slice_in ) : slice(slice_in) {}
   CabanaSliceWrapper( ) {}
   
+  //TODO implement
+  KOKKOS_INLINE_FUNCTION
+  auto size( int i ) const { 
+    assert( i >= 0 );
+    assert( i < 5 );
+    return 0;
+  }
+
   /* 1D access */
   KOKKOS_INLINE_FUNCTION
   T &operator()(int s) const { return slice(s); }
@@ -43,6 +52,7 @@ class CabanaController {
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
+  static const int MAX_RANK = 4; // Including num_tuples -> so 3 additional extents
 
 public:
   typedef ExecutionSpace exe;
@@ -69,20 +79,60 @@ private:
   template <class T, int stride>
   using wrapper_slice_t = CabanaSliceWrapper<member_slice_t<T, stride>, T>;
 
+  template< typename T1, typename... Tx >
+  void construct_sizes() {
+    // There are no dynamic ranks w/ cabana controller.
+    // So we only need to know extent.
+    // Cabana SoA only supports up to 3 additional ranks...
+    std::size_t rank = std::rank<T1>{};
+    assert( rank < MAX_RANK );
+    switch( rank ) {
+      case 3:
+        extent_sizes[theta][3] = (int)std::extent<T1,2>::value;
+      case 2:
+        extent_sizes[theta][2] = (int)std::extent<T1,1>::value;
+      case 1:
+        extent_sizes[theta][1] = (int)std::extent<T1,0>::value;
+        break;
+      default:
+        for( int i = 1; i < MAX_RANK; i++ ) {
+          extent_sizes[theta][i] = 0;
+        }
+        break;
+    }
+    extent_sizes[theta][0] = num_tuples;
+    this->theta+=1;
+    if constexpr (sizeof...(Tx) != 0 ) construct_sizes<Tx...>();
+  }
+
   // member vaiables
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa;
   const int num_tuples;
+  int theta = 0;
+  int extent_sizes[sizeof...(Ts)][MAX_RANK];
 
 public:
 
-  CabanaController() : num_tuples(0) {}
+  CabanaController() : num_tuples(0) {
+    construct_sizes<Ts...>();
+  }
 
-  CabanaController(int n)
-      : aosoa("sliceAoSoA", n), num_tuples(n) {}
+  CabanaController(int n) 
+    : aosoa("sliceAoSoA", n), num_tuples(n) {
+    construct_sizes<Ts...>();
+  }
 
-  //TODO: update
-  int size() const { return 0; }
-
+  int size(int i, int j) const { 
+    assert( j >= 0 );
+    assert( j < 5 );
+    if( j == 0 ) return this->tuples();
+    // TODO likely going to have to store
+    // this objects type dimensions in a 
+    // separate data structure.
+    else return extent_sizes[i][j];
+  }
+  
+  int tuples() const { return num_tuples; }
 
   template <std::size_t index> auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;

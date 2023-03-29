@@ -108,6 +108,48 @@ void testParallelReduceCabana() {
   printf("== END testParallelReduceCabana ==\n");
 }
 
+void testCabanaControllerSize() {
+
+  printf("== START testCabanaControllerSize ==\n");
+
+  const int a=6,b=5,c=4,d=3;
+  const int psi[4] = {a,b,c,d};
+
+  using simple = Controller::CabanaController<ExecutionSpace,MemorySpace,int[b]>;
+  using multi = Controller::CabanaController<ExecutionSpace,MemorySpace,int[b][c][d],char[b][c][d], bool[b][c][d]>;
+  using varied = Controller::CabanaController<ExecutionSpace,MemorySpace,double[b][c], int, float[b][c][d], char[b]>;
+  using empty = Controller::CabanaController<ExecutionSpace,MemorySpace, int>;
+  simple c1(a);
+  multi c2(a);
+  varied c3(a);
+  empty c4;
+  MeshField::MeshField<simple> simple_kok(c1);
+  MeshField::MeshField<multi> multi_kok(c2);
+  MeshField::MeshField<varied> varied_kok(c3);
+  MeshField::MeshField<empty> empty_kok(c4);
+  
+  // simple_kok
+  for( int i = 0; i < 2; i++ ) { assert( simple_kok.size(0,i) == psi[i] ); }
+  
+  // multi_kok
+  for( int i = 0; i < 3; i++ ) {
+    for( int j = 0; j < 4; j++ ) {
+      assert( multi_kok.size(i,j) == psi[j] );
+    }
+  } 
+
+  // varied_kok
+  for( int i = 0; i < 3; i++ ) assert( varied_kok.size(0,i) == psi[i] );
+                               assert( varied_kok.size(1,0) == psi[0] );
+  for( int i = 0; i < 4; i++ ) assert( varied_kok.size(2,i) == psi[i] );
+  for( int i = 0; i < 2; i++ ) assert( varied_kok.size(3,i) == psi[i] );
+  
+  // empty_kok
+  for( int i = 0; i < 4; i++ ) {
+    assert( empty_kok.size(0,i) == 0 );
+  }
+  printf("== END testCabanaControllerSize ==\n");
+}
 
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
@@ -115,6 +157,7 @@ int main(int argc, char *argv[]) {
   
   testMakeSliceCabana(num_tuples);
   testParallelReduceCabana();
+  testCabanaControllerSize();
 
   return 0;
 }

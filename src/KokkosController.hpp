@@ -20,10 +20,20 @@ template <class SliceType, class T>
 struct KokkosSliceWrapper{
   
   SliceType slice;
+  int dimensions[5];
   typedef T Type;
 
-  KokkosSliceWrapper(SliceType slice_in) : slice(slice_in) {}
+  KokkosSliceWrapper(SliceType slice_in, int* sizes) : slice(slice_in) {
+    for( int i = 0; i < 5; i++ ) dimensions[i] = sizes[i];
+  }
   KokkosSliceWrapper() {}
+  
+  KOKKOS_INLINE_FUNCTION
+  auto size(int i) const { 
+    assert( i >= 0 );
+    assert( i < 5 );
+    return dimensions[i]; 
+  }
 
   /* 1D Access */
   KOKKOS_INLINE_FUNCTION
@@ -48,7 +58,7 @@ struct KokkosSliceWrapper{
 
 template <class MemorySpace, class ExecutionSpace, typename... Ts>
 class KokkosController {
-
+  
   // type definitions
   using TypeTuple = std::tuple<Ts...>;
 
@@ -72,6 +82,7 @@ private:
 
   template<typename... Tx>
   auto construct( std::vector<int> &dims ) {
+    // Note: the '...' expansion will traverse <Tx...> backwards!
     return std::make_tuple( create_view<Tx>("view", dims)... );
   }
   
@@ -219,7 +230,7 @@ private:
   std::tuple<Kokkos::View<Ts,MemorySpace>...> values_;
 
 public:
-
+  
   typedef ExecutionSpace exe;
   
   KokkosController() {
@@ -251,7 +262,9 @@ public:
   
   template<std::size_t index> auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;
-    return wrapper_slice_t<type>(std::get<index>(values_));
+    int slice_dims[5];
+    for( int i = 0; i < 5; i++ ) slice_dims[i] = this->extent_sizes[index][i];
+    return wrapper_slice_t<type>(std::get<index>(values_),slice_dims);
   }
   
   template <typename FunctorType, class IS, class IE>

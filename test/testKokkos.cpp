@@ -204,8 +204,8 @@ void kokkosParallelReduceTest() {
   printf("== END kokkosParallelReduceTest ==\n");
 }
 
-void kokkosSizeTest() {
-  printf("== START kokkosSizeTest ==\n");
+void kokkosControllerSizeTest() {
+  printf("== START kokkosControllerSizeTest ==\n");
   
   const int a = 5;
   const int b = 4;
@@ -300,42 +300,76 @@ void kokkosSizeTest() {
 
     for( int i = 0; i < 4; i++ ) {
       for( int j = 0; j < 5; j++ ) {
-        int foo = complex_kok.size(i,j);
-        printf("complex_kok(%d,%d) == %d\n", i,j,foo);
-        assert( foo == psi[j]);
+        assert( complex_kok.size(i,j) == psi[j]);
       }
     }
     /* END MIXED DIMENSION TESTS */
   }
-  /*
+  
+  printf("== END kokkosControllerSizeTest ==\n");
+}
 
-  using Ctrlr1 = Controller::KokkosController<MemorySpace,ExecutionSpace,int*, double[a]>;
-  using Ctrlr2 = Controller::KokkosController<MemorySpace,ExecutionSpace,int****[e], double[a][b][c][d][e]>;
-  Ctrlr1 c1({5});
-  Ctrlr2 c2({5,4,3,2});
-  MeshField::MeshField<Ctrlr1> kok1(c1); // sizes ->[[5,0,0,0,0],[5,0,0,0,0,0]]
-  MeshField::MeshField<Ctrlr2> kok2(c2); // sizes -> [[5,4,3,2,1],[5,4,3,2,1]]
+void kokkosFieldSizeTest() {
+  printf("== START kokkosFieldSizeTest ==\n");
+  const int a=5,b=4,c=3,d=2,e=1;
+  const int psi[5] = {a,b,c,d,e};
+  {
+    using simple_static = Controller::KokkosController<MemorySpace,ExecutionSpace,int[a],char[a][b],double[a][b][c],bool[a][b][c][d],long[a][b][c][d][e]>;
+    using simple_dynamic = Controller::KokkosController<MemorySpace,ExecutionSpace,int*,char**,double***,bool****,long*****>; 
+    using mixed = Controller::KokkosController<MemorySpace,ExecutionSpace,int*[b][c][d][e],char**[c][d][e],double***[d][e],bool****[e],long*****>; 
+    simple_static c1;
+    simple_dynamic c2({5,5,4,5,4,3,5,4,3,2,5,4,3,2,1});
+    mixed c3({5,5,4,5,4,3,5,4,3,2,5,4,3,2,1});
+  
+    MeshField::MeshField<simple_static> simple_kok(c1);
+    MeshField::MeshField<simple_dynamic> dynamic_kok(c2);
+    MeshField::MeshField<mixed> mixed_kok(c3);
+    
+    {
+      auto field0 = simple_kok.makeField<0>();
+      auto field1 = simple_kok.makeField<1>();
+      auto field2 = simple_kok.makeField<2>();
+      auto field3 = simple_kok.makeField<3>();
+      auto field4 = simple_kok.makeField<4>();
+       
+      assert( field0.size(0) == a );
+      for( int i = 0; i < 2; i++ ) { assert( field1.size(i) == psi[i]); }
+      for( int i = 0; i < 3; i++ ) { assert( field2.size(i) == psi[i]); }
+      for( int i = 0; i < 4; i++ ) { assert( field3.size(i) == psi[i]); }
+      for( int i = 0; i < 5; i++ ) { assert( field4.size(i) == psi[i]); }
+      
+    }
+    {
+      auto field0 = dynamic_kok.makeField<0>();
+      auto field1 = dynamic_kok.makeField<1>();
+      auto field2 = dynamic_kok.makeField<2>();
+      auto field3 = dynamic_kok.makeField<3>();
+      auto field4 = dynamic_kok.makeField<4>();
+      
+      assert( field0.size(0) == a );
+      for( int i = 0; i < 2; i++ ) { assert( field1.size(i) == psi[i]); }
+      for( int i = 0; i < 3; i++ ) { assert( field2.size(i) == psi[i]); }
+      for( int i = 0; i < 4; i++ ) { assert( field3.size(i) == psi[i]); }
+      for( int i = 0; i < 5; i++ ) { assert( field4.size(i) == psi[i]); }
+    }
+    {
+      auto field0 = mixed_kok.makeField<0>();
+      auto field1 = mixed_kok.makeField<1>();
+      auto field2 = mixed_kok.makeField<2>();
+      auto field3 = mixed_kok.makeField<3>();
+      auto field4 = mixed_kok.makeField<4>();
 
-  for( int i = 0; i < 2; i++ ) {
-    for( int j = 0; j < 5; j++ ) {
-      printf("  BEGIN FOO\n");
-      int foo = kok1.size(i,j);
-      printf("kok1.size(%d,%d) = %d\n",i,j,foo);
-      printf("  END FOO\n");
+      for( int i = 0; i < 5; i++ ) { 
+        assert( field0.size(i) == psi[i]); 
+        assert( field1.size(i) == psi[i]); 
+        assert( field2.size(i) == psi[i]); 
+        assert( field3.size(i) == psi[i]); 
+        assert( field4.size(i) == psi[i]); 
+      }
     }
   }
-  */
-  
-  /*
-  using Ctrlr1 = Controller::KokkosController<MemorySpace,ExecutionSpace,int*[2]>;
-  Ctrlr1 c1({5});
-  MeshField::MeshField<Ctrlr1> kok1(c1); // sizes ->[[5,0,0,0,0],[5,0,0,0,0,0]]
-  int dynamic_rank = kok1.size(0,0);
-  int static_rank = kok1.size(0,1);
-  printf("dynamic: %d, static: %d\n", dynamic_rank, static_rank);
-  */
 
-  printf("== END kokkosSizeTest ==\n");
+  printf("== END kokkosFieldSizeTest ==\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -346,7 +380,8 @@ int main(int argc, char *argv[]) {
   testKokkosParallelFor();
   kokkosParallelReduceTest();
   testMakeSliceKokkos(num_tuples);
-  kokkosSizeTest();
+  kokkosControllerSizeTest();
+  kokkosFieldSizeTest(); 
 
   //kokkosDocumentationLiesTest();
   return 0;
