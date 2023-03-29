@@ -151,14 +151,16 @@ public:
     }
 
   }
-  //TODO TEST
-  template <typename KernelType>
+
+  template <typename KernelType, typename resultant>
   void parallel_scan(std::string tag,
                      int64_t start_index,
                      int64_t end_index, 
-                     KernelType &scanKernel ) {
+                     KernelType &scanKernel,
+                     resultant &result) {
+    static_assert( std::is_pod<resultant>::value );
     Kokkos::RangePolicy p(start_index, end_index);
-    Kokkos::parallel_scan(tag, p, scanKernel);
+    Kokkos::parallel_scan(tag, p, scanKernel, result);
   }
   // depending on size of dimensions, take variable number of arguements
   // that give pairs of lower and upper bound for the multi-dim views.

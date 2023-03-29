@@ -23,146 +23,70 @@ bool doubleCompare(double d1, double d2) {
   return diff < TOLERANCE;
 }
 
+// returns (x-1)*(x/2) = 1 + 2 + 3 + 4 + ... + x
+KOKKOS_INLINE_FUNCTION
+int seriesSum( int x ) {
+    return (int)(((double)x-1.0))*(((double)x/2.0));
+}
+
 using ExecutionSpace = Kokkos::Cuda;
 using MemorySpace = Kokkos::CudaUVMSpace;
 
-/*
-void single_type(int num_tuples) {
-  using Controller =
-      SliceWrapper::CabanaController<ExecutionSpace, MemorySpace, double>;
+void testParallelScan() {
+  printf("== START testParallelScan ==\n");
 
-  // Slice Wrapper Controller
-  Controller c(num_tuples);
-  MeshField::MeshField<Controller> cabMeshField(c);
+  const int N = 100;
 
-  auto field0 = cabMeshField.makeField<0>();
-
-  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
-    double d0 = 10;
-    field0(s, a) = d0;
-    assert(doubleCompare(field0(s, a), d0));
-  };
-
-  cabMeshField.parallel_for(0, num_tuples, vector_kernel, "single_type_pfor");
-}
-
-void multi_type(int num_tuples) {
-  using Controller =
-      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace, double,
-                                       double, float, int, char>;
-
-  // Slice Wrapper Controller
-  Controller c(num_tuples);
-  MeshField::MeshField<Controller> cabMeshField(c);
-
-  auto field0 = cabMeshField.makeField<0>();
-  auto field1 = cabMeshField.makeField<1>();
-  auto field2 = cabMeshField.makeField<2>();
-  auto field3 = cabMeshField.makeField<3>();
-  auto field4 = cabMeshField.makeField<4>();
-
-  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
-    double d0 = 10.456;
-    field0(s, a) = d0;
-    double d1 = 43.973234567;
-    field1(s, a) = d1;
-    float f0 = 123.45;
-    field2(s, a) = f0;
-    int i0 = 22;
-    field3(s, a) = i0;
-    char c0 = 'a';
-    field4(s, a) = c0;
-
-    assert(doubleCompare(field0(s, a), d0));
-    assert(doubleCompare(field1(s, a), d1));
-    assert(doubleCompare(field2(s, a), f0));
-    assert(field3(s, a) == i0);
-    assert(field4(s, a) == c0);
-  };
-
-  cabMeshField.parallel_for(0, num_tuples, vector_kernel, "multi_type_pfor");
-}
-
-void many_type(int num_tuples) {
-
-  using Controller =
-      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace, double,
-                                       double, float, float, int, short int,
-                                       char>;
-
-  // Slice Wrapper Controller
-  Controller c(num_tuples);
-  MeshField::MeshField<Controller> cabMeshField(c);
-
-  auto field0 = cabMeshField.makeField<0>();
-  auto field1 = cabMeshField.makeField<1>();
-  auto field2 = cabMeshField.makeField<2>();
-  auto field3 = cabMeshField.makeField<3>();
-  auto field4 = cabMeshField.makeField<4>();
-  auto field5 = cabMeshField.makeField<5>();
-  auto field6 = cabMeshField.makeField<6>();
-
-  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
-    double d0 = 10.456;
-    field0(s, a) = d0;
-    double d1 = 43.973234567;
-    field1(s, a) = d1;
-    float f0 = 123.45;
-    field2(s, a) = f0;
-    float f1 = 543.21;
-    field3(s, a) = f1;
-    int i0 = 222;
-    field4(s, a) = i0;
-    short int i1 = 50;
-    field5(s, a) = i1;
-    char c0 = 'h';
-    field6(s, a) = c0;
-
-    assert(doubleCompare(field0(s, a), d0));
-    assert(doubleCompare(field1(s, a), d1));
-    assert(doubleCompare(field2(s, a), f0));
-    assert(doubleCompare(field3(s, a), f1));
-    assert(field4(s, a) == i0);
-    assert(field5(s, a) == i1);
-    assert(field6(s, a) == c0);
-  };
-
-  cabMeshField.parallel_for(0, num_tuples, vector_kernel, "many_type_pfor");
-}
-
-void rank1_arr(int num_tuples) {
-  const int width = 3;
-  using Controller =
-      SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace,
-                                       double[width]>;
-
-  // Slice Wrapper Controller
-  Controller c(num_tuples);
-  MeshField::MeshField<Controller> cabMeshField(c);
-
-  auto field0 = cabMeshField.makeField<0>();
-
-  auto vector_kernel = KOKKOS_LAMBDA(const int s, const int a) {
-    for (int i = 0; i < width; i++) {
-      double d0 = 10 + i;
-      field0(s, a, i) = d0;
-      assert(doubleCompare(field0(s, a, i), d0));
+  printf("-- start testParallelScan on Kokkos --\n");
+  {
+    using s_kok = Controller::KokkosController<MemorySpace,ExecutionSpace, int*,int*>;
+    s_kok c1({N,N});
+    MeshField::MeshField<s_kok> mfk(c1);
+    auto pre = mfk.makeField<0>();
+    auto post = mfk.makeField<1>();
+    
+    auto scan_kernel = KOKKOS_LAMBDA(int i, int& partial_sum, const bool is_final) {
+      if( is_final ) pre(i) = partial_sum;
+      partial_sum += i;
+      if( is_final ) post(i) = partial_sum;
+    };
+  
+    for( int i = 1; i <= N; i++ ) {
+      int result;
+      mfk.parallel_scan("default", {0}, {i}, scan_kernel, result );
+      assert( result == seriesSum(i) );
     }
-  };
-
-  cabMeshField.parallel_for(0, num_tuples, vector_kernel, "rank1_arr_pfor");
+  }
+  printf("-- end testParallelScan on Kokkos --\n");
+  printf("-- start testParallelScan on Cabana --\n");
+  {
+    using s_cab = Controller::CabanaController<ExecutionSpace,MemorySpace, int,int>;
+    s_cab c1(N);
+    MeshField::MeshField<s_cab> mfc(c1);
+    auto pre = mfc.makeField<0>();
+    auto post = mfc.makeField<1>();
+    
+    auto scan_kernel = KOKKOS_LAMBDA(int i, int& partial_sum, const bool is_final) {
+      if( is_final ) pre(i) = partial_sum;
+      partial_sum += i;
+      if( is_final ) post(i) = partial_sum;
+    };
+  
+    for( int i = 1; i <= N; i++ ) {
+      int result;
+      mfc.parallel_scan("default", {0}, {i}, scan_kernel, result );
+      assert( result == seriesSum(i) );
+    }
+  }
+  printf("-- end testParallelScan on Cabana --\n");
+  printf("== END testParallelScan ==\n");
 }
-*/
-
 
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
-
-  //single_type(num_tuples);
-  //multi_type(num_tuples);
-  //many_type(num_tuples);
-  //rank1_arr(num_tuples);
+  
+  testParallelScan();
 
   return 0;
 }
