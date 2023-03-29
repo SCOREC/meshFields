@@ -119,10 +119,12 @@ void testCabanaControllerSize() {
   using multi = Controller::CabanaController<ExecutionSpace,MemorySpace,int[b][c][d],char[b][c][d], bool[b][c][d]>;
   using varied = Controller::CabanaController<ExecutionSpace,MemorySpace,double[b][c], int, float[b][c][d], char[b]>;
   using empty = Controller::CabanaController<ExecutionSpace,MemorySpace, int>;
+
   simple c1(a);
   multi c2(a);
   varied c3(a);
   empty c4;
+
   MeshField::MeshField<simple> simple_kok(c1);
   MeshField::MeshField<multi> multi_kok(c2);
   MeshField::MeshField<varied> varied_kok(c3);
@@ -151,6 +153,61 @@ void testCabanaControllerSize() {
   printf("== END testCabanaControllerSize ==\n");
 }
 
+void testCabanaFieldSize() {
+  printf("== START testCabanaFieldSize ==\n");
+
+  const int a=6,b=5,c=4,d=3;
+  const int psi[4] = {a,b,c,d};
+
+  using simple = Controller::CabanaController<ExecutionSpace,MemorySpace,int[b]>;
+  using multi = Controller::CabanaController<ExecutionSpace,MemorySpace,int[b][c][d],char[b][c][d], bool[b][c][d]>;
+  using varied = Controller::CabanaController<ExecutionSpace,MemorySpace,double[b][c], int, float[b][c][d], char[b]>;
+  using empty = Controller::CabanaController<ExecutionSpace,MemorySpace, int>;
+  simple c1(a);
+  multi c2(a);
+  varied c3(a);
+  empty c4;
+  MeshField::MeshField<simple> simple_kok(c1);
+  MeshField::MeshField<multi> multi_kok(c2);
+  MeshField::MeshField<varied> varied_kok(c3);
+  MeshField::MeshField<empty> empty_kok(c4);
+  
+  const int MAX_RANK = 4;
+
+  { // simple_kok
+    auto field0 = simple_kok.makeField<0>();
+    for( int i = 0; i < 2; i++ ) assert( field0.size(i) == psi[i] );
+  }
+
+  { // multi_kok
+    auto field0 = multi_kok.makeField<0>();
+    auto field1 = multi_kok.makeField<1>();
+    auto field2 = multi_kok.makeField<2>();
+    for( int i = 0; i < MAX_RANK; i++ ) {
+      assert( field0.size(i) == psi[i] );
+      assert( field1.size(i) == psi[i] );
+      assert( field2.size(i) == psi[i] );
+    }
+  }
+
+  { // varied_kok
+    auto field0 = varied_kok.makeField<0>();
+    auto field1 = varied_kok.makeField<1>();
+    auto field2 = varied_kok.makeField<2>();
+    auto field3 = varied_kok.makeField<3>();
+
+    for( int i = 0; i < 3; i++ ) { assert( field0.size(i) == psi[i] ); }
+    for( int i = 0; i < 1; i++ ) { assert( field1.size(i) == psi[i] ); }
+    for( int i = 0; i < 4; i++ ) { assert( field2.size(i) == psi[i] ); }
+    for( int i = 0; i < 2; i++ ) { assert( field3.size(i) == psi[i] ); }
+  }
+  { // empty_kok
+    auto field0 = empty_kok.makeField<0>();
+    for( int i = 0; i < MAX_RANK; i++ ) { assert( field0.size(i) == 0 ); }
+  }
+  printf("== END testCabanaFieldSize ==\n");
+}
+
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
@@ -158,6 +215,7 @@ int main(int argc, char *argv[]) {
   testMakeSliceCabana(num_tuples);
   testParallelReduceCabana();
   testCabanaControllerSize();
+  testCabanaFieldSize();
 
   return 0;
 }

@@ -8,19 +8,24 @@ namespace Controller {
 
 template<class SliceType, class T>
 struct CabanaSliceWrapper {
-  
+    
+  static const int MAX_RANK = 4;
+  int dimensions[MAX_RANK];
   SliceType slice;
   typedef T Type;
 
-  CabanaSliceWrapper( SliceType slice_in ) : slice(slice_in) {}
+  CabanaSliceWrapper( SliceType slice_in, int* sizes ) : slice(slice_in) {
+    for( int i = 0; i < MAX_RANK; i++ ) {
+      dimensions[i] = sizes[i];
+    }
+  }
   CabanaSliceWrapper( ) {}
   
-  //TODO implement
   KOKKOS_INLINE_FUNCTION
   auto size( int i ) const { 
     assert( i >= 0 );
-    assert( i < 5 );
-    return 0;
+    assert( i <= MAX_RANK );
+    return dimensions[i];  
   }
 
   /* 1D access */
@@ -52,10 +57,10 @@ class CabanaController {
   using TypeTuple = std::tuple<Ts...>;
   using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
-  static const int MAX_RANK = 4; // Including num_tuples -> so 3 additional extents
-
+  
 public:
   typedef ExecutionSpace exe;
+  static const int MAX_RANK = 4; // Including num_tuples -> so 3 additional extents
   static constexpr int vecLen =
       Cabana::AoSoA<DataTypes, DeviceType>::vector_length;
 
@@ -93,9 +98,8 @@ private:
         extent_sizes[theta][2] = (int)std::extent<T1,1>::value;
       case 1:
         extent_sizes[theta][1] = (int)std::extent<T1,0>::value;
-        break;
       default:
-        for( int i = 1; i < MAX_RANK; i++ ) {
+        for( int i = MAX_RANK -1; i > rank; i-- ) {
           extent_sizes[theta][i] = 0;
         }
         break;
@@ -114,11 +118,13 @@ private:
 public:
 
   CabanaController() : num_tuples(0) {
+    static_assert( sizeof...(Ts) != 0 );
     construct_sizes<Ts...>();
   }
 
   CabanaController(int n) 
     : aosoa("sliceAoSoA", n), num_tuples(n) {
+    static_assert( sizeof...(Ts) != 0 );
     construct_sizes<Ts...>();
   }
 
@@ -126,9 +132,6 @@ public:
     assert( j >= 0 );
     assert( j < 5 );
     if( j == 0 ) return this->tuples();
-    // TODO likely going to have to store
-    // this objects type dimensions in a 
-    // separate data structure.
     else return extent_sizes[i][j];
   }
   
@@ -138,7 +141,9 @@ public:
     using type = std::tuple_element_t<index, TypeTuple>;
     const int stride = sizeof(soa_t) / sizeof(member_value_t<index>);
     auto slice = Cabana::slice<index>(aosoa);
-    return wrapper_slice_t<type, stride>(std::move(slice));
+    int sizes[MAX_RANK];
+    for( int i = 0; i < MAX_RANK; i++ ) sizes[i] = this->size(index,i);
+    return wrapper_slice_t<type, stride>(std::move(slice),sizes);
   }
   
   template <typename FunctorType, class IS, class IE>
@@ -146,8 +151,13 @@ public:
                     const std::initializer_list<IE> end,
                     FunctorType &vectorKernel,
                     std::string tag) {
-    
     /*
+     double[3]
+     field<double[3]>.access(s,a,i)
+     lambda(s,a,i){
+      for( int i = 0; i < 3; i++ )
+        access(s,a,i);
+     }
       Issue:
         The simd_policy is fundamentally different than the parallel_for
         and cannot be deduced as a case just from the input alone...
@@ -170,6 +180,6 @@ public:
   }
   
 };
-} // namespace SliceWrapper
+} // namespace Controller
 
 #endif
