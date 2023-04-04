@@ -12,7 +12,13 @@ set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
 find_package(Cabana REQUIRED)
 
-set(MESHFIELD_HEADERS src/MeshField_Utility.hpp src/MesField_Macros.hpp src/CabanaSliceWrapper.hpp src/KokkosSliceWrapper.hpp src/MeshField.hpp)
+set(MESHFIELD_HEADERS
+  src/MeshField_Utility.hpp
+  src/MeshField_Macros.hpp
+  src/KokkosController.hpp
+  src/CabanaController.hpp
+  src/MeshField.hpp
+)
 
 #create header only library
 add_library(meshFields INTERFACE)
