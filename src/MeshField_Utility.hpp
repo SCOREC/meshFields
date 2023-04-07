@@ -1,10 +1,10 @@
 #ifndef MESHFIELD_UTILITY_HPP
 #define MESHFIELD_UTILITY_HPP
 
+#include <initializer_list>
 #include <Kokkos_Core.hpp>
 #include <type_traits>
 #include <tuple>
-#include <initializer_list>
 /*
 stackoverflow.com/questions/7943525/is-it-possible-to-figure-out-the-parameter-type-and-return-type-of-a-lambda
 */
@@ -38,7 +38,19 @@ to_kokkos_array( const std::initializer_list<T>& item) {
   return rt;
 }
 
-
+template<typename T>
+struct identity {
+  using type = T;
+};
+template<typename T>
+struct remove_all_pointers : std::conditional_t<
+    std::is_pointer_v<T>,
+    remove_all_pointers<
+        std::remove_pointer_t<T>
+    >,
+    identity<T>
+>
+{};
 
 } // END NAMESPACE MeshField
 

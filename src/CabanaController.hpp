@@ -10,6 +10,7 @@ template<class SliceType, class T>
 struct CabanaSliceWrapper {
     
   static const int MAX_RANK = 4;
+  static const std::size_t RANK = Kokkos::View<T>::rank + 1;
   int dimensions[MAX_RANK];
   SliceType slice;
   typedef T Type;
@@ -27,6 +28,9 @@ struct CabanaSliceWrapper {
     assert( i <= MAX_RANK );
     return dimensions[i];  
   }
+
+  KOKKOS_INLINE_FUNCTION
+  auto rank() const { return std::rank<Type>{} + 1; }
 
   /* 1D access */
   KOKKOS_INLINE_FUNCTION
@@ -151,6 +155,7 @@ public:
                     const std::initializer_list<IE> end,
                     FunctorType &vectorKernel,
                     std::string tag) {
+    
     /*
      double[3]
      field<double[3]>.access(s,a,i)

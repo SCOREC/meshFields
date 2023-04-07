@@ -6,19 +6,20 @@
 #include <cstdio>
 #include <type_traits> // std::same_v<t1,t2>
 #include <array>
+#include <stdexcept>
 
 #include "MeshField_Utility.hpp"
 
-//#include "CabanaSliceWrapper.hpp"
-
 namespace MeshField {
-
 template <class Slice> class Field {
 
   Slice slice;
   typedef typename Slice::Type Type;
 
 public:
+
+  static const int MAX_RANK = Slice::MAX_RANK;
+  static const int RANK = Slice::RANK;
 
   Field(Slice s) : slice(s) {}
   
@@ -45,7 +46,6 @@ public:
   auto &operator()(int s, int a, int i, int j, int k) const {
     return slice(s, a, i, j, k);
   }
-
 };
 
 template <class Controller> class MeshField {
@@ -62,62 +62,86 @@ public:
   template <std::size_t index> auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
     return Field(std::move(slice));
-  }
+  } 
   
-  template <class Field, class View> void setField(Field &field, View &view) {
-    /*
-    auto view_rank = view::rank + view::rank_dynamic;
-    auto field_rank = Kokkos::View<field::ty>::rank + Kokkos::View<field::type>::rank_dynamic;
-    assert(view_rank == field_rank);
-    
-    if( view_rank <= 1 ) {
-      Kokkos::RangePolicy<> p(0,view.size()); 
-      Kokkos::parallel_for()
-    } else {
-    
-    }
-    */
-  }
-  
-  /*
-  template <class FieldType, class T = typename FieldType::Type>
-  T sum(FieldType &field) {
-    T result;
-    auto reductionKernel = KOKKOS_LAMBDA(const int &i, T &lsum) {
-      lsum += field(i);
-    };
-    sliceController.parallel_reduce(reductionKernel, result, "sum_reduce");
-    return result;
-  }
-  
-  template <class FieldType, class T = typename FieldType::Type>
-  T min(FieldType &field) {
-    T min;
-    auto reductionKernel = KOKKOS_LAMBDA(const int &i, T &lmin) {
-      lmin = lmin < field(i) ? lmin : field(i);
-    };
-    auto reducer = Kokkos::Min<T>(min);
-    this->parallel_reduce(reductionKernel, reducer, "min_reduce");
-    return min;
+  template<class Field, class View>
+  void setFieldRankOne( Field& field, View& view ) {
+    using EXE_SPACE = typename Controller::exe;
+    Kokkos::RangePolicy<EXE_SPACE> p(0,field.size(0));
+    Kokkos::parallel_for(p, KOKKOS_LAMBDA (const int& i){ field(i) = view(i);});
   }
 
-  template <class FieldType, class T = typename FieldType::Type>
-  T max(FieldType &field) {
-    T max;
-    auto reductionKernel = KOKKOS_LAMBDA(const int &i, T &lmax) {
-      lmax = lmax > field(i) ? lmax : field(i);
-    };
-    auto reducer = Kokkos::Max<T>(max);
-    this->parallel_reduce("max_reduce", reductionKernel, reducer, "max_reduce");
-    return max;
+  template<class Field, class View>
+  void setFieldRankTwo( Field& field, View& view ) {
+    using EXE_SPACE = typename Controller::exe;
+    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0,0});
+    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>({field.size(0),
+                                                                   field.size(1)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>,EXE_SPACE> p(a,b);
+    Kokkos::parallel_for(p, 
+      KOKKOS_LAMBDA (const int& i,const int& j){ 
+        field(i,j) = view(i,j);
+      });
   }
-  */
-  /*
-  template <class FieldType> double mean(FieldType &field) {
-    return static_cast<double>(sum(field)) / sliceController.size();
-  }
-  */
 
+  template<class Field, class View>
+  void setFieldRankThree( Field& field, View& view ) {
+    using EXE_SPACE = typename Controller::exe;
+    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0,0,0});
+    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>({field.size(0),
+                                              field.size(1),
+                                              field.size(2)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>,EXE_SPACE> p(a,b);
+    Kokkos::parallel_for(p, 
+      KOKKOS_LAMBDA (const int& i,const int& j,const int& k){ 
+        field(i,j,k) = view(i,j,k);
+      });
+  }
+  template<class Field, class View>
+  void setFieldRankFour( Field& field, View& view ) {
+    using EXE_SPACE = typename Controller::exe;
+    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0,0,0,0});
+    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>({field.size(0),
+                                                                   field.size(1),
+                                                                   field.size(2),
+                                                                   field.size(3)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>,EXE_SPACE> p(a,b);
+    Kokkos::parallel_for(p, 
+      KOKKOS_LAMBDA (const int& i,const int& j,const int& k, const int& l){ 
+        field(i,j,k,l) = view(i,j,k,l);
+      });
+  }
+  template<class Field, class View>
+  void setFieldRankFive( Field& field, View& view ) {
+    using EXE_SPACE = typename Controller::exe;
+    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0,0,0,0,0});
+    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>({field.size(0),
+                                                                   field.size(1),
+                                                                   field.size(2),
+                                                                   field.size(3),
+                                                                   field.size(4)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>,EXE_SPACE> p(a,b);
+    Kokkos::parallel_for(p, 
+      KOKKOS_LAMBDA (const int& i,const int& j,const int& k, const int& l, const int& m){ 
+        field(i,j,k,l,m) = view(i,j,k,l,m);
+      });
+  }
+
+  template <class FieldT, class View>
+  void setField(FieldT &field, View &view) {
+    constexpr std::size_t view_rank = View::rank;
+    constexpr std::size_t field_rank = FieldT::RANK;
+    static_assert( field_rank <= FieldT::MAX_RANK );
+    static_assert( view_rank == field_rank );
+
+    if constexpr( field_rank == 1 ) { setFieldRankOne(field,view); }
+    else if constexpr( field_rank == 2 ) { setFieldRankTwo(field,view); }
+    else if constexpr( field_rank == 3 ) { setFieldRankThree(field,view); }
+    else if constexpr( field_rank == 4 ) { setFieldRankFour(field,view); }
+    else if constexpr( field_rank == 5 ) { setFieldRankFive(field,view); }
+    else { fprintf(stderr, "setField error: Invalid Field Rank\n"); }
+  }
+  
   template <typename FunctorType, class IS, class IE>
   void parallel_for(const std::initializer_list<IS>& start, 
                     const std::initializer_list<IE>& end,

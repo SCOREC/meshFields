@@ -6,7 +6,6 @@
 #include <cassert>
 #include <iterator>
 #include <typeinfo> // typeid
-#include <algorithm> // std::reverse
 #include <type_traits>
 #include <initializer_list>
 
@@ -22,16 +21,18 @@ struct KokkosSliceWrapper{
   SliceType slice;
   int dimensions[5];
   typedef T Type;
+  static const int MAX_RANK = 5;
+  static const std::size_t RANK = Kokkos::View<T>::rank;
 
   KokkosSliceWrapper(SliceType slice_in, int* sizes) : slice(slice_in) {
-    for( int i = 0; i < 5; i++ ) dimensions[i] = sizes[i];
+    for( int i = 0; i < MAX_RANK; i++ ) dimensions[i] = sizes[i];
   }
   KokkosSliceWrapper() {}
   
   KOKKOS_INLINE_FUNCTION
   auto size(int i) const { 
     assert( i >= 0 );
-    assert( i < 5 );
+    assert( i < MAX_RANK );
     return dimensions[i]; 
   }
 
@@ -52,7 +53,6 @@ struct KokkosSliceWrapper{
   KOKKOS_INLINE_FUNCTION
   auto &operator()( int s, int a, int i, int j, int k ) 
     const { return slice(s,a,i,j,k); }
-  
 };
 
 
@@ -232,6 +232,7 @@ private:
 public:
   
   typedef ExecutionSpace exe;
+  static const int MAX_RANK = 5;
   
   KokkosController() {
     if constexpr ( sizeof...(Ts) > 1 ) { construct_sizes<Ts...>(); }
@@ -249,14 +250,11 @@ public:
   
   ~KokkosController() = default;
   
-  // TODO update relative to datastructure
   int size( int type_index, int dimension_index ) const { 
     assert(type_index >= 0);
     assert(type_index < num_types);
     assert(dimension_index >= 0);
     assert(dimension_index < 5);
-    // TODO remove
-    //printf("DATA WHEN RETRIEVED: %d\n", extent_sizes[type_index][dimension_index]);
     return extent_sizes[type_index][dimension_index]; 
   }
   
