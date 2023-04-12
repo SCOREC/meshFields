@@ -2,6 +2,7 @@
 #define cabanaslicewrapper_hpp
 
 #include <type_traits>
+#include <vector>
 #include <Cabana_Core.hpp>
 
 namespace Controller {
@@ -34,7 +35,7 @@ struct CabanaSliceWrapper {
 
   /* 1D access */
   KOKKOS_INLINE_FUNCTION
-  T &operator()(int s) const { return slice(s); }
+  auto &operator()(int s) const { return slice(s); }
 
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int s, int a) const { return slice(s,a); }
@@ -150,37 +151,113 @@ public:
     return wrapper_slice_t<type, stride>(std::move(slice),sizes);
   }
   
+  static constexpr int saToItemIndex( const int& s, const int& a ) {
+    return s*vecLen + a;
+  }
+  
+  template <typename FunctorType, class IS, class IE, int vectorLength>
+  void parallel_for_helper(const std::initializer_list<IS>& start_init,
+                           const std::initializer_list<IE>& end_init,
+                           FunctorType &vectorKernel,
+                           std::string tag) {
+    static_assert( std::is_integral<IS>::value, "Integral required\n" );
+    static_assert( std::is_integral<IE>::value, "Integral required\n" );
+    std::vector<IS> start_v(start_init); // -> Needs to be a view
+    std::vector<IE> end_v(end_init); // -> Needs to be view
+    Kokkos::View<int*> start("1",(int)start_v.size());
+    Kokkos::View<int*> end("2",(int)end_v.size()); 
+
+    IS* start_p = start_v.data();
+    IE* end_p = end_v.data();
+    Kokkos::RangePolicy<ExecutionSpace> linear_policy(0,(int)start.size());
+    Kokkos::parallel_for(linear_policy, KOKKOS_LAMBDA(const int& i) {
+      start(i) = (int)(*(start_p+i));
+      end(i) = (int)(*(end_p+i));
+    });
+    Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy(start[0],end[0]);
+
+    constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
+    if constexpr (FunctorRank == 1) {
+      Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
+        const int i = s*vectorLength+a;
+        vectorKernel(i);
+      },"Controller::CabanaController::parallel_for -> Rank 1\n");
+    } else
+    if constexpr (FunctorRank == 2) {
+      Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
+        const int i = s*vectorLength+a;
+        for( int j = start(1); j < end(1); j++) {
+          vectorKernel(i,j);
+        }
+      },"Controller::CabanaController::parallel_for -> Rank 2\n");
+    } // TODO: else if ...
+  
+  }
+
   template <typename FunctorType, class IS, class IE>
-  void parallel_for(const std::initializer_list<IS> start,
-                    const std::initializer_list<IE> end,
+  void parallel_for(const std::initializer_list<IS>& start_init,
+                    const std::initializer_list<IE>& end_init,
                     FunctorType &vectorKernel,
                     std::string tag) {
-    
+    this->parallel_for_helper<FunctorType,IS,IE,vecLen>
+      (start_init,end_init,vectorKernel,tag);
     /*
-     double[3]
-     field<double[3]>.access(s,a,i)
-     lambda(s,a,i){
-      for( int i = 0; i < 3; i++ )
-        access(s,a,i);
-     }
-      Issue:
-        The simd_policy is fundamentally different than the parallel_for
-        and cannot be deduced as a case just from the input alone...
-        TODO: TALK ABOUT W/ CAMERON.
-        Always logical indices -> Create lambda wrapper.
-        // TODO AFTER SUM,MEAN,ETC
-    
-    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
-    assert( RANK >= 1 && RANK <= 5 );
-    if( RANK == 1 ) {
-      // LINEAR DISPATCH
-      
-    } else {
-      
-    }
-    Cabana::SimdPolicy<vecLen, ExecutionSpace> 
-      simdPolicy((*start.begin()), (*end.begin()));
-    Cabana::simd_parallel_for(simdPolicy,vectorKernel,tag);
+    static_assert( std::is_integral<IS>::value, "Integral required\n" );
+    static_assert( std::is_integral<IE>::value, "Integral required\n" );
+    std::vector<IS> start(start_init);
+    std::vector<IE> end(end_init);
+    Cabana::SimdPolicy<vecLen,ExecutionSpace> policy(start[0],end[0]);
+    // need to have vector length in lambda expression, but 
+    // references to host classes/functions is not allowed...
+    // cant pass it into the LAMBDA expression because cabana
+    // is expecting a specific number of arguements.
+    // -> template lambdas only work in c++20 and above.
+    constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
+    if constexpr (FunctorRank == 1) {
+      auto kernel = KOKKOS_LAMBDA(const int& s, const int& a) {
+        const int i = s*vecLen+a;
+        vectorKernel(i);
+      };
+      Cabana::simd_parallel_for(policy,kernel,"Controller::CabanaController::parallel_for -> Rank 1\n");
+    } else
+    if constexpr (FunctorRank == 2) {
+       auto kernel = KOKKOS_LAMBDA(const int& s, const int& a) {
+        const int i = s*vecLen+a;
+        for( int j = start[1]; j < end[1]; j++) {
+          vectorKernel(i,j);
+        }
+      };
+      Cabana::simd_parallel_for(policy,kernel,"Controller::CabanaController::parallel_for -> Rank 2\n");
+    }*/
+    /*
+    Cabana::simd_parallel_for(policy, KOKKOS_LAMBDA( const int s, const int a ) {
+      constexpr int i = Controller::CabanaController<ExecutionSpace,MemorySpace,bool>::saToItemIndex(s,a);
+      constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
+      if constexpr (FunctorRank == 1) {
+          vectorKernel(i);
+      } else 
+      if constexpr ( FunctorRank == 2 ) {
+        for( int j = start[1]; j < end[1]; j++) {
+          vectorKernel(i,j);
+        } 
+      } else 
+      if constexpr ( FunctorRank == 3 ) {
+        for( int j = start[2]; j < end[2]; j++) {
+          for( int k = start[3]; k < end[3]; k++ ) {
+            vectorKernel(i,j,k);
+          }
+        }
+      } else
+      if constexpr ( FunctorRank == 4 ) {
+        for( int j = start[2]; j < end[2]; j++) {
+          for( int k = start[3]; k < end[3]; k++ ) {
+            for( int l = start[4]; l < end[4]; l++ ) {
+              vectorKernel(i,j,k,l);
+            }
+          }
+        }
+      } else { fprintf(stderr,"Invalid Lambda Rank must be [1,4]\n"); }
+    },"yesyes");
     */
   }
   
