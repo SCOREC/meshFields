@@ -24,7 +24,7 @@ bool doubleCompare(double d1, double d2) {
 }
 
 using ExecutionSpace = Kokkos::Cuda;
-using MemorySpace = Kokkos::CudaUVMSpace;
+using MemorySpace = Kokkos::CudaSpace;
 
 void testMakeSliceCabana( int num_tuples ) {
   printf("== START testMakeSliceCabana ==\n");
@@ -211,7 +211,7 @@ void testCabanaFieldSize() {
 void testCabanaParallelFor() {
   printf("== START testCabanaParallelFor() ==\n");
   const int x=10,y=9;
-  {
+  { 
     using simd_ctrlr = Controller::CabanaController<ExecutionSpace,MemorySpace,int,int[y]>;
     simd_ctrlr c1(x);
     MeshField::MeshField<simd_ctrlr> mf(c1);
@@ -222,24 +222,33 @@ void testCabanaParallelFor() {
       assert(field0(i) == i);
     };
     mf.parallel_for( {0},{x}, vectorKernel, "simple_loop");
+    
     auto vectorKernel2 = KOKKOS_LAMBDA( const int& i, const int& j ) {
       field1(i,j) = i+j;
       assert(field1(i,j) == i+j);
     };
     mf.parallel_for( {0,0},{x,y}, vectorKernel2, "simple_loop");
+    
   }
 
   printf("== END testCabanaParallelFor() ==\n");
 }
 
+void testCabanaLogic() {
+
+
+}
+
+
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
-  
+  /*
   testMakeSliceCabana(num_tuples);
   testParallelReduceCabana();
   testCabanaControllerSize();
   testCabanaFieldSize();
+  */
   testCabanaParallelFor();
 
   return 0;

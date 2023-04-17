@@ -35,11 +35,19 @@ struct CabanaSliceWrapper {
 
   /* 1D access */
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s) const { return slice(s); }
+  auto &operator()(const int i) const {
+    auto s = SliceType::index_type::s(i);
+    auto a = SliceType::index_type::a(i);
+    return slice.access(s,a); 
+  }
 
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a) const { return slice(s,a); }
-
+  auto &operator()(int i, int j) const {
+    auto s = SliceType::index_type::s(i);
+    auto a = SliceType::index_type::a(i);
+    return slice.access(s,a,j);
+  }
+  //TODO: copy above return of .access for following methods.
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int s, int a, int i) const { return slice(s,a,i); }
 
@@ -151,46 +159,75 @@ public:
     return wrapper_slice_t<type, stride>(std::move(slice),sizes);
   }
   
+  /*
+    can use SliceType::index_type::i(s,a)
   static constexpr int saToItemIndex( const int& s, const int& a ) {
     return s*vecLen + a;
   }
   
+    can use SliceType::index_type::s(i)
+    can use SliceType::index_type::a(i)
+  static constexpr void itemIndexToSA(const int& i, int& s, int& a) {
+    s = i / vecLen;
+    a = i % vecLen;
+  }
+
+  */
   template <typename FunctorType, class IS, class IE, int vectorLength>
   void parallel_for_helper(const std::initializer_list<IS>& start_init,
                            const std::initializer_list<IE>& end_init,
                            FunctorType &vectorKernel,
                            std::string tag) {
+    // requirement start_init and end_init must be of equal size.
     static_assert( std::is_integral<IS>::value, "Integral required\n" );
     static_assert( std::is_integral<IE>::value, "Integral required\n" );
-    std::vector<IS> start_v(start_init); // -> Needs to be a view
-    std::vector<IE> end_v(end_init); // -> Needs to be view
-    Kokkos::View<int*> start("1",(int)start_v.size());
-    Kokkos::View<int*> end("2",(int)end_v.size()); 
 
-    IS* start_p = start_v.data();
-    IE* end_p = end_v.data();
-    Kokkos::RangePolicy<ExecutionSpace> linear_policy(0,(int)start.size());
-    Kokkos::parallel_for(linear_policy, KOKKOS_LAMBDA(const int& i) {
-      start(i) = (int)(*(start_p+i));
-      end(i) = (int)(*(end_p+i));
-    });
-    Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy(start[0],end[0]);
+    auto start = start_init.begin();
+    auto end = end_init.begin();
+
+    //assert( start.size() == end.size() );
+    
+    assert(cudaSuccess == cudaDeviceSynchronize());
+
+    Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy(*start,*end);
+
 
     constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
+    static_assert( FunctorRank >= 1 && FunctorRank <= CabanaController::MAX_RANK );
     if constexpr (FunctorRank == 1) {
       Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
-        const int i = s*vectorLength+a;
+        const int i = s*vectorLength+a; // TODO use impel_index
         vectorKernel(i);
       },"Controller::CabanaController::parallel_for -> Rank 1\n");
+      assert(cudaSuccess == cudaDeviceSynchronize());
     } else
     if constexpr (FunctorRank == 2) {
+      //TODO runtime failure ; work in progress
+      Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy_1(*start,*end);
+      //const int s1 = 0;
+      //const int e1 = 1;
+      fprintf(stderr,"Here lolasdlghhwrlnkg\n");
+      Cabana::simd_parallel_for(policy_1,KOKKOS_LAMBDA(const int& s, const int& a) {
+        /*
+        const int i = s*vectorLength+a;
+        for( int j = s1; j < e1; j++) {
+          //vectorKernel(i,j);
+        }
+        */
+      },"Controller::CabanaController::parallel_for -> Rank 2\n");
+    } else
+    if constexpr (FunctorRank == 3) {
       Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
         const int i = s*vectorLength+a;
-        for( int j = start(1); j < end(1); j++) {
-          vectorKernel(i,j);
+        const int s1=start(1),s2=start(2);
+        const int e1=end(1),e2=end(2);
+        for( int j = s1; j < e1; j++) {
+          for( int k = s2; k < e2; k++ ) {
+            vectorKernel(i,j,k);
+          }
         }
-      },"Controller::CabanaController::parallel_for -> Rank 2\n");
-    } // TODO: else if ...
+      }, "Controller::CabanaController::parallel_for -> Rank 3\n");
+    } // TODO: Rank 4
   
   }
 
@@ -201,64 +238,6 @@ public:
                     std::string tag) {
     this->parallel_for_helper<FunctorType,IS,IE,vecLen>
       (start_init,end_init,vectorKernel,tag);
-    /*
-    static_assert( std::is_integral<IS>::value, "Integral required\n" );
-    static_assert( std::is_integral<IE>::value, "Integral required\n" );
-    std::vector<IS> start(start_init);
-    std::vector<IE> end(end_init);
-    Cabana::SimdPolicy<vecLen,ExecutionSpace> policy(start[0],end[0]);
-    // need to have vector length in lambda expression, but 
-    // references to host classes/functions is not allowed...
-    // cant pass it into the LAMBDA expression because cabana
-    // is expecting a specific number of arguements.
-    // -> template lambdas only work in c++20 and above.
-    constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
-    if constexpr (FunctorRank == 1) {
-      auto kernel = KOKKOS_LAMBDA(const int& s, const int& a) {
-        const int i = s*vecLen+a;
-        vectorKernel(i);
-      };
-      Cabana::simd_parallel_for(policy,kernel,"Controller::CabanaController::parallel_for -> Rank 1\n");
-    } else
-    if constexpr (FunctorRank == 2) {
-       auto kernel = KOKKOS_LAMBDA(const int& s, const int& a) {
-        const int i = s*vecLen+a;
-        for( int j = start[1]; j < end[1]; j++) {
-          vectorKernel(i,j);
-        }
-      };
-      Cabana::simd_parallel_for(policy,kernel,"Controller::CabanaController::parallel_for -> Rank 2\n");
-    }*/
-    /*
-    Cabana::simd_parallel_for(policy, KOKKOS_LAMBDA( const int s, const int a ) {
-      constexpr int i = Controller::CabanaController<ExecutionSpace,MemorySpace,bool>::saToItemIndex(s,a);
-      constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
-      if constexpr (FunctorRank == 1) {
-          vectorKernel(i);
-      } else 
-      if constexpr ( FunctorRank == 2 ) {
-        for( int j = start[1]; j < end[1]; j++) {
-          vectorKernel(i,j);
-        } 
-      } else 
-      if constexpr ( FunctorRank == 3 ) {
-        for( int j = start[2]; j < end[2]; j++) {
-          for( int k = start[3]; k < end[3]; k++ ) {
-            vectorKernel(i,j,k);
-          }
-        }
-      } else
-      if constexpr ( FunctorRank == 4 ) {
-        for( int j = start[2]; j < end[2]; j++) {
-          for( int k = start[3]; k < end[3]; k++ ) {
-            for( int l = start[4]; l < end[4]; l++ ) {
-              vectorKernel(i,j,k,l);
-            }
-          }
-        }
-      } else { fprintf(stderr,"Invalid Lambda Rank must be [1,4]\n"); }
-    },"yesyes");
-    */
   }
   
 };
