@@ -2,7 +2,6 @@
 #define cabanaslicewrapper_hpp
 
 #include <type_traits>
-#include <vector>
 #include <Cabana_Core.hpp>
 
 namespace Controller {
@@ -49,15 +48,25 @@ struct CabanaSliceWrapper {
   }
   //TODO: copy above return of .access for following methods.
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i) const { return slice(s,a,i); }
+  auto &operator()(int i, int j, int k) const {
+    auto s = SliceType::index_type::s(i);
+    auto a = SliceType::index_type::a(i);
+    return slice.access(s,a,j,k); 
+  }
 
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i, int j) 
-    const { return slice(s,a,i,j); }
+  auto &operator()(int i, int j, int k, int l) const { 
+    auto s = SliceType::index_type::s(i);
+    auto a = SliceType::index_type::a(i);
+    return slice.access(s,a,j,k,l); 
+  }
 
   KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i, int j, int k) 
-    const { return slice(s,a,i,j,k); }
+  auto &operator()(int i, int j, int k, int l, int m) const {
+    auto s = SliceType::index_type::s(i);
+    auto a = SliceType::index_type::a(i);
+    return slice.access(s,a,j,k,l,m); 
+  }
   
 };
 
@@ -113,6 +122,9 @@ private:
         extent_sizes[theta][1] = (int)std::extent<T1,0>::value;
       default:
         for( int i = MAX_RANK -1; i > rank; i-- ) {
+          // Since extent_sizes 2nd dimension
+          // is explicitly MAX_RANK, we fill the
+          // remaining space w/ 0
           extent_sizes[theta][i] = 0;
         }
         break;
@@ -125,7 +137,7 @@ private:
   // member vaiables
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa;
   const int num_tuples;
-  int theta = 0;
+  unsigned short theta = 0;
   int extent_sizes[sizeof...(Ts)][MAX_RANK];
 
 public:
@@ -142,15 +154,19 @@ public:
   }
 
   int size(int i, int j) const { 
+    // returns slice dimensions.
     assert( j >= 0 );
-    assert( j < 5 );
+    assert( j <= MAX_RANK );
     if( j == 0 ) return this->tuples();
     else return extent_sizes[i][j];
   }
   
-  int tuples() const { return num_tuples; }
+  int tuples() const { 
+    return num_tuples; 
+  }
 
   template <std::size_t index> auto makeSlice() {
+    // Creates wrapper object w/ meta data about the slice.
     using type = std::tuple_element_t<index, TypeTuple>;
     const int stride = sizeof(soa_t) / sizeof(member_value_t<index>);
     auto slice = Cabana::slice<index>(aosoa);
@@ -158,86 +174,50 @@ public:
     for( int i = 0; i < MAX_RANK; i++ ) sizes[i] = this->size(index,i);
     return wrapper_slice_t<type, stride>(std::move(slice),sizes);
   }
-  
-  /*
-    can use SliceType::index_type::i(s,a)
-  static constexpr int saToItemIndex( const int& s, const int& a ) {
-    return s*vecLen + a;
-  }
-  
-    can use SliceType::index_type::s(i)
-    can use SliceType::index_type::a(i)
-  static constexpr void itemIndexToSA(const int& i, int& s, int& a) {
-    s = i / vecLen;
-    a = i % vecLen;
-  }
-
-  */
-  template <typename FunctorType, class IS, class IE, int vectorLength>
-  void parallel_for_helper(const std::initializer_list<IS>& start_init,
-                           const std::initializer_list<IE>& end_init,
-                           FunctorType &vectorKernel,
-                           std::string tag) {
-    // requirement start_init and end_init must be of equal size.
-    static_assert( std::is_integral<IS>::value, "Integral required\n" );
-    static_assert( std::is_integral<IE>::value, "Integral required\n" );
-
-    auto start = start_init.begin();
-    auto end = end_init.begin();
-
-    //assert( start.size() == end.size() );
-    
-    assert(cudaSuccess == cudaDeviceSynchronize());
-
-    Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy(*start,*end);
-
-
-    constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
-    static_assert( FunctorRank >= 1 && FunctorRank <= CabanaController::MAX_RANK );
-    if constexpr (FunctorRank == 1) {
-      Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
-        const int i = s*vectorLength+a; // TODO use impel_index
-        vectorKernel(i);
-      },"Controller::CabanaController::parallel_for -> Rank 1\n");
-      assert(cudaSuccess == cudaDeviceSynchronize());
-    } else
-    if constexpr (FunctorRank == 2) {
-      //TODO runtime failure ; work in progress
-      Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy_1(*start,*end);
-      //const int s1 = 0;
-      //const int e1 = 1;
-      fprintf(stderr,"Here lolasdlghhwrlnkg\n");
-      Cabana::simd_parallel_for(policy_1,KOKKOS_LAMBDA(const int& s, const int& a) {
-        /*
-        const int i = s*vectorLength+a;
-        for( int j = s1; j < e1; j++) {
-          //vectorKernel(i,j);
-        }
-        */
-      },"Controller::CabanaController::parallel_for -> Rank 2\n");
-    } else
-    if constexpr (FunctorRank == 3) {
-      Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
-        const int i = s*vectorLength+a;
-        const int s1=start(1),s2=start(2);
-        const int e1=end(1),e2=end(2);
-        for( int j = s1; j < e1; j++) {
-          for( int k = s2; k < e2; k++ ) {
-            vectorKernel(i,j,k);
-          }
-        }
-      }, "Controller::CabanaController::parallel_for -> Rank 3\n");
-    } // TODO: Rank 4
-  
-  }
 
   template <typename FunctorType, class IS, class IE>
   void parallel_for(const std::initializer_list<IS>& start_init,
                     const std::initializer_list<IE>& end_init,
                     FunctorType &vectorKernel,
                     std::string tag) {
-    this->parallel_for_helper<FunctorType,IS,IE,vecLen>
-      (start_init,end_init,vectorKernel,tag);
+    static_assert( std::is_integral<IS>::value, "Integral required\n" );
+    static_assert( std::is_integral<IE>::value, "Integral required\n" );
+
+    auto start = start_init.begin();
+    auto end = end_init.begin();
+    
+    assert(cudaSuccess == cudaDeviceSynchronize());
+
+    Cabana::SimdPolicy<vecLen,ExecutionSpace> policy(*start,*end);
+
+    
+    constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
+    static_assert( FunctorRank >= 1 && FunctorRank <= CabanaController::MAX_RANK );
+    if constexpr (FunctorRank == 1) {
+      Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
+        const int i = s*vecLen+a; // TODO use impel_index
+        vectorKernel(i);
+      },"Controller::CabanaController::parallel_for -> Rank 1\n");
+      assert(cudaSuccess == cudaDeviceSynchronize());
+    } 
+    if constexpr (FunctorRank == 2) {
+      //TODO runtime failure ; work in progress
+      Cabana::SimdPolicy<vecLen,ExecutionSpace> policy_1(*start,*end);
+      const int s1 = 0;
+      const int e1 = 1;
+      Cabana::simd_parallel_for(policy_1,KOKKOS_LAMBDA(const int& s, const int& a) {
+        const int i = s*vecLen+a;
+        for( int j = s1; j < e1; j++) {
+          vectorKernel(i,j);
+        }
+      },"Controller::CabanaController::parallel_for -> Rank 2\n");
+    } 
+    if constexpr (FunctorRank == 3) {
+      // TODO
+    } 
+    if constexpr (FunctorRank == 4) {
+      // TODO
+    }
   }
   
 };

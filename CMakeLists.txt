@@ -18,6 +18,7 @@ set(MESHFIELD_HEADERS
   src/KokkosController.hpp
   src/CabanaController.hpp
   src/MeshField.hpp
+  src/test.hpp
 )
 
 #create header only library
@@ -53,6 +54,9 @@ target_link_libraries(KokkosTests PRIVATE meshFields)
 
 add_executable(CabanaTests test/testCabana.cpp)
 target_link_libraries(CabanaTests PRIVATE meshFields)
+
+add_executable(LogicTests test/test.cpp)
+target_link_libraries(LogicTests PRIVATE meshFields)
 #add_test(sliceWrapper50 ./SliceWrapper 50)
 #add_test(meshField ./MeshField)
 #add_test(KokkosTests ./Main)

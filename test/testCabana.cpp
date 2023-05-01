@@ -14,6 +14,7 @@
 
 #define TOLERANCE 1e-10;
 
+
 // helper testing functions
 
 // compare doubles within a tolerance
@@ -233,13 +234,82 @@ void testCabanaParallelFor() {
 
   printf("== END testCabanaParallelFor() ==\n");
 }
+template< typename... T >
+void testCabanaLogic(const int n) {
+  printf("== START testCabanaLogic ==\n");
+  const int vectorLength = 8;
+  using DeviceType = Kokkos::Device<ExecutionSpace,MemorySpace>;
+  using DataTypes = Cabana::MemberTypes<T...>;
+  Cabana::AoSoA<DataTypes,DeviceType,vectorLength> aosoa("x",n);
+  
+  auto slice = Cabana::slice<0>(aosoa);
+  auto slice2 = Cabana::slice<1>(aosoa);
 
-void testCabanaLogic() {
+  auto simpleKernel = KOKKOS_LAMBDA(const int &i, const int& j) {
+    slice(i,j) = i+j;
+  };
 
-
+  auto simpleKernel2 = KOKKOS_LAMBDA( const int& i) {
+    slice2(i) = i;
+  };
+  testCabanaLogicHelper(simpleKernel,n);
+  testCabanaLogicHelper(simpleKernel2,n);
+  printf("== END testCabanaLogic ==\n");
 }
+template< typename FunctorType, 
+  std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity >
 
+void testCabanaLogicHelper(FunctorType& func,
+                          const int n) {
 
+  const int vectorLength = 8;
+  Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy(0,n);
+  /*
+  FunctorType* fn_d;
+  #ifdef PP_USE_CUDA
+    cudaMalloc(&fn_d,sizeof(FunctorType));
+    cudaMemcpy(fn_d,&func, sizeof(FunctorType),cudaMemcpyHostToDevice);
+  #else
+    fn_d = &func;
+  #endif
+  */
+  if constexpr (FunctorRank == 2) {
+    Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
+      const int i = s*vectorLength+a;
+      for( int j = 0; j < n; j++) {
+        //(*fn_d)(i,j);
+        func(i,j);
+      }
+    },"");
+  }
+  if constexpr (FunctorRank == 1) {
+    Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
+      const int i = s*vectorLength+a;
+      //(*fn_d)(i);
+    },"");
+  }
+}
+template< const int theta >
+void testLogic() {
+  Cabana::SimdPolicy<8,ExecutionSpace> policy(0,10);
+  if constexpr ( theta == 1 ) {
+    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA(const int& s, const int& a) {
+      printf("Hello!!!");
+    },"");
+  }
+  if constexpr ( theta == 2 ) {
+    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA(const int& s, const int& a) {
+      printf("Hello again!!!");
+    },"");
+
+  }
+  if constexpr ( theta == 3 ) {
+    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA(const int& s, const int& a) {
+      printf("Hello a third time!");
+    },"");
+
+  }
+}
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
@@ -249,7 +319,10 @@ int main(int argc, char *argv[]) {
   testCabanaControllerSize();
   testCabanaFieldSize();
   */
-  testCabanaParallelFor();
-
+  //testCabanaParallelFor();
+  //testCabanaLogic<int[100],int>(100);
+  testLogic<1>();
+  testLogic<2>();
+  testLogic<3>();
   return 0;
 }

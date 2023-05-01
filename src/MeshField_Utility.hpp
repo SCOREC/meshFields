@@ -18,6 +18,8 @@ struct function_traits
 
 template< typename ClassType, typename ReturnType, typename... Args>
 struct function_traits<ReturnType(ClassType::*)(Args...) const> {
+  // arity is used to find the number of arguements
+  // used in a lambda function. Refer to stackoverflow link above.
   static constexpr std::size_t arity = sizeof...(Args);
   typedef ReturnType result_type;
   template<std::size_t i> struct arg {
@@ -28,6 +30,7 @@ struct function_traits<ReturnType(ClassType::*)(Args...) const> {
 template< std::size_t RANK, class T >
 Kokkos::Array<int64_t, RANK> 
 to_kokkos_array( const std::initializer_list<T>& item) {
+  // Convert initializer_list to a Kokkos::Array<RANK>
   assert( std::is_integral<T>::value );
   Kokkos::Array<int64_t, RANK> rt{};
   auto x = item.begin();
@@ -52,8 +55,7 @@ struct remove_all_pointers : std::conditional_t<
 >
 {};
 
-} // END NAMESPACE MeshField
-
+} // END NAMESPACE MeshFieldUtil
 
 
 #endif // #ifndef MESHFIELD_UTILITY_HPP

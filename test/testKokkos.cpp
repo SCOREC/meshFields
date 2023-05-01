@@ -94,16 +94,16 @@ void testingStufffs() {
 void testKokkosParallelFor() {
 
   printf("== START testKokkosParallelFor ==\n");
-
+  //TODO test ALL ranks (1-5) -> Currently, only using rank 2
   using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace, int**>;
   Ctrlr c({10,10});
   MeshField::MeshField<Ctrlr> kok(c);
   
   auto field0 = kok.makeField<0>();
 
-  auto vectorKernel = KOKKOS_LAMBDA (const int s, const int a) {
-    field0(s,a) = s+a;
-    assert(field0(s,a) == s+a);
+  auto vectorKernel = KOKKOS_LAMBDA (const int i, const int j) {
+    field0(i,j) = i+j;
+    assert(field0(i,j) == i+j);
   };
 
   kok.parallel_for({0,0},{10,10},vectorKernel, "testKokkosParallelFor()");

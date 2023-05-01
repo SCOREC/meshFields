@@ -23,9 +23,6 @@ public:
 
   Field(Slice s) : slice(s) {}
   
-  /* operator() -> 1D Access */
-  /* access() -> 2D Access */
-  
   KOKKOS_INLINE_FUNCTION
   auto size(int i) const { return slice.size(i); }
 
@@ -56,8 +53,12 @@ public:
 
   MeshField(Controller controller) : sliceController(std::move(controller)) {}
   
-  int size(int type_index, int dimension_index) 
-  { return sliceController.size(type_index,dimension_index); }
+  int size(int type_index, int dimension_index) { 
+    // given a Controller w/ types Tx = <int*[2][3],double[1][2][3],char*>
+    // size(i,j) will return dimension size from Tx[i,j];
+    // So in the above 'Tx' example, size(0,2) == 3.
+    return sliceController.size(type_index,dimension_index); 
+  }
 
   template <std::size_t index> auto makeField() {
     auto slice = sliceController.template makeSlice<index>();
@@ -129,6 +130,9 @@ public:
 
   template <class FieldT, class View>
   void setField(FieldT &field, View &view) {
+    // Accepts a Field object and Kokkos::View
+    // -> sets field(i,j,...) = view(i,j,...) for all i,j,...
+    //    up to rank 5.
     constexpr std::size_t view_rank = View::rank;
     constexpr std::size_t field_rank = FieldT::RANK;
     static_assert( field_rank <= FieldT::MAX_RANK );

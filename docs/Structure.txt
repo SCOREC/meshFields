@@ -1,0 +1,60 @@
+The purpose of this document is to introduce the codebase
+to anyone that may be working on this repo and to clearly
+explain the organization of classes, methods, etc. 
+
+aside: document the use of any access is logical.
+
++----------------+
+| File structure |
++----------------+
+ Source
+ |
+ | CMakeLists.txt
+ | LICENSE
+ | README.md
+ | config.cmake.in
+ |-docs
+   | Structure.txt (this document)
+   | error_narrow.txt 
+   | scratch.txt
+ |-src
+   | CabanaController.hpp
+   | KokkosController.hpp
+   | MeshField.hpp
+   | MeshField_Macros.hpp
+   | MeshField_Utility.hpp
+ |-test
+   | testCabana.cpp
+   | testKokkos.cpp
+   | testMain.cpp
+   | testMeshField.cpp
+   | testSliceWrapper.cpp
+
++--------------------+
+| Class organization |
++--------------------+
+
+
+
+
++------------------------+
+| namespace organization |
++------------------------+
+MeshField{ 
+  Field<Slice>
+  MeshField<Controller>
+}
+Controller{  
+  CabanaSliceWrapper<SliceType,T>
+  CabanaController<ExecutionSpace,MemorySpace,Ts...>
+  KokkosSliceWrapper<SliceType,T>
+  KokkosController<MemorySpace,ExecutionSpace,Ts...>
+}
+MeshFieldUtil{
+  function_traits<T>
+  function_traits<ClassType,ReturnType,Args...>
+  to_kokkos_array<RANK,T>
+  identity<T>
+  remove_all_pointers<T>
+}
+

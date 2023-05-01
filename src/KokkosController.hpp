@@ -91,7 +91,7 @@ private:
   create_view( std::string tag, std::vector<int> &dims ) { 
     int rank = Kokkos::View<Tx>::rank;
     int dynamic = Kokkos::View<Tx>::rank_dynamic;
-    assert( rank <= 5 );
+    assert( rank <= MAX_RANK );
     assert( rank >= 0 );
 
     if( rank == 0 ) return Kokkos::View<Tx,MemorySpace>(tag);
@@ -141,7 +141,7 @@ private:
     int total_rank = Kokkos::View<T1>::rank;
     int dynamic_rank = Kokkos::View<T1>::rank_dynamic;
     const int static_rank = total_rank - dynamic_rank;
-    assert( total_rank <= 5 );
+    assert( total_rank <= MAX_RANK );
     assert( total_rank >= 0 );
 
     switch( static_rank ) {
@@ -176,52 +176,9 @@ private:
         break;
     }
     this->delta+=1;
-    if constexpr ( sizeof...(Tx) > 1 ) construct_sizes<Tx...>();
-    else                    construct_final_size<Tx...>();
+    if constexpr ( sizeof...(Tx) >= 1 ) construct_sizes<Tx...>();
   }
 
-  template< typename T1 >
-  void construct_final_size() {
-    int total_rank = Kokkos::View<T1>::rank;
-    int dynamic_rank = Kokkos::View<T1>::rank_dynamic;
-    const int static_rank = total_rank - dynamic_rank;
-    assert( total_rank <= 5 );
-    assert( total_rank >= 0 );
-    switch( static_rank ) {
-      case 1: 
-        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
-        break;
-      case 2:
-        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
-        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
-        break;
-      case 3:
-        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
-        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
-        extent_sizes[delta][dynamic_rank+2] = (int)std::extent<T1,2>::value;
-        break;
-      case 4:
-        extent_sizes[delta][dynamic_rank] = (int)std::extent<T1,0>::value;
-        extent_sizes[delta][dynamic_rank+1] = (int)std::extent<T1,1>::value;
-        extent_sizes[delta][dynamic_rank+2] = (int)std::extent<T1,2>::value;
-        extent_sizes[delta][dynamic_rank+3] = (int)std::extent<T1,3>::value;
-        break;
-      case 5:
-        extent_sizes[delta][0] = (int)std::extent<T1,0>::value;
-        extent_sizes[delta][1] = (int)std::extent<T1,1>::value;
-        extent_sizes[delta][2] = (int)std::extent<T1,2>::value;
-        extent_sizes[delta][3] = (int)std::extent<T1,3>::value;
-        extent_sizes[delta][4] = (int)std::extent<T1,4>::value;
-        break;
-      default:
-        break;
-    }
-    for( int i = 0; i < dynamic_rank; i++ ) {
-      extent_sizes[delta][i] = 0;
-    }
-    this->delta+=1;
-  }
-  
   // member vaiables
   const int num_types = sizeof...(Ts);
   unsigned short delta = 0;
@@ -235,15 +192,13 @@ public:
   static const int MAX_RANK = 5;
   
   KokkosController() {
-    if constexpr ( sizeof...(Ts) > 1 ) { construct_sizes<Ts...>(); }
-    else if constexpr ( sizeof...(Ts) == 1 ) { construct_final_size<Ts...>(); }
+    if constexpr ( sizeof...(Ts) >= 1 ) { construct_sizes<Ts...>(); }
     std::vector<int> obj;
     values_ = construct<Ts...>(obj);
   }
 
   KokkosController(const std::initializer_list<int> items) {
-    if constexpr ( sizeof...(Ts) > 1 ) { construct_sizes<Ts...>(); }
-    else if constexpr ( sizeof...(Ts) == 1 ) { construct_final_size<Ts...>(); }
+    if constexpr ( sizeof...(Ts) >= 1 ) { construct_sizes<Ts...>(); }
     std::vector<int> obj(items);
     values_ = construct<Ts...>(obj);
   }
@@ -254,7 +209,7 @@ public:
     assert(type_index >= 0);
     assert(type_index < num_types);
     assert(dimension_index >= 0);
-    assert(dimension_index < 5);
+    assert(dimension_index < MAX_RANK );
     return extent_sizes[type_index][dimension_index]; 
   }
   
@@ -283,6 +238,6 @@ public:
     }
   }
 };
-} // namespace SliceWrapper
+} // namespace Controller
 
 #endif
