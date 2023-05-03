@@ -2,7 +2,9 @@
 #define _test_hpp_
 #include <Kokkos_Core.hpp>
 #include <cstdio>
+#include <cassert>
 #include <array>
+#include <stdio.h>
 #include <type_traits>
 #include <Cabana_Core.hpp>
 #include "MeshField_Utility.hpp"
@@ -61,7 +63,7 @@ struct impl<2,FunctorType> {
 
   FunctorType z;
 };
-
+/*
 template <class FunctorType>
 typename std::enable_if< 2 == function_traits<FunctorType>::arity>::type
 parallel_for(FunctorType& kernel, const std::initializer_list<int>& start, const std::initializer_list<int>& end) {
@@ -70,49 +72,53 @@ parallel_for(FunctorType& kernel, const std::initializer_list<int>& start, const
   Kokkos::MDRangePolicy<Kokkos::Rank<2>> p(a_start,a_end);
   Kokkos::parallel_for( "rank_2", p, kernel );
 }
+*/
+/*
 template <class FunctorType>
 typename std::enable_if< 1 == function_traits<FunctorType>::arity>::type
 parallel_for(FunctorType& kernel, const std::initializer_list<int>& start, const std::initializer_list<int>& end) {
   Kokkos::RangePolicy p(*start.begin(),*end.begin());
   Kokkos::parallel_for( "rank_1", p, kernel );
 }
+*/
 
-template<class Fn, std::size_t vectorLength=32>
-typename 
-std::enable_if<1 == MeshFieldUtil::function_traits<Fn>::arity>::type
-simd_for( Fn& kernel, const std::initializer_list<int>& start,
+template<std::size_t vectorLen, class Fn>
+typename std::enable_if<1==function_traits<Fn>::arity>::type
+simd_for( Fn kernel, const std::initializer_list<int>& start,
                       const std::initializer_list<int>& end ) {
-  assert( *start.begin() >= 0 )
-  assert( *end.begin() >= 0 && *end.begin() > *start.begin());
-  Cabana::SimdPolicy<vectorLength> policy( *start.begin(), *start.end() );
+  printf("rank1\n");
+  Kokkos::Array<int64_t,1> a_start = MeshFieldUtil::to_kokkos_array<1>( start );
+  Kokkos::Array<int64_t,1> a_end = MeshFieldUtil::to_kokkos_array<1>( end );
+  assert( a_start[0] >= 0 );
+  assert( a_end[0] >= 0 && a_end[0] > a_start[0]);
+  /*
+  Cabana::SimdPolicy<vectorLen> policy( *start.begin(), *start.end() );
   Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA( const int& s, const int& a ) {
-    const int i = s*vectorLength+a; // TODO: use impel_index
+    const int i = s*vectorLen+a; // TODO: use impel_index
     kernel(i);
   }, "simd_for (rank 1)");
+  */
 }
-template<class Fn, std::size_t vectorLength=32>
-typename 
-std::enable_if<2==MeshFieldUtil::function_traits<Fn>::arity>::type
-simd_for( Fn& kernel, const std::initializer_list<int>& start,
+template<std::size_t vectorLen, class Fn>
+typename std::enable_if<2==function_traits<Fn>::arity>::type
+simd_for( Fn kernel, const std::initializer_list<int>& start,
                       const std::initializer_list<int>& end ) {
-  assert( *start.begin() >= 0 )
-  assert( *end.begin() >= 0 && *end.begin() > *start.begin());
-  Cabana::SimdPolicy<vectorLength> policy( *start.begin(), *start.end() );
-  const int s1 = *( start.begin() + 1);
-  const int e1 = *( end.begin() + 1);
+  printf("rank2\n");
+  Kokkos::Array<int64_t,2> a_start = MeshFieldUtil::to_kokkos_array<2>( start );
+  Kokkos::Array<int64_t,2> a_end = MeshFieldUtil::to_kokkos_array<2>( end );
+  assert( a_start.size() >= 2 && a_end.size() >= 2 );
+  assert( a_start[0] >= 0 );
+  assert( a_end[0] >= 0 && a_end[0] > a_start[0]);
+
+  Cabana::SimdPolicy<vectorLen> policy( *start.begin(), *start.end() );
+  const int s1 = a_start[1];
+  const int e1 = a_end[1];
   Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA( const int& s, const int& a ) {
-    const int i = s*vectorLength+a; // TODO: use impel_index
+    const int i = s*vectorLen+a; // TODO: use impel_index
     for( int j = s1; j < e1; j++ ) kernel(i,j);
   }, "simd_for (rank 2)");
 }
-
-template< class Fn >
-void launch( Fn& kernel, const std::initializer_list<int>& start, 
-    const std::initializer_list<int>& end ) {
-  const std::size_t v_length = 32;
-  simd_for<Fn, v_length>(kernel, start, end);
-}
-
+/*
 template< typename FunctorType>
 void parallel_for2(FunctorType &kernel) {
   const int n = 5;
@@ -122,5 +128,5 @@ void parallel_for2(FunctorType &kernel) {
   for( int i = 0; i < RANK; i++ ) { start.push_back(0); end.push_back(n); }
   assert( p.x( start, end ) );
 }
-
+*/
 #endif

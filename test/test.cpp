@@ -23,15 +23,18 @@ int main( int argc, char** argv) {
 
   //parallel_for( rank2, {0,0}, {5,5} );
   //parallel_for( rank1, {0}, {5} );
+  //simd_for( rank1, {0}, {10} );
+  //simd_for( rank2, {0,0}, {10,10} );
   const int x = 100;
   using ctrl = Controller::CabanaController<ExecutionSpace, MemorySpace, int[x] >;
   ctrl c1(x);
   MeshField::MeshField<ctrl> mf(c1);
   auto field0 = mf.makeField<0>();
   auto vKernel = KOKKOS_LAMBDA( const int& i, const int& j ) {
+    printf("vKernel -> (%d,%d)\n", i,j);
     field0(i,j) = i + j;
     assert(field0(i,j) == i + j );
   };
-  launch(vKernel, {0,0}, {x,x});
+  simd_for<ctrl::vecLen>(vKernel, {0,0}, {x,x});
   
 }
