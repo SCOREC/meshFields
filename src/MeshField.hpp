@@ -1,13 +1,13 @@
 #ifndef meshfield_hpp
 #define meshfield_hpp
 
-#include <Kokkos_Core.hpp>
-#include <Kokkos_StdAlgorithms.hpp>
 #include <cstdio>
 #include <type_traits> // std::same_v<t1,t2>
 #include <array>
 #include <stdexcept>
 
+#include <Kokkos_Core.hpp>
+#include <Kokkos_StdAlgorithms.hpp>
 #include "MeshField_Utility.hpp"
 
 namespace MeshField {

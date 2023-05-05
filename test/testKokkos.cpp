@@ -92,9 +92,12 @@ void testingStufffs() {
 
 
 void testKokkosParallelFor() {
-
   printf("== START testKokkosParallelFor ==\n");
-  const int a=10,b=9,c=8,d=7,e=6;
+  const int a=10;
+  const int b=9;
+  const int c=8;
+  const int d=7;
+  const int e=6;
   {
     using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace,int[a],
           int[a][b],int[a][b][c],int[a][b][c][d], int[a][b][c][d][e]>;
@@ -107,7 +110,7 @@ void testKokkosParallelFor() {
     auto rk4 = kok.makeField<3>();
     auto rk5 = kok.makeField<4>();
     
-    auto k1 = KOKKOS_LAMBDA( int i ) {
+    auto k1 = KOKKOS_LAMBDA( const int& i ) {
       rk1(i) = i;
       assert(rk1(i) == i);
     };
@@ -127,12 +130,14 @@ void testKokkosParallelFor() {
       rk5(i,j,k,l,m) = i+j+k+l+m;
       assert( rk5(i,j,k,l,m) == i+j+k+l+m );
     };
-    
+    // idk why I cant use c,d,e to reference the extents
+    // of each index but it doesn't compile if I use them.
+    // -> github issue
     kok.parallel_for({0},{a},k1, "testKokkosParallelFor(rank1)");
     kok.parallel_for({0,0},{a,b},k2, "testKokkosParallelFor(rank2)");
-    kok.parallel_for({0,0,0},{a,b,c},k3, "testKokkosParallelFor(rank3)");
-    kok.parallel_for({0,0,0,0},{a,b,c,d},k4, "testKokkosParallelFor(rank4)");
-    kok.parallel_for({0,0,0,0,0},{a,b,c,d,e},k5, "testKokkosParallelFor(rank5)");
+    kok.parallel_for({0,0,0},{a,b,8},k3, "testKokkosParallelFor(rank3)");
+    kok.parallel_for({0,0,0,0},{a,b,8,7},k4, "testKokkosParallelFor(rank4)");
+    kok.parallel_for({0,0,0,0,0},{a,b,8,7,6},k5, "testKokkosParallelFor(rank5)");
   }
 
   printf("== END testKokkosParallelFor ==\n");

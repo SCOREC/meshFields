@@ -23,7 +23,7 @@ struct CabanaSliceWrapper {
     }
   }
   CabanaSliceWrapper( ) {}
-  
+  // TODO change size to extent
   KOKKOS_INLINE_FUNCTION
   auto size( int i ) const { 
     assert( i >= 0 );
@@ -167,6 +167,8 @@ public:
   int tuples() const { 
     return num_tuples; 
   }
+  
+
 
   template <std::size_t index> auto makeSlice() {
     // Creates wrapper object w/ meta data about the slice.

@@ -2,6 +2,7 @@
 #define kokkosslicewrapper_hpp
 
 #include <tuple>
+#include <string>
 #include <vector>
 #include <cassert>
 #include <iterator>
@@ -212,6 +213,7 @@ public:
     assert(dimension_index < MAX_RANK );
     return extent_sizes[type_index][dimension_index]; 
   }
+  
   
   template<std::size_t index> auto makeSlice() {
     using type = std::tuple_element_t<index, TypeTuple>;
