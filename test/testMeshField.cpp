@@ -28,7 +28,7 @@ int simpleSum(int n) {
 }
 
 void test_scan(int num_tuples) {
-  /* TODO UNCOMMENT
+  /* 
   using Controller =
       SliceWrapper::CabPackedController<ExecutionSpace, MemorySpace, int, int>;
 

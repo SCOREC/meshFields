@@ -2,6 +2,8 @@
 #define cabanaslicewrapper_hpp
 
 #include <type_traits>
+#include <initializer_list>
+
 #include <Cabana_Core.hpp>
 
 namespace Controller {
@@ -46,7 +48,7 @@ struct CabanaSliceWrapper {
     auto a = SliceType::index_type::a(i);
     return slice.access(s,a,j);
   }
-  //TODO: copy above return of .access for following methods.
+
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int i, int j, int k) const {
     auto s = SliceType::index_type::s(i);
@@ -134,6 +136,7 @@ private:
     if constexpr (sizeof...(Tx) != 0 ) construct_sizes<Tx...>();
   }
 
+  
   // member vaiables
   Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa;
   const int num_tuples;
@@ -175,6 +178,70 @@ public:
     return wrapper_slice_t<type, stride>(std::move(slice),sizes);
   }
 
+  template<class Fn>
+  typename std::enable_if<1==MeshFieldUtil::function_traits<Fn>::arity>::type
+  simd_for( Fn& kernel, const Kokkos::Array<int64_t,1>& start,
+                        const Kokkos::Array<int64_t,1>& end,
+                        std::string tag) {
+    Cabana::SimdPolicy<vecLen> policy( start[0], end[0] );
+    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA( const int& s, const int& a ) {
+      const std::size_t i = Cabana::Impl::Index<vecLen>::i(s,a);
+      kernel(i);
+    }, tag );
+  }
+
+  template<class Fn>
+  typename std::enable_if<2==MeshFieldUtil::function_traits<Fn>::arity>::type
+  simd_for( Fn& kernel, const Kokkos::Array<int64_t,2>& start,
+                        const Kokkos::Array<int64_t,2>& end,
+                        std::string tag) {
+    Cabana::SimdPolicy<vecLen> policy( start[0], end[0] );
+    const int64_t s1 = start[1];
+    const int64_t e1 = end[1];
+    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA( const int& s, const int& a ) {
+      const std::size_t i = Cabana::Impl::Index<vecLen>::i(s,a);
+      for( int j = s1; j < e1; j++ ) kernel(i,j);
+    }, tag );
+  }
+
+  template<class Fn>
+  typename std::enable_if<3==MeshFieldUtil::function_traits<Fn>::arity>::type
+  simd_for( Fn& kernel, const Kokkos::Array<int64_t,3>& start,
+                        const Kokkos::Array<int64_t,3>& end,
+                        std::string tag) {
+    Cabana::SimdPolicy<vecLen> policy( start[0], end[0] );
+    const int s1=start[1],s2=start[2];
+    const int e1=end[1],e2=end[2];
+    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA( const int& s, const int& a ) {
+      const std::size_t i = Cabana::Impl::Index<vecLen>::i(s,a);
+      for( int j = s1; j < e1; j++ ) {
+        for( int k = s2; k < e2; k++ ) {
+          kernel(i,j,k);
+        }
+      }
+    }, tag );
+  }
+
+  template<class Fn>
+  typename std::enable_if<4==MeshFieldUtil::function_traits<Fn>::arity>::type
+  simd_for( Fn& kernel, const Kokkos::Array<int64_t,4>& start,
+                        const Kokkos::Array<int64_t,4>& end,
+                        std::string tag) {
+    Cabana::SimdPolicy<vecLen> policy( start[0], end[0] );
+    const int s1=start[1],s2=start[2],s3=start[3];
+    const int e1=end[1],e2=end[2],e3=end[3];
+    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA( const int& s, const int& a ) {
+      const std::size_t i = Cabana::Impl::Index<vecLen>::i(s,a);
+      for( int j = s1; j < e1; j++ ) {
+        for( int k = s2; k < e2; k++ ) {
+          for( int l = s3; l < e3; l++ ) {
+            kernel(i,j,k,l);
+          }
+        }
+      }
+    }, tag );
+  }
+
   template <typename FunctorType, class IS, class IE>
   void parallel_for(const std::initializer_list<IS>& start_init,
                     const std::initializer_list<IE>& end_init,
@@ -182,44 +249,14 @@ public:
                     std::string tag) {
     static_assert( std::is_integral<IS>::value, "Integral required\n" );
     static_assert( std::is_integral<IE>::value, "Integral required\n" );
-
-    auto start = start_init.begin();
-    auto end = end_init.begin();
-    
     assert(cudaSuccess == cudaDeviceSynchronize());
-
-    Cabana::SimdPolicy<vecLen,ExecutionSpace> policy(*start,*end);
-
-    
-    constexpr std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity;
-    static_assert( FunctorRank >= 1 && FunctorRank <= CabanaController::MAX_RANK );
-    if constexpr (FunctorRank == 1) {
-      Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
-        const int i = s*vecLen+a; // TODO use impel_index
-        vectorKernel(i);
-      },"Controller::CabanaController::parallel_for -> Rank 1\n");
-      assert(cudaSuccess == cudaDeviceSynchronize());
-    } 
-    if constexpr (FunctorRank == 2) {
-      //TODO runtime failure ; work in progress
-      Cabana::SimdPolicy<vecLen,ExecutionSpace> policy_1(*start,*end);
-      const int s1 = 0;
-      const int e1 = 1;
-      Cabana::simd_parallel_for(policy_1,KOKKOS_LAMBDA(const int& s, const int& a) {
-        const int i = s*vecLen+a;
-        for( int j = s1; j < e1; j++) {
-          vectorKernel(i,j);
-        }
-      },"Controller::CabanaController::parallel_for -> Rank 2\n");
-    } 
-    if constexpr (FunctorRank == 3) {
-      // TODO
-    } 
-    if constexpr (FunctorRank == 4) {
-      // TODO
-    }
+    constexpr std::size_t RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
+    assert( start_init.size() >= RANK );
+    assert( end_init.size() >= RANK );
+    Kokkos::Array<int64_t,RANK> a_start = MeshFieldUtil::to_kokkos_array<RANK>(start_init);
+    Kokkos::Array<int64_t,RANK> a_end = MeshFieldUtil::to_kokkos_array<RANK>(end_init);
+    simd_for<FunctorType>(vectorKernel,a_start,a_end,tag); 
   }
-  
 };
 } // namespace Controller
 

@@ -94,19 +94,46 @@ void testingStufffs() {
 void testKokkosParallelFor() {
 
   printf("== START testKokkosParallelFor ==\n");
-  //TODO test ALL ranks (1-5) -> Currently, only using rank 2
-  using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace, int**>;
-  Ctrlr c({10,10});
-  MeshField::MeshField<Ctrlr> kok(c);
-  
-  auto field0 = kok.makeField<0>();
-
-  auto vectorKernel = KOKKOS_LAMBDA (const int i, const int j) {
-    field0(i,j) = i+j;
-    assert(field0(i,j) == i+j);
-  };
-
-  kok.parallel_for({0,0},{10,10},vectorKernel, "testKokkosParallelFor()");
+  const int a=10,b=9,c=8,d=7,e=6;
+  {
+    using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace,int[a],
+          int[a][b],int[a][b][c],int[a][b][c][d], int[a][b][c][d][e]>;
+    Ctrlr c;
+    MeshField::MeshField<Ctrlr> kok(c);
+    
+    auto rk1 = kok.makeField<0>();
+    auto rk2 = kok.makeField<1>();
+    auto rk3 = kok.makeField<2>();
+    auto rk4 = kok.makeField<3>();
+    auto rk5 = kok.makeField<4>();
+    
+    auto k1 = KOKKOS_LAMBDA( int i ) {
+      rk1(i) = i;
+      assert(rk1(i) == i);
+    };
+    auto k2 = KOKKOS_LAMBDA (const int i, const int j) {
+      rk2(i,j) = i+j;
+      assert(rk2(i,j) == i+j);
+    };
+    auto k3 = KOKKOS_LAMBDA(int i,int j,int k) {
+      rk3(i,j,k) = i + j + k;
+      assert( rk3(i,j,k) == i+j+k);
+    };
+    auto k4 = KOKKOS_LAMBDA(int i,int j,int k,int l) {
+      rk4(i,j,k,l) = i+j+k+l;
+      assert(rk4(i,j,k,l) == i+j+k+l);
+    };
+    auto k5 = KOKKOS_LAMBDA(int i,int j,int k,int l, int m) {
+      rk5(i,j,k,l,m) = i+j+k+l+m;
+      assert( rk5(i,j,k,l,m) == i+j+k+l+m );
+    };
+    
+    kok.parallel_for({0},{a},k1, "testKokkosParallelFor(rank1)");
+    kok.parallel_for({0,0},{a,b},k2, "testKokkosParallelFor(rank2)");
+    kok.parallel_for({0,0,0},{a,b,c},k3, "testKokkosParallelFor(rank3)");
+    kok.parallel_for({0,0,0,0},{a,b,c,d},k4, "testKokkosParallelFor(rank4)");
+    kok.parallel_for({0,0,0,0,0},{a,b,c,d,e},k5, "testKokkosParallelFor(rank5)");
+  }
 
   printf("== END testKokkosParallelFor ==\n");
 }

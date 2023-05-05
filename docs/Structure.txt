@@ -23,19 +23,14 @@ aside: document the use of any access is logical.
    | MeshField.hpp
    | MeshField_Macros.hpp
    | MeshField_Utility.hpp
+   | test.hpp -> ( just scratch workspace )
  |-test
    | testCabana.cpp
    | testKokkos.cpp
    | testMain.cpp
    | testMeshField.cpp
    | testSliceWrapper.cpp
-
-+--------------------+
-| Class organization |
-+--------------------+
-
-
-
+   | test.cpp -> ( just scratch workspace )
 
 +------------------------+
 | namespace organization |

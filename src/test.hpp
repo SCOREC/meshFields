@@ -103,7 +103,6 @@ template<std::size_t vectorLen, class Fn>
 typename std::enable_if<2==function_traits<Fn>::arity>::type
 simd_for( Fn kernel, const std::initializer_list<int>& start,
                       const std::initializer_list<int>& end ) {
-  printf("rank2\n");
   Kokkos::Array<int64_t,2> a_start = MeshFieldUtil::to_kokkos_array<2>( start );
   Kokkos::Array<int64_t,2> a_end = MeshFieldUtil::to_kokkos_array<2>( end );
   assert( a_start.size() >= 2 && a_end.size() >= 2 );

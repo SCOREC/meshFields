@@ -211,118 +211,59 @@ void testCabanaFieldSize() {
 
 void testCabanaParallelFor() {
   printf("== START testCabanaParallelFor() ==\n");
-  const int x=10,y=9;
+  const int x=10,y=9,z=8,a=7;
   { 
-    using simd_ctrlr = Controller::CabanaController<ExecutionSpace,MemorySpace,int,int[y]>;
+    using simd_ctrlr = Controller::CabanaController<ExecutionSpace,MemorySpace,int,int[y],
+          int[y][z], int[y][z][a]>;
     simd_ctrlr c1(x);
     MeshField::MeshField<simd_ctrlr> mf(c1);
     auto field0 = mf.makeField<0>();
     auto field1 = mf.makeField<1>();
+    auto field2 = mf.makeField<2>();
+    auto field3 = mf.makeField<3>();
+
     auto vectorKernel = KOKKOS_LAMBDA( const int& i ) {
+      printf("rank1_kernel(%d)\n",i);
       field0(i) = i;
       assert(field0(i) == i);
     };
     mf.parallel_for( {0},{x}, vectorKernel, "simple_loop");
     
     auto vectorKernel2 = KOKKOS_LAMBDA( const int& i, const int& j ) {
+      printf("rank2_kernel(%d,%d)\n",i,j);
       field1(i,j) = i+j;
       assert(field1(i,j) == i+j);
     };
     mf.parallel_for( {0,0},{x,y}, vectorKernel2, "simple_loop");
+
+    auto vectorKernel3 = KOKKOS_LAMBDA( const int& i, const int& j, const int& k ) {
+      printf("rank3_kernel(%d,%d,%d)\n",i,j,k);
+      field2(i,j,k) = i+j+k;
+      assert( field2(i,j,k) == i+j+k );
+    };
+    mf.parallel_for( {0,0,0},{x,y,z}, vectorKernel3, "simple_loop");
+
+
+    auto vectorKernel4 = KOKKOS_LAMBDA( const int& i, const int& j, const int& k,
+                                        const int& l) {
+      printf("rank3_kernel(%d,%d,%d,%d)\n",i,j,k,l);
+      field3(i,j,k,l) = i+j+k+l;
+      assert( field3(i,j,k,l) == i+j+k+l );
+    };
+    mf.parallel_for( {0,0,0,0},{x,y,z,a}, vectorKernel4, "simple_loop");
     
   }
 
   printf("== END testCabanaParallelFor() ==\n");
 }
-template< typename... T >
-void testCabanaLogic(const int n) {
-  printf("== START testCabanaLogic ==\n");
-  const int vectorLength = 8;
-  using DeviceType = Kokkos::Device<ExecutionSpace,MemorySpace>;
-  using DataTypes = Cabana::MemberTypes<T...>;
-  Cabana::AoSoA<DataTypes,DeviceType,vectorLength> aosoa("x",n);
-  
-  auto slice = Cabana::slice<0>(aosoa);
-  auto slice2 = Cabana::slice<1>(aosoa);
 
-  auto simpleKernel = KOKKOS_LAMBDA(const int &i, const int& j) {
-    slice(i,j) = i+j;
-  };
-
-  auto simpleKernel2 = KOKKOS_LAMBDA( const int& i) {
-    slice2(i) = i;
-  };
-  testCabanaLogicHelper(simpleKernel,n);
-  testCabanaLogicHelper(simpleKernel2,n);
-  printf("== END testCabanaLogic ==\n");
-}
-template< typename FunctorType, 
-  std::size_t FunctorRank = MeshFieldUtil::function_traits<FunctorType>::arity >
-
-void testCabanaLogicHelper(FunctorType& func,
-                          const int n) {
-
-  const int vectorLength = 8;
-  Cabana::SimdPolicy<vectorLength,ExecutionSpace> policy(0,n);
-  /*
-  FunctorType* fn_d;
-  #ifdef PP_USE_CUDA
-    cudaMalloc(&fn_d,sizeof(FunctorType));
-    cudaMemcpy(fn_d,&func, sizeof(FunctorType),cudaMemcpyHostToDevice);
-  #else
-    fn_d = &func;
-  #endif
-  */
-  if constexpr (FunctorRank == 2) {
-    Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
-      const int i = s*vectorLength+a;
-      for( int j = 0; j < n; j++) {
-        //(*fn_d)(i,j);
-        func(i,j);
-      }
-    },"");
-  }
-  if constexpr (FunctorRank == 1) {
-    Cabana::simd_parallel_for(policy,KOKKOS_LAMBDA(const int& s, const int& a) {
-      const int i = s*vectorLength+a;
-      //(*fn_d)(i);
-    },"");
-  }
-}
-template< const int theta >
-void testLogic() {
-  Cabana::SimdPolicy<8,ExecutionSpace> policy(0,10);
-  if constexpr ( theta == 1 ) {
-    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA(const int& s, const int& a) {
-      printf("Hello!!!");
-    },"");
-  }
-  if constexpr ( theta == 2 ) {
-    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA(const int& s, const int& a) {
-      printf("Hello again!!!");
-    },"");
-
-  }
-  if constexpr ( theta == 3 ) {
-    Cabana::simd_parallel_for( policy, KOKKOS_LAMBDA(const int& s, const int& a) {
-      printf("Hello a third time!");
-    },"");
-
-  }
-}
 int main(int argc, char *argv[]) {
   int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
-  /*
   testMakeSliceCabana(num_tuples);
   testParallelReduceCabana();
   testCabanaControllerSize();
   testCabanaFieldSize();
-  */
-  //testCabanaParallelFor();
-  //testCabanaLogic<int[100],int>(100);
-  testLogic<1>();
-  testLogic<2>();
-  testLogic<3>();
+  testCabanaParallelFor();
   return 0;
 }

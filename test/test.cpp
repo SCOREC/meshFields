@@ -12,12 +12,14 @@ using MemorySpace = Kokkos::CudaSpace;
 
 int main( int argc, char** argv) {
   Kokkos::ScopeGuard scope_gaurd(argc, argv);
+  /*
   auto rank1 = KOKKOS_LAMBDA(const int& i) {
     printf("I am rank 1:(%d)\n",i);
   };
   auto rank2 = KOKKOS_LAMBDA(const int& i, const int& j) {
     printf("I am rank 2: (%d,%d)\n",i,j);
   };
+  */
   //parallel_for2(rank1);
   //parallel_for2(rank2);
 
