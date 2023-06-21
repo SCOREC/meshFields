@@ -57,6 +57,7 @@ target_link_libraries(CabanaTests PRIVATE meshFields)
 
 add_executable(LogicTests test/test.cpp)
 target_link_libraries(LogicTests PRIVATE meshFields)
+add_test(logicTests ./LogicTests)
 #add_test(sliceWrapper50 ./SliceWrapper 50)
 #add_test(meshField ./MeshField)
 #add_test(KokkosTests ./Main)
