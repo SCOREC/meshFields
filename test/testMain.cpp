@@ -176,7 +176,6 @@ void testSetField() {
 }
 
 int main(int argc, char *argv[]) {
-  int num_tuples = (argc < 2) ? (1000) : (atoi(argv[1]));
   Kokkos::ScopeGuard scope_guard(argc, argv);
   testParallelScan();
   testSetField();
