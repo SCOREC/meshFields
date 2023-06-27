@@ -60,6 +60,7 @@ target_link_libraries(LogicTests PRIVATE meshFields)
 
 add_test(MainTests ./Main)
 add_test(KokkosTests ./KokkosTests)
+add_test(CabanaTests ./CabanaTests)
 add_test(logicTests ./LogicTests)
 #add_test(sliceWrapper50 ./SliceWrapper 50)
 #add_test(meshField ./MeshField)
