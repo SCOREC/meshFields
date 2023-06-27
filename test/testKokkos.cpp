@@ -27,7 +27,7 @@ bool doubleCompare(double d1, double d2) {
 using ExecutionSpace = Kokkos::Cuda;
 using MemorySpace = Kokkos::CudaSpace;
 
-void testMakeSliceKokkos( int num_tuples ) {
+void testMakeSliceKokkos() {
   printf("== START testMakeSliceKokkos ==\n");
   int N = 10;
   using Ctrlr = Controller::KokkosController<MemorySpace,ExecutionSpace,double*>;
@@ -411,7 +411,7 @@ int main(int argc, char *argv[]) {
   testKokkosConstructor(num_tuples);
   testKokkosParallelFor();
   kokkosParallelReduceTest();
-  testMakeSliceKokkos(num_tuples);
+  testMakeSliceKokkos();
   kokkosControllerSizeTest();
   kokkosFieldSizeTest(); 
 
