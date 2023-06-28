@@ -53,18 +53,10 @@ target_link_libraries(CabanaTests PRIVATE meshFields)
 add_executable(LogicTests test/test.cpp)
 target_link_libraries(LogicTests PRIVATE meshFields)
 
-add_executable(SliceWrapper test/testSliceWrapper.cpp)
-target_link_libraries(SliceWrapper PRIVATE meshFields)
-
-#add_executable(MeshField test/testMeshField.cpp)
-#target_link_libraries(MeshField PRIVATE meshFields)
-
 add_test(MainTests ./Main)
 add_test(KokkosTests ./KokkosTests)
 add_test(CabanaTests ./CabanaTests)
 add_test(logicTests ./LogicTests)
-add_test(sliceWrapper50 ./SliceWrapper 50)
-#add_test(meshField ./MeshField)
 
 ## export the library
 set_target_properties(meshFields PROPERTIES PUBLIC_HEADER "${MESHFIELD_HEADERS}")
