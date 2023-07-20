@@ -58,6 +58,51 @@ add_test(KokkosTests ./KokkosTests)
 add_test(CabanaTests ./CabanaTests)
 add_test(logicTests ./LogicTests)
 
+#Preston's lcov/gcov testing stuff----------------------------------------------------
+
+option(meshFields_ENABLE_COVERAGE_BUILD "Do a coverage build" ON)
+if(meshFields_ENABLE_COVERAGE_BUILD)
+
+  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/CMakeModules)
+  include(CodeCoverage)
+
+  append_coverage_compiler_flags()
+
+  setup_target_for_coverage_lcov(
+    NAME coverage                    # New target name
+    EXECUTABLE ctest -C ${ROOT_DIR}/CTestTestfile.cmake
+    EXCLUDE 
+      "${CMAKE_CURRENT_LIST_DIR}/docs/*"
+      "${CMAKE_CURRENT_LIST_DIR}/.github/*"
+      "${CMAKE_CURRENT_LIST_DIR}/omega_h/*" 
+      "${CMAKE_CURRENT_BINARY_DIR}/nvcc_internal_extended_lambda_implementation"
+      "/space/waterp2/meshFieldsDev/build-cabana-cranium-cuda"
+      "/space/waterp2/meshFieldsDev/build-kokkos-cranium-cuda"
+      "/space/waterp2/meshFieldsDev/build-omegah-cranium-cuda"
+      "/tmp/*"
+      # TO DO: hardcoding is bad...
+      # additionally I may not nessesarily need to exclude
+      # the other build directories
+
+    #DEPENDENCIES MainTests #add the rest if this works HAVE TO TELL IT WHERE THIS IS
+    # ${CMAKE_CURRENT_SOURCE_DIR} is this right?
+
+    #     EXECUTABLE testrunner -j ${PROCESSOR_COUNT} # Executable in PROJECT_BINARY_DIR
+    #     DEPENDENCIES testrunner                     # Dependencies to build first
+    #     BASE_DIRECTORY "../"                        # Base directory for report
+    #                                                 #  (defaults to PROJECT_SOURCE_DIR)
+    #     EXCLUDE "src/dir1/*" "src/dir2/*"           # Patterns to exclude (can be relative
+    #                                                 #  to BASE_DIRECTORY, with CMake 3.4+)
+    #     NO_DEMANGLE                                 # Don't demangle C++ symbols
+    #                                                 #  even if c++filt is found
+  )
+
+
+endif()
+
+#Preston's lcov/gcov testing stuff end------------------------------------------------
+
+
 ## export the library
 set_target_properties(meshFields PROPERTIES PUBLIC_HEADER "${MESHFIELD_HEADERS}")
 install(
