@@ -69,32 +69,36 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
   append_coverage_compiler_flags()
 
   setup_target_for_coverage_lcov(
-    NAME coverage                    # New target name
+    NAME coverage                    
     EXECUTABLE ctest -C ${ROOT_DIR}/CTestTestfile.cmake
     EXCLUDE 
       "${CMAKE_CURRENT_LIST_DIR}/docs/*"
       "${CMAKE_CURRENT_LIST_DIR}/.github/*"
       "${CMAKE_CURRENT_LIST_DIR}/omega_h/*" 
       "${CMAKE_CURRENT_BINARY_DIR}/nvcc_internal_extended_lambda_implementation"
-      "/space/waterp2/meshFieldsDev/build-cabana-cranium-cuda"
-      "/space/waterp2/meshFieldsDev/build-kokkos-cranium-cuda"
-      "/space/waterp2/meshFieldsDev/build-omegah-cranium-cuda"
       "/tmp/*"
-      # TO DO: hardcoding is bad...
-      # additionally I may not nessesarily need to exclude
-      # the other build directories
+      "${PROJECT_SOURCE_DIR}/../build-cabana-cranium-cuda/*"
+      "${PROJECT_SOURCE_DIR}/../build-kokkos-cranium-cuda/*"
+      "${PROJECT_SOURCE_DIR}/../build-omegah-cranium-cuda/*"
+      "/opt/scorec/spack/v0154_2/install/linux-rhel7-x86_64/gcc-6.5.0/gcc-10.1.0-tf5jjaditemasrbsl7tz6pnqa6duqwkg/include/c++/*"
+      "/usr/local/cuda-11.4/include/*"
+      
+      # TODO: the last two are hard coded, how to avoid this?
+      # for the first one maybe a little script that
+      # finds where the gcc module is?
 
-    #DEPENDENCIES MainTests #add the rest if this works HAVE TO TELL IT WHERE THIS IS
-    # ${CMAKE_CURRENT_SOURCE_DIR} is this right?
+      # Do this: if you need to avoid hardcoded paths in cmakelists.txt 
+      # use set(SOME_VAR) for now where the user can set their value from 
+      # the command line when they run cmake via -DSOME_VAR=some_value
 
-    #     EXECUTABLE testrunner -j ${PROCESSOR_COUNT} # Executable in PROJECT_BINARY_DIR
-    #     DEPENDENCIES testrunner                     # Dependencies to build first
-    #     BASE_DIRECTORY "../"                        # Base directory for report
-    #                                                 #  (defaults to PROJECT_SOURCE_DIR)
-    #     EXCLUDE "src/dir1/*" "src/dir2/*"           # Patterns to exclude (can be relative
-    #                                                 #  to BASE_DIRECTORY, with CMake 3.4+)
-    #     NO_DEMANGLE                                 # Don't demangle C++ symbols
-    #                                                 #  even if c++filt is found
+      # get confirmation this is how we want this done
+
+      # still struggles on /tmp/ and nvcc_internal_extended_lambda_implementation
+      # doesn't matter probably but let boss know
+
+      # many similar looking lines are not being run, is this bad testing
+      # or related to graphics card optimization issue?
+  
   )
 
 
