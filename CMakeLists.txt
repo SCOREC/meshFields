@@ -58,7 +58,7 @@ add_test(KokkosTests ./KokkosTests)
 add_test(CabanaTests ./CabanaTests)
 add_test(logicTests ./LogicTests)
 
-#Preston's lcov/gcov testing stuff----------------------------------------------------
+#Code Coverage set up -------------------------------------------------------
 
 option(meshFields_ENABLE_COVERAGE_BUILD "Do a coverage build" ON)
 if(meshFields_ENABLE_COVERAGE_BUILD)
@@ -68,43 +68,30 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
 
   append_coverage_compiler_flags()
 
+  set(CABANA_BUILD_DIR "${PROJECT_SOURCE_DIR}/../build-cabana-cranium-cuda/*" CACHE PATH "")
+  set(KOKKOS_BUILD_DIR "${PROJECT_SOURCE_DIR}/../build-kokkos-cranium-cuda/*" CACHE PATH "")
+  set(OMEGAH_BUILD_DIR "${PROJECT_SOURCE_DIR}/../build-omegah-cranium-cuda/*" CACHE PATH "")
+  set(LCOV_SYSTEM_EXCLUDE_PATHS 
+      "/opt/scorec/spack/v0154_2/install/linux-rhel7-x86_64/gcc-6.5.0/gcc-10.1.0-tf5jjaditemasrbsl7tz6pnqa6duqwkg/include/c++/*"
+      "/usr/local/cuda-11.4/include/*")
+
   setup_target_for_coverage_lcov(
     NAME coverage                    
     EXECUTABLE ctest -C ${ROOT_DIR}/CTestTestfile.cmake
     EXCLUDE 
       "${CMAKE_CURRENT_LIST_DIR}/docs/*"
       "${CMAKE_CURRENT_LIST_DIR}/.github/*"
-      "${CMAKE_CURRENT_LIST_DIR}/omega_h/*" 
       "${CMAKE_CURRENT_BINARY_DIR}/nvcc_internal_extended_lambda_implementation"
       "/tmp/*"
-      "${PROJECT_SOURCE_DIR}/../build-cabana-cranium-cuda/*"
-      "${PROJECT_SOURCE_DIR}/../build-kokkos-cranium-cuda/*"
-      "${PROJECT_SOURCE_DIR}/../build-omegah-cranium-cuda/*"
-      "/opt/scorec/spack/v0154_2/install/linux-rhel7-x86_64/gcc-6.5.0/gcc-10.1.0-tf5jjaditemasrbsl7tz6pnqa6duqwkg/include/c++/*"
-      "/usr/local/cuda-11.4/include/*"
-      
-      # TODO: the last two are hard coded, how to avoid this?
-      # for the first one maybe a little script that
-      # finds where the gcc module is?
-
-      # Do this: if you need to avoid hardcoded paths in cmakelists.txt 
-      # use set(SOME_VAR) for now where the user can set their value from 
-      # the command line when they run cmake via -DSOME_VAR=some_value
-
-      # get confirmation this is how we want this done
-
-      # still struggles on /tmp/ and nvcc_internal_extended_lambda_implementation
-      # doesn't matter probably but let boss know
-
-      # many similar looking lines are not being run, is this bad testing
-      # or related to graphics card optimization issue?
-  
+      "${CABANA_BUILD_DIR}"
+      "${KOKKOS_BUILD_DIR}"
+      "${OMEGAH_BUILD_DIR}"
+      "${LCOV_SYSTEM_EXCLUDE_PATHS}"  
   )
-
 
 endif()
 
-#Preston's lcov/gcov testing stuff end------------------------------------------------
+#Code Coverage set up end ------------------------------------------------
 
 
 ## export the library
