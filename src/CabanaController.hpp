@@ -251,7 +251,6 @@ public:
                     std::string tag) {
     static_assert( std::is_integral<IS>::value, "Integral required\n" );
     static_assert( std::is_integral<IE>::value, "Integral required\n" );
-    assert(cudaSuccess == cudaDeviceSynchronize());
     constexpr std::size_t RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
     assert( start_init.size() >= RANK );
     assert( end_init.size() >= RANK );

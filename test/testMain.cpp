@@ -29,8 +29,8 @@ int seriesSum( int x ) {
     return (int)(((double)x-1.0))*(((double)x/2.0));
 }
 
-using ExecutionSpace = Kokkos::Cuda;
-using MemorySpace = Kokkos::CudaUVMSpace;
+using ExecutionSpace = Kokkos::DefaultExecutionSpace;
+using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 void testParallelScan() {
   printf("== START testParallelScan ==\n");

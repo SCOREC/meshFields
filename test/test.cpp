@@ -6,8 +6,8 @@
 #include "MeshField_Macros.hpp"
 #include "CabanaController.hpp"
 
-using ExecutionSpace = Kokkos::Cuda;
-using MemorySpace = Kokkos::CudaSpace;
+using ExecutionSpace = Kokkos::DefaultExecutionSpace;
+using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 
 int main( int argc, char** argv) {
