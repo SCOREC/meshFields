@@ -24,8 +24,8 @@ bool doubleCompare(double d1, double d2) {
   return diff < TOLERANCE;
 }
 
-using ExecutionSpace = Kokkos::Cuda;
-using MemorySpace = Kokkos::CudaSpace;
+using ExecutionSpace = Kokkos::DefaultExecutionSpace;
+using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 void testMakeSliceCabana( int num_tuples ) {
   printf("== START testMakeSliceCabana ==\n");
