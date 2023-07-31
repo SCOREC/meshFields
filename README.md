@@ -114,6 +114,115 @@ Run the build script:
 ./buildAll_turing.sh
 ```
 
+## build dependencies for CPU
+
+This build serves only to run tests for coverage as GPU code is not registered
+as having been run by GCOV and subsequently LCOV. These commands can be run in your
+root directory but you will need to re-source the enviornment script and re-run the
+build script for the GPU build when you want to return to it.
+
+The following commands were tested on a SCOREC workstation running RHEL7 with {{{I DON'T
+KNOW WHAT KIND OF CPU}}}.
+
+`cd` to a working directory that will contain *all* your source code (including
+this directory) and build directories.  That directory is referred to as `root`
+in the following bash scripts.
+
+Create a file named `envCpu.sh` with the following contents:
+
+```
+export root=$PWD
+module unuse /opt/scorec/spack/lmod/linux-rhel7-x86_64/Core
+module use /opt/scorec/spack/v0154_2/lmod/linux-rhel7-x86_64/Core
+module load lcov/1.16 py-gcovr/4.2
+module load gcc/10.1.0 cmake
+module load perl/5.30.3
+module load perl-io-compress/2.081
+function getname() {
+  name=$1
+  machine=`hostname -s`
+  buildSuffix=${machine}-cpu
+  echo "build-${name}-${buildSuffix}"
+}
+export kkCpu=$root/`getname kokkos`/install
+export ohCpu=$root/`getname omegah`/install
+export cabCpu=$root/`getname cabana`/install
+CMAKE_PREFIX_PATH=$kkCpu:$kkCpu/lib64/cmake:$ohCpu:$cabCpu:$CMAKE_PREFIX_PATH
+cm=`which cmake`
+echo "cmake: $cm"
+echo "kokkos install dir: $kkCpu"
+
+```
+Create a file named `buildAllCpu.sh` with the following contents:
+
+```
+#!/bin/bash -e
+#kokkos
+cd $root
+#tested with kokkos develop@9dff8cc
+#git clone -b develop https://github.com/kokkos/kokkos.git
+mkdir -p $kkCpu
+cd $_/..
+cmake ../kokkos \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DKokkos_ENABLE_SERIAL=ON \
+  -DKokkos_ENABLE_OPENMP=off \
+  -DKokkos_ENABLE_DEBUG=on \
+  -DKokkos_ENABLE_PROFILING=on \
+  -DCMAKE_INSTALL_PREFIX=$PWD/install
+make -j 24 install
+#omegah
+cd $root
+#git clone https://github.com/sandialabs/omega_h.git
+[ -d $ohCpu ] && rm -rf ${ohCpu%%install}
+mkdir -p $ohCpu
+cd ${ohCpu%%install}
+cmake ../omega_h \
+  -DCMAKE_INSTALL_PREFIX=$ohCpu \
+  -DBUILD_SHARED_LIBS=OFF \
+  -DOmega_h_USE_Kokkos=ON \
+  -DOmega_h_USE_MPI=OFF  \
+  -DBUILD_TESTING=on  \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DKokkos_PREFIX=$kkCpu/lib64/cmake
+make VERBOSE=1 -j8 install
+ctest
+#cabana
+cd $root
+#git clone https://github.com/ECP-copa/Cabana.git cabana
+[ -d $cabCpu ] && rm -rf ${cabCpu%%install}
+mkdir -p $cabCpu
+cd ${cabCpu%%install}
+cmake ../cabana \
+  -DCMAKE_BUILD_TYPE="Debug" \
+  -DCMAKE_CXX_COMPILER=g++ \
+  -DCabana_ENABLE_MPI=OFF \
+  -DCabana_ENABLE_CAJITA=OFF \
+  -DCabana_ENABLE_TESTING=OFF \
+  -DCabana_ENABLE_EXAMPLES=OFF \
+  -DCMAKE_INSTALL_PREFIX=$cabCpu
+make -j 24 install
+
+```
+
+Make the script executable:
+
+```
+chmod +x buildAllCpu.sh
+```
+
+Source the environment script from this work directory:
+
+```
+source envCpu.sh
+```
+
+Run the build script:
+
+```
+./buildAllCpu.sh
+```
+
 ## build meshFields
 
 The following assumes that the environment is already setup (see above) and the
@@ -153,6 +262,32 @@ Alternatively, you can cd into the build directory and run `ctest` directly:
 cd build-meshFields-cuda 
 ctest
 ```
+
+## build and run meshFields tests for coverage
+
+The following assumes that (1) the enviornment is set up for a CPU build
+(see above) and the `root` directory is the same directory used to build the 
+dependencies and (2) you have already cloned the git repository from creating
+a GPU build and building meshFields
+
+The `-D` options for the install directories can be changed to reflect the 
+path in your instalation. It will likely be the same except in the case of
+`LCOV_SYSTEM_EXCLUDE_PATHS` which should be updated to reflect your file 
+structure as it is hard coded.
+
+```
+cd $root
+cmake -S meshFields -B build-meshFields-cpu -D meshFields_ENABLE_COVERAGE_BUILD=ON -D CMAKE_BUILD_TYPE=Debug -D CABANA_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-cabana-cranium-cuda/*" -D KOKKOS_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-kokkos-cranium-cuda/*" -D OMEGAH_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-omegah-cranium-cuda/*"
+cd build-meshFields-cpu
+make
+make coverage
+```
+
+In your build directory, `build-meshFields-cpu`, there will be a folder called `coverage`. If your
+install is not already on your local machine, downloading this folder to your local machine will 
+allow the file inside, `index.html`, to be viewed in your browser. This is a visual representation
+of testing coverage.
+
 
 ## Timing Data
 
