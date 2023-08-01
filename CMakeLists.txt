@@ -70,7 +70,7 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
 
   set(CABANA_INSTALL_DIR "" CACHE PATH "Set the path to the cabana install directory so it isn't processed by lcov")
   set(KOKKOS_INSTALL_DIR "" CACHE PATH "Set the path to the kokkos install directory so it isn't processed by lcov")
-  set(OMEGAH_INSTALL_DIR "TEST" CACHE PATH "Set the path to the omegah install directory so it isn't processed by lcov")
+  set(OMEGAH_INSTALL_DIR "" CACHE PATH "Set the path to the omegah install directory so it isn't processed by lcov")
   set(LCOV_SYSTEM_EXCLUDE_PATHS "" CACHE PATH "Set path to system libraries, c++ compiler and cuda-11.4 by default, to be excluded from lcov analysis")
 
   
