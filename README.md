@@ -116,13 +116,11 @@ Run the build script:
 
 ## build dependencies for CPU
 
-This build serves only to run tests for coverage as GPU code is not registered
-as having been run by GCOV and subsequently LCOV. These commands can be run in your
-root directory but you will need to re-source the enviornment script and re-run the
-build script for the GPU build when you want to return to it.
-
-The following commands were tested on a SCOREC workstation running RHEL7 with {{{I DON'T
-KNOW WHAT KIND OF CPU}}}.
+This build serves to help debugging, check for memory leaks via valgrind, and
+run tests for coverage. (GPU code is not registered as having been run by GCOV 
+and subsequently LCOV.) These commands can be run in your root directory but you 
+will need to re-source the enviornment script and re-run the build script for the 
+GPU build when you want to return to it.
 
 `cd` to a working directory that will contain *all* your source code (including
 this directory) and build directories.  That directory is referred to as `root`
@@ -154,6 +152,8 @@ echo "kokkos install dir: $kkCpu"
 
 ```
 Create a file named `buildAllCpu.sh` with the following contents:
+(git clone commands for kokkos, cabana, and omegah are commented
+out as it is assumed you have created a GPU build previously.)
 
 ```
 #!/bin/bash -e
@@ -263,7 +263,7 @@ cd build-meshFields-cuda
 ctest
 ```
 
-## build and run meshFields tests for coverage
+## build and run meshFields tests on CPU for coverage
 
 The following assumes that (1) the enviornment is set up for a CPU build
 (see above) and the `root` directory is the same directory used to build the 
@@ -277,7 +277,9 @@ structure as it is hard coded.
 
 ```
 cd $root
-cmake -S meshFields -B build-meshFields-cpu -D meshFields_ENABLE_COVERAGE_BUILD=ON -D CMAKE_BUILD_TYPE=Debug -D CABANA_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-cabana-cranium-cuda/*" -D KOKKOS_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-kokkos-cranium-cuda/*" -D OMEGAH_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-omegah-cranium-cuda/*"
+cmake -S meshFields -B build-meshFields-cpu -D meshFields_ENABLE_COVERAGE_BUILD=ON -D CMAKE_BUILD_TYPE=Debug -D CABANA_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-cabana-cranium-cuda/*" -D KOKKOS_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-kokkos-cranium-cuda/*" -D OMEGAH_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-omegah-cranium-cuda/*" -D LCOV_SYSTEM_EXCLUDE_PATHS="/opt/scorec/spack/v0154_2/install/linux-rhel7-x86_64/gcc-6.5.0/gcc-10.1.0-tf5jjaditemasrbsl7tz6pnqa6duqwkg/include/c++/*\;/usr/local/cuda-11.4/include/*"
+
+
 cd build-meshFields-cpu
 make
 make coverage
