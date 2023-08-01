@@ -1,11 +1,7 @@
 name: build-test-analyze
 on:
   push:
-<<<<<<< HEAD
     branches: [ main, pw/lcovGithubActions ]
-=======
-    branches: [ main, pw/lcovGithubActions ]
->>>>>>> CI: trigger on this branch
   pull_request:
     branches: [ main ]
   schedule:
