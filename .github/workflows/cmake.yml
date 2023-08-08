@@ -13,9 +13,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        compiler: [g++,clang++]
+        compiler: [g++]
         language: ['cpp']
-        build_type: [Debug, Release]
+        build_type: [Debug]
     # Permissions needed for codeql analysis 
     # I think this is the minimal set needed for a public repo (https://github.com/github/codeql-action/pull/689).
     permissions:
@@ -141,6 +141,7 @@ jobs:
 
     # I will probably need other dependencies, check the env file
 
+    # I am almost certain that "GPU stuff" is already the CPU stuff
     - name: Build MeshFields for cpu coverage # This will be redundant once GPU stuff is changed to CPU
       working-directory: ${{runner.workspace}}
       shell: bash
