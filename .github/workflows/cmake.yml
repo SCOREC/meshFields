@@ -28,6 +28,10 @@ jobs:
         sudo apt-get install -yq cmake
         cmake --version
 
+    - name: Install additional dependencies
+      run: |
+        sudo apt-get install doxygen
+
     ## Kokkos
     - name: Kokkos Checkout repo
       uses: actions/checkout@v2
