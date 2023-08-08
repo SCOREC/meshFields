@@ -127,3 +127,26 @@ jobs:
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
 
+    # Code coverage -----------------------------------------------------------  
+
+    - name: Install lcov 1.16
+      shell: bash
+      run: sudo apt-get install lcov=1.16-1 # Is this correct?
+
+    # I will probably need other dependencies, check the env file
+
+    - name: Build MeshFields for cpu coverage # This will be redundant once GPU stuff is changed to CPU
+      working-directory: ${{runner.workspace}}
+      shell: bash
+      run: cmake -S meshFields -B build-meshFields-cpu -D meshFields_ENABLE_COVERAGE_BUILD=ON -D CMAKE_BUILD_TYPE=Debug
+      # Run the command, ignore excludes for now
+
+    - name: Run MeshFields for coverage
+      working-directory: ${{runner.workspace}}/build-meshFields-cpu
+      shell: bash
+      run: |
+        make
+        make coverage
+
+    # How will we display the results?
+    # Html files should be created, there are a number of ways to do this
