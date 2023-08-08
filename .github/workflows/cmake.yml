@@ -1,7 +1,7 @@
 name: build-test-analyze
 on:
   push:
-    branches: [ main, pw/lcovGithubActions ]
+    branches: [ main, pw/lcovGithubAction ]
   pull_request:
     branches: [ main ]
   schedule:
