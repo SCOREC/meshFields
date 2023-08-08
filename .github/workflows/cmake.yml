@@ -31,6 +31,7 @@ jobs:
     - name: Install additional dependencies
       run: |
         sudo apt-get install doxygen
+        sudo apt install thrift-compiler
 
     ## Kokkos
     - name: Kokkos Checkout repo
