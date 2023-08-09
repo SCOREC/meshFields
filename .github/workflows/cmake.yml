@@ -104,31 +104,25 @@ jobs:
         repository: SCOREC/meshFields
         path: meshFields
 
-    - name: MeshFields Configure CMake
-      shell: bash
-      run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
-           -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
-           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
-           -DCabana_DIR=${{runner.workspace}}/build-cabana/install/lib/cmake/Cabana
-           -DOmega_h_DIR=${{runner.workspace}}/build-omegah/install/lib/cmake/Omega_h
-           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
-
-    # Code coverage -----------------------------------------------------------  
-
     - name: Install lcov 1.16
       shell: bash
-      run: sudo apt-get install lcov=1.16 # Is this correct?
+      run: sudo apt-get install lcov # !!!!! If we have lcov issues, get specifically 1.16
 
     # I will probably need other dependencies, check the env file
 
-    - name: Build MeshFields for cpu coverage 
-      working-directory: ${{runner.workspace}}
+    - name: MeshFields Configure CMake
       shell: bash
-      run: cmake -S meshFields -B build-meshFields-cpu -D meshFields_ENABLE_COVERAGE_BUILD=ON -D CMAKE_BUILD_TYPE=Debug
-      # Run the command, ignore excludes for now
-
+      run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
+         -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+         -D meshFields_ENABLE_COVERAGE_BUILD=ON 
+         -D CMAKE_BUILD_TYPE=Debug
+         -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
+         -DCabana_DIR=${{runner.workspace}}/build-cabana/install/lib/cmake/Cabana
+         -DOmega_h_DIR=${{runner.workspace}}/build-omegah/install/lib/cmake/Omega_h
+         -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
+    
     - name: Run MeshFields for coverage
-      working-directory: ${{runner.workspace}}/build-meshFields-cpu
+      working-directory: ${{runner.workspace}}/build-meshFields
       shell: bash
       run: |
         make
