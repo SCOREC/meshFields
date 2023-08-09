@@ -117,7 +117,7 @@ jobs:
 
     - name: Install lcov 1.16
       shell: bash
-      run: sudo apt-get install lcov=1.16-1 # Is this correct?
+      run: sudo apt-get install lcov=1.16 # Is this correct?
 
     # I will probably need other dependencies, check the env file
 
