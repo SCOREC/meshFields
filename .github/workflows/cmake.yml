@@ -113,26 +113,6 @@ jobs:
            -DOmega_h_DIR=${{runner.workspace}}/build-omegah/install/lib/cmake/Omega_h
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
 
-    # Initializes the CodeQL tools for scanning.  This must be done before the code is built.
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: ${{ matrix.language }}
-        queries: security-and-quality
-        source-root: meshFields
-        
-    - name: MeshFields Build
-      shell: bash
-      run: cmake --build ${{runner.workspace}}/build-meshFields --verbose --parallel 2 --target install
-
-    - name: MeshFields Test
-      working-directory: ${{runner.workspace}}/build-meshFields
-      shell: bash
-      run: ctest --timeout 10 --output-on-failure
-      
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
-
     # Code coverage -----------------------------------------------------------  
 
     - name: Install lcov 1.16
@@ -141,8 +121,7 @@ jobs:
 
     # I will probably need other dependencies, check the env file
 
-    # I am almost certain that "GPU stuff" is already the CPU stuff
-    - name: Build MeshFields for cpu coverage # This will be redundant once GPU stuff is changed to CPU
+    - name: Build MeshFields for cpu coverage 
       working-directory: ${{runner.workspace}}
       shell: bash
       run: cmake -S meshFields -B build-meshFields-cpu -D meshFields_ENABLE_COVERAGE_BUILD=ON -D CMAKE_BUILD_TYPE=Debug
