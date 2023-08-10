@@ -53,16 +53,16 @@ void testParallelReduceCabana() {
   MeshField::MeshField<Ctrl> cabanaMeshField(c);
   
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, double& lsum ) {
       lsum += i * 1.0;
     };
     cabanaMeshField.parallel_reduce("CabanaReduceTest1", {0}, {N}, reduce_kernel, result );
     for( int i = 0; i < N; i++ ) verify+=i*1.0;
-    assert( verify == result );
+    assert(doubleCompare(verify, result));
   }
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, const int& j, double& lsum ) {
       lsum += i * j;
     };
@@ -72,7 +72,7 @@ void testParallelReduceCabana() {
         verify += i * j;
       }
     }
-    assert( verify == result );
+    assert(doubleCompare(verify, result));
   }
   {
     double result = 0, verify = 0;
@@ -88,12 +88,10 @@ void testParallelReduceCabana() {
       }
     }
 
-    fprintf(stderr, "verify %.15f result %.15f\n", verify, result);
     assert(doubleCompare(verify, result));
-    assert( verify == result );
   }
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, const int& j, const int& k, const int& l, double& lsum ) {
       lsum += i * j * k * l;
     };
@@ -107,7 +105,7 @@ void testParallelReduceCabana() {
         }
       }
     }
-    assert( verify == result );
+    assert(doubleCompare(verify, result));
   }
   printf("== END testParallelReduceCabana ==\n");
 }
