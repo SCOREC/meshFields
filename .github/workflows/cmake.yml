@@ -110,7 +110,7 @@ jobs:
       shell: bash
       run: sudo apt-get install lcov # !!!!! If we have lcov issues, get specifically 1.16
 
-    # I will probably need other dependencies, check the env file
+    # I will possibly need other dependencies, check the env file
 
     - name: MeshFields Configure CMake
       shell: bash
@@ -129,5 +129,12 @@ jobs:
         make
         make coverage
 
-    # How will we display the results?
-    # Html files should be created, there are a number of ways to do this
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage
+        path: ${{runner.workspace}}/build-meshFields/coverage
+
+
+
+    # !!!!! it seems that coverage is less on the github actions page, look into this
