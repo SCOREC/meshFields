@@ -75,7 +75,7 @@ void testParallelReduceCabana() {
     assert( verify == result );
   }
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, const int& j, const int& k, double& lsum ) {
       lsum += i * j * k;
     };
