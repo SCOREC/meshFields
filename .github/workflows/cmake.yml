@@ -127,7 +127,7 @@ jobs:
       shell: bash
       run: |
         make
-        ctest -R -V CabanaTest
+        ctest -V -R CabanaTests
 
     # How will we display the results?
     # Html files should be created, there are a number of ways to do this
