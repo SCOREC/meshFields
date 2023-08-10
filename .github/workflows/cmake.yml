@@ -127,7 +127,7 @@ jobs:
       shell: bash
       run: |
         make
-        make coverage
+        ctest -R -V CabanaTest
 
     # How will we display the results?
     # Html files should be created, there are a number of ways to do this
