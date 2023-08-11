@@ -122,7 +122,11 @@ jobs:
          -D CABANA_INSTALL_DIR="\${{runner.workspace}}/build-cabana/*" 
          -D KOKKOS_INSTALL_DIR="\${{runner.workspace}}/build-kokkos/*" 
          -D OMEGAH_INSTALL_DIR="\${{runner.workspace}}/build-omegah/*" 
-         -D LCOV_SYSTEM_EXCLUDE_PATHS="/usr/include/*\;/cxx/*"
+         -D LCOV_SYSTEM_EXCLUDE_PATHS="/cxx/*\;/usr/include/*"
+
+    - name: cxx issue test statements
+      shell: bash
+      run: find $path -type d
     
     - name: Run MeshFields for coverage
       working-directory: ${{runner.workspace}}/build-meshFields
