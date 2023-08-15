@@ -149,7 +149,7 @@ jobs:
 
     # Convert .info to .xml
 
-    ## checkout repo
+    ## checkout repo !!!!! if we're doing the pip install, this seems redundant
     - name: Lcov-to-cobertuba Checkout repo
       uses: actions/checkout@v2
       with:
@@ -164,7 +164,9 @@ jobs:
     
     ## run conversion
     - name: execute py script # !!!!! we're giving it an info file and it asks for .dat, this won't work
-      run: python lcov_cobertura.py coverage.info --base-dir ${{runner.workspace}}/build-meshFields --output ${{runner.workspace}}/build-meshFields/coverage.xml
+      run: |
+        pip install lcov_cobertura
+        python lcov_cobertura.py coverage.info --base-dir ${{runner.workspace}}/build-meshFields --output ${{runner.workspace}}/build-meshFields/coverage.xml
     
     # Test to make sure the file is created
     - name: Upload xml test
