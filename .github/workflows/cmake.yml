@@ -150,17 +150,14 @@ jobs:
     - name: Convert Lcov to Cobertura
       run: |
         pip install lcov_cobertura
-        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info --output ${{runner.workspace}}/build-meshFields/coverage.xml
+        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info
     
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.3.0
       with:
-        filename: ${{runner.workspace}}/build-meshFields/coverage.xml
+        filename: coverage.xml
         format: markdown
         output: both
-
-        # !!!!! where is the output getting put, in the workflows working dir
-        # below needs the markdown
 
     - name: Add Coverage PR Comment
       uses: marocchino/sticky-pull-request-comment@v2
