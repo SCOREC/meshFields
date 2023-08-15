@@ -123,11 +123,6 @@ jobs:
          -D KOKKOS_INSTALL_DIR="\${{runner.workspace}}/build-kokkos/*" 
          -D OMEGAH_INSTALL_DIR="\${{runner.workspace}}/build-omegah/*" 
          -D LCOV_SYSTEM_EXCLUDE_PATHS="/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/ompi/mpi/cxx/*\;/usr/include/*"
-         # !!!!! I have tried everything and the report still includes cxx
-         # /usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/ompi/mpi
-         # try that as a file prefix
-         #Run meshfields for coverage 162
-
 
     - name: Run MeshFields for coverage
       working-directory: ${{runner.workspace}}/build-meshFields
@@ -137,7 +132,7 @@ jobs:
         make coverage
 
      #Uploads coverage directory with lcov generated HTML
-    - name: Upload coverage artifact
+    - name: Upload lcov report
       uses: actions/upload-artifact@v3
       with:
         name: coverage
@@ -147,46 +142,30 @@ jobs:
     
     # Generate a report readable from console -------------------------------------
 
-    # Convert .info to .xml
-
-    ## checkout repo !!!!! if we're doing the pip install, this seems redundant
-    - name: Lcov-to-cobertuba Checkout repo
-      uses: actions/checkout@v2
-      with:
-        repository: eriwen/lcov-to-cobertura-xml # I am concerned about .dat vs .info
-        path: lcov_cobertuba
-
-    ## set up python and compile repo 
-    - name: setup python
+    - name: Setup python
       uses: actions/setup-python@v2
       with:
-        python-version: '3.11' # install the python version needed
+        python-version: '3.11'
     
-    ## run conversion
-    # !!!!! figure out which directory its in and give it working directory?
-    - name: execute py script # !!!!! we're giving it an info file and it asks for .dat, this won't work
+    - name: Convert Lcov to Cobertura
       run: |
         pip install lcov_cobertura
-        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info 
-        
-    # --base-dir ${{runner.workspace}}/build-meshFields --output ${{runner.workspace}}/build-meshFields/coverage.xml
+        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info --output ${{runner.workspace}}/build-meshFields/coverage.xml
     
-    # Test to make sure the file is created
-    - name: Upload xml test
-      uses: actions/upload-artifact@v3
-      with:
-        name: coverageXML
-        path: ${{runner.workspace}}/build-meshFields/coverage.xml
-
-
-    # Output to console
-
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.3.0
       with:
-        filename: coverage.xml
+        filename: ${{runner.workspace}}/build-meshFields/coverage.xml
+        format: markdown
+        output: both
 
-   
+        # !!!!! where is the output getting put, in the workflows working dir
+        # below needs the markdown
 
-
-
+    - name: Add Coverage PR Comment
+      uses: marocchino/sticky-pull-request-comment@v2
+      if: github.event_name == 'pull_request'
+      with:
+        recreate: true
+        path: code-coverage-results.md
+  
