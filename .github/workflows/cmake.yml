@@ -20,6 +20,7 @@ jobs:
     # I think this is the minimal set needed for a public repo (https://github.com/github/codeql-action/pull/689).
     permissions:
       security-events: write
+      pull-requests: write
 
     steps:
     - name: Install CMake
