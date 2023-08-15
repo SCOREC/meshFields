@@ -163,10 +163,11 @@ jobs:
         python-version: '3.11' # install the python version needed
     
     ## run conversion
+    # !!!!! figure out which directory its in and give it working directory?
     - name: execute py script # !!!!! we're giving it an info file and it asks for .dat, this won't work
       run: |
         pip install lcov_cobertura
-        python lcov_cobertura coverage.info --base-dir ${{runner.workspace}}/build-meshFields --output ${{runner.workspace}}/build-meshFields/coverage.xml
+        lcov_cobertura coverage.info --base-dir ${{runner.workspace}}/build-meshFields --output ${{runner.workspace}}/build-meshFields/coverage.xml
     
     # Test to make sure the file is created
     - name: Upload xml test
