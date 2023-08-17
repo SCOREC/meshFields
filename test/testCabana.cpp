@@ -53,16 +53,16 @@ void testParallelReduceCabana() {
   MeshField::MeshField<Ctrl> cabanaMeshField(c);
   
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, double& lsum ) {
       lsum += i * 1.0;
     };
     cabanaMeshField.parallel_reduce("CabanaReduceTest1", {0}, {N}, reduce_kernel, result );
     for( int i = 0; i < N; i++ ) verify+=i*1.0;
-    assert( verify == result );
+    assert(doubleCompare(verify, result));
   }
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, const int& j, double& lsum ) {
       lsum += i * j;
     };
@@ -72,10 +72,10 @@ void testParallelReduceCabana() {
         verify += i * j;
       }
     }
-    assert( verify == result );
+    assert(doubleCompare(verify, result));
   }
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, const int& j, const int& k, double& lsum ) {
       lsum += i * j * k;
     };
@@ -87,10 +87,11 @@ void testParallelReduceCabana() {
         }
       }
     }
-    assert( verify == result );
+
+    assert(doubleCompare(verify, result));
   }
   {
-    double result, verify;
+    double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA( const int &i, const int& j, const int& k, const int& l, double& lsum ) {
       lsum += i * j * k * l;
     };
@@ -104,7 +105,7 @@ void testParallelReduceCabana() {
         }
       }
     }
-    assert( verify == result );
+    assert(doubleCompare(verify, result));
   }
   printf("== END testParallelReduceCabana ==\n");
 }
@@ -223,21 +224,18 @@ void testCabanaParallelFor() {
     auto field3 = mf.makeField<3>();
 
     auto vectorKernel = KOKKOS_LAMBDA( const int& i ) {
-      printf("rank1_kernel(%d)\n",i);
       field0(i) = i;
       assert(field0(i) == i);
     };
     mf.parallel_for( {0},{x}, vectorKernel, "simple_loop");
     
     auto vectorKernel2 = KOKKOS_LAMBDA( const int& i, const int& j ) {
-      printf("rank2_kernel(%d,%d)\n",i,j);
       field1(i,j) = i+j;
       assert(field1(i,j) == i+j);
     };
     mf.parallel_for( {0,0},{x,y}, vectorKernel2, "simple_loop");
 
     auto vectorKernel3 = KOKKOS_LAMBDA( const int& i, const int& j, const int& k ) {
-      printf("rank3_kernel(%d,%d,%d)\n",i,j,k);
       field2(i,j,k) = i+j+k;
       assert( field2(i,j,k) == i+j+k );
     };
@@ -246,7 +244,6 @@ void testCabanaParallelFor() {
 
     auto vectorKernel4 = KOKKOS_LAMBDA( const int& i, const int& j, const int& k,
                                         const int& l) {
-      printf("rank3_kernel(%d,%d,%d,%d)\n",i,j,k,l);
       field3(i,j,k,l) = i+j+k+l;
       assert( field3(i,j,k,l) == i+j+k+l );
     };
