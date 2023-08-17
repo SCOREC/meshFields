@@ -1,0 +1,129 @@
+name: build-test-analyze
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '23 14 * * 3'
+
+jobs:
+  buildTestAnalyze:
+    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [g++,clang++]
+        language: ['cpp']
+        build_type: [Debug, Release]
+    # Permissions needed for codeql analysis 
+    # I think this is the minimal set needed for a public repo (https://github.com/github/codeql-action/pull/689).
+    permissions:
+      security-events: write
+
+    steps:
+    - name: Install CMake
+      run: |
+        sudo apt-get update -yq
+        sudo apt-get install -yq cmake
+        cmake --version
+
+    ## Kokkos
+    - name: Kokkos Checkout repo
+      uses: actions/checkout@v2
+      with:
+        repository: kokkos/kokkos
+        path: kokkos
+
+    - name: Kokkos Configure CMake
+      shell: bash
+      run: cmake -S $GITHUB_WORKSPACE/kokkos -B ${{runner.workspace}}/build-kokkos
+           -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+           -DKokkos_ENABLE_SERIAL=ON 
+           -DKokkos_ENABLE_OPENMP=OFF
+           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-kokkos/install
+
+    - name: Kokkos Build
+      shell: bash
+      run: cmake --build ${{runner.workspace}}/build-kokkos --parallel 2 --target install
+
+    ## Omegah
+    - name: Omega_h Checkout repo
+      uses: actions/checkout@v2
+      with:
+        repository: sandialabs/omega_h
+        path: omegah
+
+    - name: Omega_h Configure CMake
+      shell: bash
+      run: cmake -S $GITHUB_WORKSPACE/omegah -B ${{runner.workspace}}/build-omegah
+           -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+           -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+           -DBUILD_SHARED_LIBS=OFF
+           -DOmega_h_USE_Kokkos=ON
+           -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib/cmake
+           -DOmega_h_USE_MPI=OFF
+           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-omegah/install
+
+    - name: Omega_h Build
+      shell: bash
+      run: cmake --build ${{runner.workspace}}/build-omegah --parallel 2 --target install
+
+    ## Cabana
+    - name: Cabana Checkout repo
+      uses: actions/checkout@v2
+      with:
+        repository: ECP-copa/Cabana
+        path: cabana
+
+    - name: Cabana Configure CMake
+      shell: bash
+      run: cmake -S $GITHUB_WORKSPACE/cabana -B ${{runner.workspace}}/build-cabana
+           -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
+           -DCabana_ENABLE_MPI=OFF
+           -DCabana_ENABLE_CAJITA=OFF
+           -DCabana_ENABLE_TESTING=OFF
+           -DCabana_ENABLE_EXAMPLES=OFF
+           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-cabana/install
+
+    - name: Cabana Build
+      shell: bash
+      run: cmake --build ${{runner.workspace}}/build-cabana --parallel 2 --target install
+
+    ## MeshFields
+    - name: MeshFields Checkout repo
+      uses: actions/checkout@v2
+      with:
+        repository: SCOREC/meshFields
+        path: meshFields
+
+    - name: MeshFields Configure CMake
+      shell: bash
+      run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
+           -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
+           -DCabana_DIR=${{runner.workspace}}/build-cabana/install/lib/cmake/Cabana
+           -DOmega_h_DIR=${{runner.workspace}}/build-omegah/install/lib/cmake/Omega_h
+           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
+
+    # Initializes the CodeQL tools for scanning.  This must be done before the code is built.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: ${{ matrix.language }}
+        queries: security-and-quality
+        source-root: meshFields
+        
+    - name: MeshFields Build
+      shell: bash
+      run: cmake --build ${{runner.workspace}}/build-meshFields --verbose --parallel 2 --target install
+
+    - name: MeshFields Test
+      working-directory: ${{runner.workspace}}/build-meshFields
+      shell: bash
+      run: ctest --timeout 10 --output-on-failure
+      
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
+
