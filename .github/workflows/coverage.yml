@@ -150,7 +150,7 @@ jobs:
     - name: Convert Lcov to Cobertura
       run: |
         pip install lcov_cobertura
-        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info --base-dir ${{runner.workspace}}  --demangle
+        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info --demangle
     
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.3.0
