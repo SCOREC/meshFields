@@ -31,9 +31,9 @@ jobs:
     - name: Install additional dependencies
       run: |
         sudo apt-get install doxygen
+        sudo apt-get install graphviz
         
     # testing what breaks without this
-    #sudo apt-get install graphviz
     #sudo apt-get install libhdf5-mpi-dev
 
     ## Kokkos
