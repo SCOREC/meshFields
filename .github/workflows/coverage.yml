@@ -139,7 +139,6 @@ jobs:
         path: ${{runner.workspace}}/build-meshFields/coverage
 
     
-    
     # Generate a report readable from console -------------------------------------
 
     - name: Setup python
@@ -150,7 +149,7 @@ jobs:
     - name: Convert Lcov to Cobertura
       run: |
         pip install lcov_cobertura
-        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info --demangle
+        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info
     
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.3.0
@@ -165,4 +164,3 @@ jobs:
       with:
         recreate: true
         path: code-coverage-results.md
-  
