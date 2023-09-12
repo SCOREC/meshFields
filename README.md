@@ -160,7 +160,7 @@ out as it is assumed you have created a GPU build previously.)
 #kokkos
 cd $root
 #tested with kokkos develop@9dff8cc
-#git clone -b develop https://github.com/kokkos/kokkos.git
+git clone -b develop https://github.com/kokkos/kokkos.git
 mkdir -p $kkCpu
 cd $_/..
 cmake ../kokkos \
