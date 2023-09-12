@@ -173,7 +173,7 @@ cmake ../kokkos \
 make -j 24 install
 #omegah
 cd $root
-#git clone https://github.com/sandialabs/omega_h.git
+git clone https://github.com/sandialabs/omega_h.git
 [ -d $ohCpu ] && rm -rf ${ohCpu%%install}
 mkdir -p $ohCpu
 cd ${ohCpu%%install}
@@ -189,7 +189,7 @@ make VERBOSE=1 -j8 install
 ctest
 #cabana
 cd $root
-#git clone https://github.com/ECP-copa/Cabana.git cabana
+git clone https://github.com/ECP-copa/Cabana.git cabana
 [ -d $cabCpu ] && rm -rf ${cabCpu%%install}
 mkdir -p $cabCpu
 cd ${cabCpu%%install}
@@ -230,7 +230,7 @@ The following assumes that the environment is already setup (see above) and the
 
 ```
 cd $root
-git clone git@github.com:SCOREC/meshFields
+git clone -b NM-Rework git@github.com:SCOREC/meshFields
 cmake -S meshFields -B build-meshFields-cuda
 cmake --build build-meshFields-cuda 
 ```
