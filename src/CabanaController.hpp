@@ -86,7 +86,7 @@ public:
   typedef ExecutionSpace exe;
   static const int MAX_RANK = 4; // Including num_tuples -> so 3 additional extents
   static constexpr int vecLen =
-      Cabana::AoSoA<DataTypes, DeviceType>::vector_length;
+      Cabana::AoSoA<DataTypes, MemorySpace>::vector_length;
 
 private:
   // all the type defenitions that are needed us to get the type of the slice
@@ -103,7 +103,7 @@ private:
 
   template <class T, int stride>
   using member_slice_t =
-      Cabana::Slice<T, DeviceType, Cabana::DefaultAccessMemory, vecLen, stride>;
+      Cabana::Slice<T, MemorySpace, Cabana::DefaultAccessMemory, vecLen, stride>;
 
   template <class T, int stride>
   using wrapper_slice_t = CabanaSliceWrapper<member_slice_t<T, stride>, T>;
@@ -138,7 +138,7 @@ private:
 
   
   // member vaiables
-  Cabana::AoSoA<DataTypes, DeviceType, vecLen> aosoa;
+  Cabana::AoSoA<DataTypes, MemorySpace, vecLen> aosoa;
   const int num_tuples;
   unsigned short theta = 0;
   int extent_sizes[sizeof...(Ts)][MAX_RANK];
