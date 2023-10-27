@@ -1,9 +1,0 @@
-[ 50%] Building CXX object CMakeFiles/Main.dir/test/testMain.cpp.o
-/users/miklun/develop/meshFieldWorkspace/meshFields/src/KokkosController.hpp(108): error: invalid narrowing conversion from "int" to "unsigned int"
-          detected during instantiation of "Controller::KokkosController<MemorySpace, Ts...>::KokkosController(std::vector<int, std::allocator<int>>) [with MemorySpace=MemorySpace, Ts=<double *>]" 
-/users/miklun/develop/meshFieldWorkspace/meshFields/test/testMain.cpp(172): here
-
-1 error detected in the compilation of "/users/miklun/develop/meshFieldWorkspace/meshFields/test/testMain.cpp".
-gmake[2]: *** [CMakeFiles/Main.dir/test/testMain.cpp.o] Error 1
-gmake[1]: *** [CMakeFiles/Main.dir/all] Error 2
-gmake: *** [all] Error 2
