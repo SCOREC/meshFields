@@ -10,7 +10,7 @@ find_package(Omega_h REQUIRED)
 # kokkos target, and nvcc_wrapper, provide sufficient flags.
 set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
-find_package(Cabana REQUIRED)
+find_package(Cabana 0.7.0 REQUIRED)
 
 set(MESHFIELD_HEADERS
   src/MeshField_Utility.hpp
@@ -29,7 +29,7 @@ target_include_directories(meshFields
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
-target_link_libraries(meshFields INTERFACE Cabana::cabanacore)
+target_link_libraries(meshFields INTERFACE Cabana::Core)
 target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 
 #Settings options for testing
