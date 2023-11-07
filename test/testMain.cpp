@@ -53,7 +53,7 @@ void testParallelScan() {
   
     for( int i = 1; i <= N; i++ ) {
       int result;
-      mfk.parallel_scan("default", {0}, {i}, scan_kernel, result );
+      mfk.parallel_scan("default", 0, i, scan_kernel, result );
       assert( result == seriesSum(i) );
     }
   }
@@ -74,7 +74,7 @@ void testParallelScan() {
   
     for( int i = 1; i <= N; i++ ) {
       int result;
-      mfc.parallel_scan("default", {0}, {i}, scan_kernel, result );
+      mfc.parallel_scan("default", 0, i, scan_kernel, result );
       assert( result == seriesSum(i) );
     }
   }
