@@ -230,7 +230,7 @@ The following assumes that the environment is already setup (see above) and the
 
 ```
 cd $root
-git clone -b NM-Rework git@github.com:SCOREC/meshFields
+git clone git@github.com:SCOREC/meshFields
 cmake -S meshFields -B build-meshFields-cuda
 cmake --build build-meshFields-cuda 
 ```
