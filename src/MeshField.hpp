@@ -187,7 +187,7 @@ public:
                      KernelType &scanKernel,
                      resultant &result) {
     static_assert( std::is_pod<resultant>::value );
-    Kokkos::RangePolicy p(start_index, end_index);
+    Kokkos::RangePolicy<Kokkos::IndexType<int64_t>> p(start_index, end_index);
     Kokkos::parallel_scan(tag, p, scanKernel, result);
   }
   // depending on size of dimensions, take variable number of arguements
