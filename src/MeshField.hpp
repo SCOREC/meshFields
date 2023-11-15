@@ -43,6 +43,99 @@ public:
   auto &operator()(int s, int a, int i, int j, int k) const {
     return slice(s, a, i, j, k);
   }
+	KOKKOS_INLINE_FUNCTION
+	Kokkos::View<Type*> serialize() const {
+    size_t N = size(0);
+    for(size_t i = 1; i < RANK; ++i)
+      N *= size(i);
+    Kokkos::View<Type*> serial ("serialized field", N);
+    size_t* rank_index_mult = new size_t(N);
+    rank_index_mult[0] = 1;
+    for(int i = 1; i < RANK; ++i)
+      rank_index_mult[i] = size(i) * rank_index_mult[i-1];
+
+    Kokkos::parallel_for("field serializer", N, KOKKOS_LAMBDA (const int index) {
+      size_t s, a, i, j, k;
+      switch(RANK) {
+        case 0:
+          serial(index) = (*this)(index);
+        break;
+        case 1:
+          s = index / rank_index_mult[1];
+          a = index % rank_index_mult[1];
+          serial(index) = (*this)(s, a);
+        break;
+        case 2:
+          s = index / rank_index_mult[2];
+          a = index % rank_index_mult[2];
+          i = index % rank_index_mult[1];
+          serial(index) = (*this)(s, a, i);
+        break;
+        case 3:
+          s = index / rank_index_mult[3];
+          a = index % rank_index_mult[3];
+          i = index % rank_index_mult[2];
+          j = index % rank_index_mult[1];
+          serial(index) = (*this)(s, a, i, j);
+        break;
+        case 4:
+          s = index / rank_index_mult[4];
+          a = index % rank_index_mult[4];
+          i = index % rank_index_mult[3];
+          j = index % rank_index_mult[2];
+          k = index % rank_index_mult[1];
+          serial(index) = (*this)(s, a, i, j, k);
+        break;
+      }
+    });
+    return serial;
+  }
+  KOKKOS_INLINE_FUNCTION
+  void deserialize(const Kokkos::View<Type*> &serialized) {
+    size_t N = size(0);
+    for(size_t i = 1; i < RANK; ++i)
+      N *= size(i);    
+    assert(N == serialized.size());
+
+    size_t* rank_index_mult = new size_t(N);
+    rank_index_mult[0] = 1;
+    for(int i = 1; i < RANK; ++i)
+      rank_index_mult[i] = size(i) * rank_index_mult[i-1];
+    Kokkos::parallel_for("field deserializer", N, KOKKOS_LAMBDA (const int index) {
+      size_t s, a, i, j, k;
+      switch(RANK) {
+        case 0:
+          (*this)(index) = serialized(index);
+        break;
+        case 1:
+          s = index / rank_index_mult[1];
+          a = index % rank_index_mult[1];
+          (*this)(s, a) = serialized(index);
+        break;
+        case 2:
+          s = index / rank_index_mult[2];
+          a = index % rank_index_mult[2];
+          i = index % rank_index_mult[1];
+          (*this)(s, a, i) = serialized(index);
+        break;
+        case 3:
+          s = index / rank_index_mult[3];
+          a = index % rank_index_mult[3];
+          i = index % rank_index_mult[2];
+          j = index % rank_index_mult[1];
+          (*this)(s, a, i, j) = serialized(index);
+        break;
+        case 4:
+          s = index / rank_index_mult[4];
+          a = index % rank_index_mult[4];
+          i = index % rank_index_mult[3];
+          j = index % rank_index_mult[2];
+          k = index % rank_index_mult[1];
+          (*this)(s, a, i, j, k) = serialized(index);
+        break;
+      }
+    });
+  }
 };
 
 template <class Controller> class MeshField {
