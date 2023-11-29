@@ -53,24 +53,24 @@ public:
     for(int i = 1; i < RANK; ++i)
       rank_index_mult[i] = size(i) * rank_index_mult[i-1];
 
-    Slice* slice_ptr = &slice;
+    //Slice* slice_ptr = &slice;
     Kokkos::parallel_for("field serializer", N, KOKKOS_LAMBDA (const int index) {
       constexpr std::size_t rank = RANK;
        if constexpr(rank == 1) {
-          serial(index) = (*slice_ptr)(index);
+          serial(index) = (slice)(index);
        }
        else if constexpr (rank == 2) {
           size_t s, a; 
           s = index / rank_index_mult[1];
           a = index % rank_index_mult[1];
-          serial(index) = (*slice_ptr)(s, a);
+          serial(index) = (slice)(s, a);
         }
        else if constexpr (rank == 3) { 
           size_t s, a, i;
           s = index / rank_index_mult[2];
           a = index % rank_index_mult[2];
           i = index % rank_index_mult[1];
-          serial(index) = (*slice_ptr)(s, a, i);
+          serial(index) = (slice)(s, a, i);
         }
        else if constexpr (rank == 4) { 
           size_t s, a, i, j;
@@ -78,7 +78,7 @@ public:
           a = index % rank_index_mult[3];
           i = index % rank_index_mult[2];
           j = index % rank_index_mult[1];
-          serial(index) = (*slice_ptr)(s, a, i, j);
+          serial(index) = (slice)(s, a, i, j);
         }
        else if constexpr (rank == 5) { 
           int s, a, i, j, k;
