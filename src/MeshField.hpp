@@ -5,6 +5,8 @@
 #include <type_traits> // std::same_v<t1,t2>
 #include <array>
 #include <stdexcept>
+#include <type_traits>
+#include <iostream>
 
 #include <Kokkos_Core.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
@@ -15,7 +17,12 @@ template <class Slice> class Field {
 
   Slice slice;
   typedef typename Slice::Type Type;
-
+  typedef typename std::remove_pointer<Type>::type type_rank1;
+  typedef typename std::remove_pointer<type_rank1>::type type_rank2;
+  typedef typename std::remove_pointer<type_rank2>::type type_rank3;
+  typedef typename std::remove_pointer<type_rank3>::type type_rank4;
+  typedef typename std::remove_pointer<type_rank4>::type type_rank5;
+  typedef type_rank5 base_type;
 public:
 
   static const int MAX_RANK = Slice::MAX_RANK;
@@ -43,69 +50,72 @@ public:
   auto &operator()(int s, int a, int i, int j, int k) const {
     return slice(s, a, i, j, k);
   }
-	Kokkos::View<Type> serialize() const {
+	Kokkos::View<base_type*> serialize() const {
     size_t N = size(0);
     for(size_t i = 1; i < RANK; ++i)
       N *= size(i);
-    Kokkos::View<Type> serial ("serialized field", N);
-    size_t* rank_index_mult = new size_t(N);
+    
+    Kokkos::View<base_type*> serial ("serialized field", N);
+    
+    size_t* rank_index_mult = new size_t[RANK];
     rank_index_mult[0] = 1;
     for(int i = 1; i < RANK; ++i)
       rank_index_mult[i] = size(i) * rank_index_mult[i-1];
 
-    //Slice* slice_ptr = &slice;
-    Kokkos::parallel_for("field serializer", N, KOKKOS_LAMBDA (const int index) {
+    Kokkos::parallel_for("field serializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
+    
       constexpr std::size_t rank = RANK;
-       if constexpr(rank == 1) {
-          serial(index) = (slice)(index);
-       }
-       else if constexpr (rank == 2) {
+        if constexpr(rank == 1) {
+           serial(index) = slice(index);
+        }
+        else if constexpr (rank == 2) {
           size_t s, a; 
           s = index / rank_index_mult[1];
           a = index % rank_index_mult[1];
-          serial(index) = (slice)(s, a);
+          serial(index) = slice(s, a);
         }
-       else if constexpr (rank == 3) { 
+        else if constexpr (rank == 3) { 
           size_t s, a, i;
           s = index / rank_index_mult[2];
           a = index % rank_index_mult[2];
           i = index % rank_index_mult[1];
-          serial(index) = (slice)(s, a, i);
+          serial(index) = slice(s, a, i);
         }
-       else if constexpr (rank == 4) { 
+        else if constexpr (rank == 4) { 
           size_t s, a, i, j;
           s = index / rank_index_mult[3];
           a = index % rank_index_mult[3];
           i = index % rank_index_mult[2];
           j = index % rank_index_mult[1];
-          serial(index) = (slice)(s, a, i, j);
+          serial(index) = slice(s, a, i, j);
         }
-       else if constexpr (rank == 5) { 
+        else if constexpr (rank == 5) { 
           int s, a, i, j, k;
           s = index / rank_index_mult[4];
           a = index % rank_index_mult[4];
           i = index % rank_index_mult[3];
           j = index % rank_index_mult[2];
           k = index % rank_index_mult[1];
-          //serial(index) = (*slice_ptr)(s, a, i, j, k);
-       } 
+          serial(index) = slice(0, 0, i, j, k);
+        } 
       
-    });
+    }); 
+    delete [] rank_index_mult;
     return std::move(serial);
   }
-  KOKKOS_INLINE_FUNCTION
+
   void deserialize(const Kokkos::View<Type*> &serialized) {
     size_t N = size(0);
     for(size_t i = 1; i < RANK; ++i)
       N *= size(i);    
     assert(N == serialized.size());
 
-    size_t* rank_index_mult = new size_t(N);
+    size_t* rank_index_mult = new size_t[RANK];
     rank_index_mult[0] = 1;
     for(int i = 1; i < RANK; ++i)
       rank_index_mult[i] = size(i) * rank_index_mult[i-1];
 
-    Kokkos::parallel_for("field deserializer", N, KOKKOS_LAMBDA (const int index) {
+    Kokkos::parallel_for("field deserializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
     
     });
   }
