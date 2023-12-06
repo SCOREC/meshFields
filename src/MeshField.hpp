@@ -63,7 +63,7 @@ public:
       rank_index_mult[i] = size(i) * rank_index_mult[i-1];
 
     Kokkos::parallel_for("field serializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-    
+   	  int temp_index = index; 
       constexpr std::size_t rank = RANK;
         if constexpr(rank == 1) {
            serial(index) = slice(index);
@@ -84,19 +84,22 @@ public:
         else if constexpr (rank == 4) { 
           size_t s, a, i, j;
           s = index / rank_index_mult[3];
-          a = index % rank_index_mult[3];
-          i = index % rank_index_mult[2];
-          j = index % rank_index_mult[1];
+          temp_index -= s * rank_index_mult[3];
+          a = temp_index / rank_index_mult[2];
+          i = temp_index % rank_index_mult[2];
+          j = temp_index % rank_index_mult[1];
           serial(index) = slice(s, a, i, j);
         }
         else if constexpr (rank == 5) { 
           int s, a, i, j, k;
           s = index / rank_index_mult[4];
-          a = index % rank_index_mult[4];
-          i = index % rank_index_mult[3];
-          j = index % rank_index_mult[2];
-          k = index % rank_index_mult[1];
-          serial(index) = slice(0, 0, i, j, k);
+          temp_index -= s * rank_index_mult[4];
+          a = temp_index / rank_index_mult[3];
+          temp_index -= a * rank_index_mult[3];
+          i = temp_index / rank_index_mult[2];
+          j = temp_index % rank_index_mult[2];
+          k = temp_index % rank_index_mult[1];
+          serial(index) = slice(s, a, i, j, k);
         } 
       
     }); 
@@ -104,7 +107,7 @@ public:
     return std::move(serial);
   }
 
-  void deserialize(const Kokkos::View<Type*> &serialized) {
+  void deserialize(const Kokkos::View<base_type*> &serialized) {
     size_t N = size(0);
     for(size_t i = 1; i < RANK; ++i)
       N *= size(i);    
@@ -116,8 +119,46 @@ public:
       rank_index_mult[i] = size(i) * rank_index_mult[i-1];
 
     Kokkos::parallel_for("field deserializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-    
+   	  int temp_index = index; 
+      constexpr std::size_t rank = RANK;
+        if constexpr(rank == 1) {
+           slice(index) = serialized(index);
+        }
+        else if constexpr (rank == 2) {
+          size_t s, a; 
+          s = index / rank_index_mult[1];
+          a = index % rank_index_mult[1];
+          slice(s, a) = serialized(index);
+        }
+        else if constexpr (rank == 3) { 
+          size_t s, a, i;
+          s = index / rank_index_mult[2];
+          a = index % rank_index_mult[2];
+          i = index % rank_index_mult[1];
+          slice(s, a, i) = serialized(index);
+        }
+        else if constexpr (rank == 4) { 
+          size_t s, a, i, j;
+          s = index / rank_index_mult[3];
+          temp_index -= s * rank_index_mult[3];
+          a = temp_index / rank_index_mult[2];
+          i = temp_index % rank_index_mult[2];
+          j = temp_index % rank_index_mult[1];
+          slice(s, a, i, j) = serialized(index);
+        }
+        else if constexpr (rank == 5) { 
+          int s, a, i, j, k;
+          s = index / rank_index_mult[4];
+          temp_index -= s * rank_index_mult[4];
+          a = temp_index / rank_index_mult[3];
+          temp_index -= a * rank_index_mult[3];
+          i = temp_index / rank_index_mult[2];
+          j = temp_index % rank_index_mult[2];
+          k = temp_index % rank_index_mult[1];
+          slice(s, a, i, j, k) = serialized(index);
+        } 
     });
+    delete [] rank_index_mult;
   }
 };
 

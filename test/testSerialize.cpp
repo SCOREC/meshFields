@@ -50,8 +50,23 @@ int main(int argc, char *argv[]) {
   mf.setField(field3,view3);
   mf.setField(field4,view4);
   mf.setField(field5,view5);
-  field1.serialize();
-  field2.serialize();
-  field3.serialize();
+
+  auto serialized1 = field1.serialize();
+  auto serialized2 = field2.serialize();
+  auto serialized3 = field3.serialize();
+  auto serialized4 = field4.serialize();
+  auto serialized5 = field5.serialize();
+  
+  MeshField::Field deserialized1 = mf.makeField<0>();
+  MeshField::Field deserialized2 = mf.makeField<1>();
+  MeshField::Field deserialized3 = mf.makeField<2>();
+  MeshField::Field deserialized4 = mf.makeField<3>();
+  MeshField::Field deserialized5 = mf.makeField<4>();
+
+  deserialized1.deserialize(serialized1);
+  deserialized2.deserialize(serialized2);
+  deserialized3.deserialize(serialized3);
+  deserialized4.deserialize(serialized4);
+  deserialized5.deserialize(serialized5);
   return 0;
 }
