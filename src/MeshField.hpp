@@ -63,7 +63,6 @@ public:
       rank_index_mult[i] = size(i) * rank_index_mult[i-1];
 
     Kokkos::parallel_for("field serializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-   	  int temp_index = index; 
       constexpr std::size_t rank = RANK;
         if constexpr(rank == 1) {
            serial(index) = slice(index);
@@ -82,18 +81,18 @@ public:
           serial(index) = slice(s, a, i);
         }
         else if constexpr (rank == 4) { 
-          size_t s, a, i, j;
+          size_t s, a, i, j, temp_index;
           s = index / rank_index_mult[3];
-          temp_index -= s * rank_index_mult[3];
+          temp_index = index - s * rank_index_mult[3];
           a = temp_index / rank_index_mult[2];
           i = temp_index % rank_index_mult[2];
           j = temp_index % rank_index_mult[1];
           serial(index) = slice(s, a, i, j);
         }
         else if constexpr (rank == 5) { 
-          int s, a, i, j, k;
+          size_t s, a, i, j, k, temp_index;
           s = index / rank_index_mult[4];
-          temp_index -= s * rank_index_mult[4];
+          temp_index = index - s * rank_index_mult[4];
           a = temp_index / rank_index_mult[3];
           temp_index -= a * rank_index_mult[3];
           i = temp_index / rank_index_mult[2];
@@ -119,7 +118,6 @@ public:
       rank_index_mult[i] = size(i) * rank_index_mult[i-1];
 
     Kokkos::parallel_for("field deserializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-   	  int temp_index = index; 
       constexpr std::size_t rank = RANK;
         if constexpr(rank == 1) {
            slice(index) = serialized(index);
@@ -140,16 +138,16 @@ public:
         else if constexpr (rank == 4) { 
           size_t s, a, i, j;
           s = index / rank_index_mult[3];
-          temp_index -= s * rank_index_mult[3];
+          size_t temp_index = index - s * rank_index_mult[3];
           a = temp_index / rank_index_mult[2];
           i = temp_index % rank_index_mult[2];
           j = temp_index % rank_index_mult[1];
           slice(s, a, i, j) = serialized(index);
         }
         else if constexpr (rank == 5) { 
-          int s, a, i, j, k;
+          size_t s, a, i, j, k;
           s = index / rank_index_mult[4];
-          temp_index -= s * rank_index_mult[4];
+          size_t temp_index = index - s * rank_index_mult[4];
           a = temp_index / rank_index_mult[3];
           temp_index -= a * rank_index_mult[3];
           i = temp_index / rank_index_mult[2];

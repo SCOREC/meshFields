@@ -68,5 +68,13 @@ int main(int argc, char *argv[]) {
   deserialized3.deserialize(serialized3);
   deserialized4.deserialize(serialized4);
   deserialized5.deserialize(serialized5);
+
+  Kokkos::parallel_for( "",p,KOKKOS_LAMBDA(const int& i,const int& j, const int& k, const int& l, const int& m){
+    assert(view1(i) == deserialized1(i));
+    assert(view2(i, j) == deserialized2(i, j));
+    assert(view3(i, j, k) == deserialized3(i, j, k));
+    assert(view4(i, j, k, l) == deserialized4(i, j, k, l));
+    assert(view5(i, j, k, l, m) == deserialized5(i, j, k, l, m));
+  });
   return 0;
 }
