@@ -43,28 +43,26 @@ message(STATUS "IS_TESTING: ${IS_TESTING}")
 
 
 # Creating minimal reproduction of error
+add_executable(Main test/testMain.cpp)
+target_link_libraries(Main PRIVATE meshFields)
+
+add_executable(KokkosTests test/testKokkos.cpp)
+target_link_libraries(KokkosTests PRIVATE meshFields)
+
 add_executable(ClangTests test/testClangMinimal.cpp)
 target_link_libraries(ClangTests PRIVATE meshFields)
 
+add_executable(CabanaTests test/testCabana.cpp)
+target_link_libraries(CabanaTests PRIVATE meshFields)
+
+add_executable(LogicTests test/test.cpp)
+target_link_libraries(LogicTests PRIVATE meshFields)
+
+add_test(MainTests ./Main)
+add_test(KokkosTests ./KokkosTests)
 add_test(ClangTests ./ClangTests)
-
-
-#add_executable(Main test/testMain.cpp)
-#target_link_libraries(Main PRIVATE meshFields)
-
-#add_executable(KokkosTests test/testKokkos.cpp)
-#target_link_libraries(KokkosTests PRIVATE meshFields)
-
-#add_executable(CabanaTests test/testCabana.cpp)
-#target_link_libraries(CabanaTests PRIVATE meshFields)
-
-#add_executable(LogicTests test/test.cpp)
-#target_link_libraries(LogicTests PRIVATE meshFields)
-
-#add_test(MainTests ./Main)
-#add_test(KokkosTests ./KokkosTests)
-#add_test(CabanaTests ./CabanaTests)
-#add_test(logicTests ./LogicTests)
+add_test(CabanaTests ./CabanaTests)
+add_test(logicTests ./LogicTests)
 
 #Code Coverage set up -------------------------------------------------------
 
