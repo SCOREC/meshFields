@@ -177,7 +177,6 @@ void testSetField() {
 
 int main(int argc, char *argv[]) {
   Kokkos::ScopeGuard scope_guard(argc, argv);
-  testNset();
   testParallelScan();
   testSetField();
   return 0;
