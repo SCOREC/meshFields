@@ -82,27 +82,6 @@ void testParallelScan() {
   printf("== END testParallelScan ==\n");
 }
 
-void testNset() {
-
-    printf("== START testNset ==\n");
-
-    {
-      const int N = 10;
-      
-      using kok1 = Controller::KokkosController<MemorySpace,ExecutionSpace, int**, int***,int****, int*****>;
-      kok1 c1({N,N,
-               N,N,N,
-               N,N,N,N,
-               N,N,N,N,N});
-      assert(c1.size(2,0) == N);
-      assert(c1.size(2,1) == N);
-      assert(c1.size(2,2) == N);
-      assert(c1.size(2,3) == N);
-    }
-
-    printf("== END testNset ==\n");
-}
-
 void testSetField() {
   printf("== START testSetField ==\n");
 
