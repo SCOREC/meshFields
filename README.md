@@ -10,7 +10,7 @@ Nvidia Ampere GPU.
 this directory) and build directories.  That directory is referred to as `root`
 in the following bash scripts.
 
-Create a file named `envRhel7_ampere.sh` with the following contents:
+Create a file named `envRhel9_ampere.sh` with the following contents:
 
 ```
 export root=$PWD 
@@ -104,7 +104,7 @@ chmod +x buildAll_ampere.sh
 Source the environment script from this work directory:
 
 ```
-source envRhel7_ampere.sh
+source envRhel9_ampere.sh
 ```
 
 Run the build script:
@@ -259,25 +259,7 @@ ctest
 
 ## build and run meshFields tests on CPU for coverage
 
-The following assumes that (1) the enviornment is set up for a CPU build
-(see above) and the `root` directory is the same directory used to build the 
-dependencies and (2) you have already cloned the git repository from creating
-a GPU build and building meshFields
-
-The `-D` options for the install directories can be changed to reflect the 
-path in your instalation. It will likely be the same except in the case of
-`LCOV_SYSTEM_EXCLUDE_PATHS` which should be updated to reflect your file 
-structure as it is hard coded.
-
-```
-cd $root
-cmake -S meshFields -B build-meshFields-cpu -D meshFields_ENABLE_COVERAGE_BUILD=ON -D CMAKE_BUILD_TYPE=Debug -D CABANA_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-cabana-cranium-cuda/*" -D KOKKOS_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-kokkos-cranium-cuda/*" -D OMEGAH_INSTALL_DIR="\${PROJECT_SOURCE_DIR}/../build-omegah-cranium-cuda/*" -D LCOV_SYSTEM_EXCLUDE_PATHS="/opt/scorec/spack/v0154_2/install/linux-rhel7-x86_64/gcc-6.5.0/gcc-10.1.0-tf5jjaditemasrbsl7tz6pnqa6duqwkg/include/c++/*\;/usr/local/cuda-11.4/include/*"
-
-
-cd build-meshFields-cpu
-make
-make coverage
-```
+See https://github.com/SCOREC/meshFields/blob/c0f6b77361a523dc60d119a51f7d165c73aa0eb0/.github/workflows/coverage.yml#L113-L125 for instructions on setting up a meshfields build with coverage enabled.
 
 In your build directory, `build-meshFields-cpu`, there will be a folder called `coverage`. If your
 install is not already on your local machine, downloading this folder to your local machine will 
