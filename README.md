@@ -1,22 +1,21 @@
 # meshFields
 GPU friendly unstructured mesh field storage and interface
 
-## build dependencies
+## build dependencies for GPU
 
-The following commands were tested on a SCOREC workstation running RHEL7 with a
-Nvidia Turing GPU.
+The following commands were tested on a SCOREC workstation running RHEL9 with a
+Nvidia Ampere GPU.
 
 `cd` to a working directory that will contain *all* your source code (including
 this directory) and build directories.  That directory is referred to as `root`
 in the following bash scripts.
 
-Create a file named `envRhel7_turing.sh` with the following contents:
+Create a file named `envRhel7_ampere.sh` with the following contents:
 
 ```
 export root=$PWD 
-module unuse /opt/scorec/spack/lmod/linux-rhel7-x86_64/Core 
-module use /opt/scorec/spack/v0154_2/lmod/linux-rhel7-x86_64/Core 
-module load gcc/10.1.0 cmake cuda/11.4
+module use /opt/scorec/spack/rhel9/v0201_4/lmod/linux-rhel9-x86_64/Core/
+module load gcc/12.3.0-iil3lno mpich/4.1.1-xpoyz4t cuda/12.1.1-zxa4msk
 
 function getname() {
   name=$1
@@ -35,7 +34,7 @@ echo "kokkos install dir: $kk"
 ```
 
 
-Create a file named `buildAll_turing.sh` with the following contents:
+Create a file named `buildAll_ampere.sh` with the following contents:
 
 ```
 #!/bin/bash -e
@@ -48,7 +47,7 @@ mkdir -p $kk
 cd $_/..
 cmake ../kokkos \
   -DCMAKE_CXX_COMPILER=$root/kokkos/bin/nvcc_wrapper \
-  -DKokkos_ARCH_TURING75=ON \
+  -DKokkos_ARCH_AMPERE86=ON \
   -DKokkos_ENABLE_SERIAL=ON \
   -DKokkos_ENABLE_OPENMP=off \
   -DKokkos_ENABLE_CUDA=on \
@@ -60,7 +59,7 @@ make -j 24 install
 
 #omegah
 cd $root
-git clone git@github.com:sandialabs/omega_h.git
+git clone git@github.com:scorec/omega_h.git
 [ -d $oh ] && rm -rf ${oh%%install}
 mkdir -p $oh 
 cd ${oh%%install}
@@ -69,7 +68,7 @@ cmake ../omega_h \
   -DBUILD_SHARED_LIBS=OFF \
   -DOmega_h_USE_Kokkos=ON \
   -DOmega_h_USE_CUDA=on \
-  -DOmega_h_CUDA_ARCH=75 \
+  -DOmega_h_CUDA_ARCH=86 \
   -DOmega_h_USE_MPI=OFF  \
   -DBUILD_TESTING=on  \
   -DCMAKE_CXX_COMPILER=g++ \
@@ -98,29 +97,27 @@ make -j 24 install
 Make the script executable:
 
 ```
-chmod +x buildAll_turing.sh
+chmod +x buildAll_ampere.sh
 ```
 
 
 Source the environment script from this work directory:
 
 ```
-source envRhel7_turing.sh
+source envRhel7_ampere.sh
 ```
 
 Run the build script:
 
 ```
-./buildAll_turing.sh
+./buildAll_ampere.sh
 ```
 
 ## build dependencies for CPU
 
 This build serves to help debugging, check for memory leaks via valgrind, and
-run tests for coverage. (GPU code is not registered as having been run by GCOV 
-and subsequently LCOV.) These commands can be run in your root directory but you 
-will need to re-source the enviornment script and re-run the build script for the 
-GPU build when you want to return to it.
+run tests for coverage. GPU code is not registered as having been run by GCOV 
+and subsequently LCOV.
 
 `cd` to a working directory that will contain *all* your source code (including
 this directory) and build directories.  That directory is referred to as `root`
@@ -130,12 +127,9 @@ Create a file named `envCpu.sh` with the following contents:
 
 ```
 export root=$PWD
-module unuse /opt/scorec/spack/lmod/linux-rhel7-x86_64/Core
-module use /opt/scorec/spack/v0154_2/lmod/linux-rhel7-x86_64/Core
-module load lcov/1.16 py-gcovr/4.2
-module load gcc/10.1.0 cmake
-module load perl/5.30.3
-module load perl-io-compress/2.081
+module use /opt/scorec/spack/rhel9/v0201_4/lmod/linux-rhel9-x86_64/Core/
+module load gcc/12.3.0-iil3lno mpich/4.1.1-xpoyz4t 
+
 function getname() {
   name=$1
   machine=`hostname -s`
@@ -173,7 +167,7 @@ cmake ../kokkos \
 make -j 24 install
 #omegah
 cd $root
-git clone https://github.com/sandialabs/omega_h.git
+git clone git@github.com:scorec/omega_h.git
 [ -d $ohCpu ] && rm -rf ${ohCpu%%install}
 mkdir -p $ohCpu
 cd ${ohCpu%%install}
@@ -225,14 +219,14 @@ Run the build script:
 
 ## build meshFields
 
-The following assumes that the environment is already setup (see above) and the
+The following assumes that the environment is already setup (see above, either CPU or GPU) and the
 `root` directory is the same directory used to build the dependencies.
 
 ```
 cd $root
 git clone git@github.com:SCOREC/meshFields
-cmake -S meshFields -B build-meshFields-cuda
-cmake --build build-meshFields-cuda 
+cmake -S meshFields -B build-meshFields-[CPU|GPU]
+cmake --build build-meshFields-[CPU|GPU]
 ```
 
 ## rebuild meshFields
