@@ -56,10 +56,26 @@ target_link_libraries(LogicTests PRIVATE meshFields)
 add_executable(SerializationTests test/testSerialize.cpp)
 target_link_libraries(SerializationTests PRIVATE meshFields)
 
+add_executable(SerializationFiveTests test/testSerializeFive.cpp)
+target_link_libraries(SerializationFiveTests PRIVATE meshFields)
+
+add_executable(SerializationFourTests test/testSerializeFour.cpp)
+target_link_libraries(SerializationFourTests PRIVATE meshFields)
+
+add_executable(SerializationThreeTests test/testSerializeThree.cpp)
+target_link_libraries(SerializationThreeTests PRIVATE meshFields)
+
+add_executable(SerializationTwoTests test/testSerializeTwo.cpp)
+target_link_libraries(SerializationTwoTests PRIVATE meshFields)
+
 add_test(MainTests ./Main)
 add_test(KokkosTests ./KokkosTests)
 add_test(CabanaTests ./CabanaTests)
 add_test(logicTests ./LogicTests)
+add_test(SerializationTwoTest ./SerializationTwoTests)
+add_test(SerializationThreeTest ./SerializationThreeTests)
+add_test(SerializationFourTest ./SerializationFourTests)
+add_test(SerializationFiveTest ./SerializationFiveTests)
 add_test(SerializationTests ./SerializationTests)
 
 #Code Coverage set up -------------------------------------------------------
