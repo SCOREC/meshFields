@@ -57,52 +57,48 @@ public:
     
     Kokkos::View<base_type*> serial ("serialized field", N);
     
-    size_t* rank_index_mult = new size_t[RANK];
-    rank_index_mult[0] = 1;
-    for(int i = 1; i < RANK; ++i)
-      rank_index_mult[i] = size(i) * rank_index_mult[i-1];
-
     Kokkos::parallel_for("field serializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-      constexpr std::size_t rank = RANK;
+        constexpr std::size_t rank = RANK;
+        auto serial_data = serial;
+				size_t temp_index = index;
+        size_t s, a, i, j, k;
         if constexpr(rank == 1) {
-           serial(index) = slice(index);
+           serial_data(index) = slice(index);
         }
         else if constexpr (rank == 2) {
-          size_t s, a; 
-          s = index / rank_index_mult[1];
-          a = index % rank_index_mult[1];
-          serial(index) = slice(s, a);
+          s = index / size(1);
+          a = index % size(1);
+          serial_data(index) = slice(s, a);
         }
         else if constexpr (rank == 3) { 
-          size_t s, a, i;
-          s = index / rank_index_mult[2];
-          a = index % rank_index_mult[2];
-          i = index % rank_index_mult[1];
-          serial(index) = slice(s, a, i);
+          s = index / (size(2) * size(1));
+					temp_index -= s * size(2) * size(1);
+          a = temp_index / size(1);
+          i = temp_index % size(1);
+          serial_data(index) = slice(s, a, i);
         }
         else if constexpr (rank == 4) { 
-          size_t s, a, i, j, temp_index;
-          s = index / rank_index_mult[3];
-          temp_index = index - s * rank_index_mult[3];
-          a = temp_index / rank_index_mult[2];
-          i = temp_index % rank_index_mult[2];
-          j = temp_index % rank_index_mult[1];
-          serial(index) = slice(s, a, i, j);
+          s = index / (size(3) * size(2) * size(1));
+          temp_index -= s * size(3) * size(2) * size(1);
+          a = temp_index / (size(2) * size(1));
+          temp_index -= a * size(2) * size(1);
+          i = temp_index / size(1);
+          j = temp_index % size(1);
+          serial_data(index) = slice(s, a, i, j);
         }
         else if constexpr (rank == 5) { 
-          size_t s, a, i, j, k, temp_index;
-          s = index / rank_index_mult[4];
-          temp_index = index - s * rank_index_mult[4];
-          a = temp_index / rank_index_mult[3];
-          temp_index -= a * rank_index_mult[3];
-          i = temp_index / rank_index_mult[2];
-          j = temp_index % rank_index_mult[2];
-          k = temp_index % rank_index_mult[1];
-          serial(index) = slice(s, a, i, j, k);
+          s = index / (size(4) * size(3) * size(2) * size(1));
+          temp_index -= s * size(4) * size(3) * size(2) * size(1);
+          a = index / (size(3) * size(2) * size(1));
+          temp_index -= a * size(3) * size(2) * size(1);
+          i = temp_index / (size(2) * size(1));
+          temp_index -= i * size(2) * size(1);
+          j = temp_index / size(1);
+          k = temp_index % size(1);
+          serial_data(index) = slice(s, a, i, j, k);
         } 
       
     }); 
-    delete [] rank_index_mult;
     return std::move(serial);
   }
 
@@ -112,51 +108,48 @@ public:
       N *= size(i);    
     assert(N == serialized.size());
 
-    size_t* rank_index_mult = new size_t[RANK];
-    rank_index_mult[0] = 1;
-    for(int i = 1; i < RANK; ++i)
-      rank_index_mult[i] = size(i) * rank_index_mult[i-1];
-
     Kokkos::parallel_for("field deserializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-      constexpr std::size_t rank = RANK;
+        auto serialized_data = serialized;
+				size_t temp_index = index;
+        size_t s, a, i, j, k;
+
+        constexpr std::size_t rank = RANK;
         if constexpr(rank == 1) {
-           slice(index) = serialized(index);
+           slice(index) = serialized_data(index);
         }
         else if constexpr (rank == 2) {
-          size_t s, a; 
-          s = index / rank_index_mult[1];
-          a = index % rank_index_mult[1];
-          slice(s, a) = serialized(index);
+          s = index / size(1);
+          a = index % size(1);
+          slice(s, a) = serialized_data(index);
         }
         else if constexpr (rank == 3) { 
-          size_t s, a, i;
-          s = index / rank_index_mult[2];
-          a = index % rank_index_mult[2];
-          i = index % rank_index_mult[1];
-          slice(s, a, i) = serialized(index);
+          s = index / (size(2) * size(1));
+					temp_index -= s * size(2) * size(1);
+          a = temp_index / size(1);
+          i = temp_index % size(1);
+          slice(s, a, i) = serialized_data(index);
         }
         else if constexpr (rank == 4) { 
-          size_t s, a, i, j;
-          s = index / rank_index_mult[3];
-          size_t temp_index = index - s * rank_index_mult[3];
-          a = temp_index / rank_index_mult[2];
-          i = temp_index % rank_index_mult[2];
-          j = temp_index % rank_index_mult[1];
-          slice(s, a, i, j) = serialized(index);
+          s = index / (size(3) * size(2) * size(1));
+          temp_index = index - s * size(3) * size(2) * size(1);
+          a = temp_index / (size(2) * size(1));
+          temp_index -= a * size(2) * size(1);
+          i = temp_index / size(1);
+          j = temp_index % size(1);
+          slice(s, a, i, j) = serialized_data(index);
         }
         else if constexpr (rank == 5) { 
-          size_t s, a, i, j, k;
-          s = index / rank_index_mult[4];
-          size_t temp_index = index - s * rank_index_mult[4];
-          a = temp_index / rank_index_mult[3];
-          temp_index -= a * rank_index_mult[3];
-          i = temp_index / rank_index_mult[2];
-          j = temp_index % rank_index_mult[2];
-          k = temp_index % rank_index_mult[1];
-          slice(s, a, i, j, k) = serialized(index);
+          s = index / (size(4) * size(3) * size(2) * size(1));
+          temp_index -= s * size(4) * size(3) * size(2) * size(1);
+          a = index / (size(3) * size(2) * size(1));
+          temp_index -= a * size(3) * size(2) * size(1);
+          i = temp_index / (size(2) * size(1));
+          temp_index -= i * size(2) * size(1);
+          j = temp_index / size(1);
+          k = temp_index % size(1);
+          slice(s, a, i, j, k) = serialized_data(index);
         } 
     });
-    delete [] rank_index_mult;
   }
 };
 
