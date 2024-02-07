@@ -57,7 +57,6 @@ public:
     
     Kokkos::View<base_type*> serial ("serialized field", N);
     
-		Kokkos::fence();
     Kokkos::parallel_for("field serializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
         constexpr std::size_t rank = RANK;
         auto serial_data = serial;
@@ -100,7 +99,6 @@ public:
         } 
       
     }); 
-		Kokkos::fence();
     return std::move(serial);
   }
 
