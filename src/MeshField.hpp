@@ -57,6 +57,7 @@ public:
     
     Kokkos::View<base_type*> serial ("serialized field", N);
     
+		Kokkos::fence();
     Kokkos::parallel_for("field serializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
         constexpr std::size_t rank = RANK;
         auto serial_data = serial;
@@ -89,7 +90,7 @@ public:
         else if constexpr (rank == 5) { 
           s = index / (size(4) * size(3) * size(2) * size(1));
           temp_index -= s * size(4) * size(3) * size(2) * size(1);
-          a = index / (size(3) * size(2) * size(1));
+          a = temp_index / (size(3) * size(2) * size(1));
           temp_index -= a * size(3) * size(2) * size(1);
           i = temp_index / (size(2) * size(1));
           temp_index -= i * size(2) * size(1);
@@ -99,6 +100,7 @@ public:
         } 
       
     }); 
+		Kokkos::fence();
     return std::move(serial);
   }
 
@@ -107,7 +109,7 @@ public:
     for(size_t i = 1; i < RANK; ++i)
       N *= size(i);    
     assert(N == serialized.size());
-
+		Kokkos::fence();
     Kokkos::parallel_for("field deserializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
         auto serialized_data = serialized;
 				size_t temp_index = index;
@@ -141,7 +143,7 @@ public:
         else if constexpr (rank == 5) { 
           s = index / (size(4) * size(3) * size(2) * size(1));
           temp_index -= s * size(4) * size(3) * size(2) * size(1);
-          a = index / (size(3) * size(2) * size(1));
+          a = temp_index / (size(3) * size(2) * size(1));
           temp_index -= a * size(3) * size(2) * size(1);
           i = temp_index / (size(2) * size(1));
           temp_index -= i * size(2) * size(1);
@@ -150,6 +152,7 @@ public:
           slice(s, a, i, j, k) = serialized_data(index);
         } 
     });
+		Kokkos::fence();
   }
 };
 
