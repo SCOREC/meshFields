@@ -175,9 +175,30 @@ void testSetField() {
   printf("== END testSetField ==\n");
 }
 
+void testSetCorrect() {
+  
+  printf("== START testSetCorrect ==\n");
+
+  const int N = 10;
+
+  using kok1 = Controller::KokkosController<MemorySpace,ExecutionSpace, int**, int***,int****, int*****>;
+  kok1 c1({N,1,
+            N,N,N,
+            N,N,15,N,
+            N,N,N,N,6});
+
+  // Checking that sizes are loaded correctly
+  assert(c1.size(0,1) == 1);
+  assert(c1.size(2,2) == 15);
+  assert(c1.size(3,4) == 6);
+  
+  printf("== END testSetCorrect ==\n");
+}
+
 int main(int argc, char *argv[]) {
   Kokkos::ScopeGuard scope_guard(argc, argv);
   testParallelScan();
   testSetField();
+  testSetCorrect();
   return 0;
 }

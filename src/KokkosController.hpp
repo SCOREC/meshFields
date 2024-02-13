@@ -14,6 +14,8 @@
 #include "MeshField_Utility.hpp"
 #include "MeshField_Macros.hpp"
 
+#include <iostream>
+
 namespace Controller {
 
 template <class SliceType, class T>
@@ -83,8 +85,7 @@ private:
 
   template<typename... Tx>
   auto construct( std::vector<int> &dims ) {
-    // Note: the '...' expansion will traverse <Tx...> backwards!
-    return std::make_tuple( create_view<Tx>("view", dims)... );
+    return std::tuple<Kokkos::View<Tx>...>{create_view<Tx>("view", dims)...};
   }
   
   template<typename Tx>
@@ -99,29 +100,29 @@ private:
     Kokkos::View<Tx,MemorySpace> rt;
     switch( dynamic ) {
       case 1:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-1] );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[0] );
         break;
       case 2:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-2],
-                                               dims[dims.size()-1] );
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[0],
+                                               dims[1] );
         break;
       case 3:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-3],
-                                               dims[dims.size()-2],
-                                               dims[dims.size()-1]);
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[0],
+                                               dims[1],
+                                               dims[2]);
         break;
       case 4:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-4],
-                                               dims[dims.size()-3],
-                                               dims[dims.size()-2],
-                                               dims[dims.size()-1]);
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[0],
+                                               dims[1],
+                                               dims[2],
+                                               dims[3]);
         break;
       case 5:
-        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[dims.size()-5],
-                                               dims[dims.size()-4],
-                                               dims[dims.size()-3],
-                                               dims[dims.size()-2],
-                                               dims[dims.size()-1]);
+        rt = Kokkos::View<Tx,MemorySpace>(tag, dims[0],
+                                               dims[1],
+                                               dims[2],
+                                               dims[3],
+                                               dims[4]);
         break;
       default:
         rt = Kokkos::View<Tx,MemorySpace>(tag);
@@ -130,10 +131,10 @@ private:
     
     // Places all of the dyanmic ranks into the extent_sizes
     for( int i = 0; i < dynamic; i++ ) {
-      this->extent_sizes[theta][i] = dims[dims.size()-dynamic+i];
+      this->extent_sizes[num_types - theta - 1][i] = dims[i];
     }
     this->theta-=1;
-    dims.erase( dims.end()-dynamic, dims.end());
+    dims.erase( dims.begin(), dims.begin()+dynamic );
     return rt;
   }
   
