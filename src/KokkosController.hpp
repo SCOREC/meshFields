@@ -14,7 +14,6 @@
 #include "MeshField_Utility.hpp"
 #include "MeshField_Macros.hpp"
 
-#include <iostream>
 
 namespace Controller {
 
@@ -131,9 +130,9 @@ private:
     
     // Places all of the dyanmic ranks into the extent_sizes
     for( int i = 0; i < dynamic; i++ ) {
-      this->extent_sizes[num_types - theta - 1][i] = dims[i];
+      this->extent_sizes[theta][i] = dims[i];
     }
-    this->theta-=1;
+    this->theta+=1;
     dims.erase( dims.begin(), dims.begin()+dynamic );
     return rt;
   }
@@ -184,7 +183,7 @@ private:
   // member vaiables
   const int num_types = sizeof...(Ts);
   unsigned short delta = 0;
-  unsigned short theta = num_types-1; 
+  unsigned short theta = 0; 
   int extent_sizes[sizeof...(Ts)][5];
   std::tuple<Kokkos::View<Ts,MemorySpace>...> values_;
 
