@@ -4,6 +4,10 @@
 - pumi TOMS paper: https://www.scorec.rpi.edu/REPORTS/2015-4.pdf
 - pumi apf source code
 - pumi doxygen: https://www.scorec.rpi.edu/pumi/doxygen/
+- Mark Beall's thesis, Chapter 8: https://scorec.rpi.edu/REPORTS/1999-6.pdf 
+  - An object-oriented field API used within the framework ('Trellis') of
+    other objects described in the thesis (mesh, model, solution, etc.).
+  - Designed to support p-adaptivity (i.e., non-uniform field order)
 
 ## Design Ideas
 
@@ -19,24 +23,35 @@
   - polygonal meshes - i.e., wachpress shape functions for seaice
 - How will these fields interact with mesh adaptation?
   - convert back to mesh library native format?
+    - consider defining a field backend that uses flat arrays for easy/clean
+      conversion. Christian's serialize/deserialize functions do this.  It may
+      be 'better' for these operations to be explicit/exposed.
   - can omegah adapt use these operations for cavity based field transfer
     without invasive changes? Do we define 'cavity' specific field operations?
+- Are their fields that require storage of a matrix of values at each dof?
 
-## Functions
 
-- terminology
-  - dof - exists at a dof holder, can be scalar, vector, matrix, etc.
-  - dof holder
-    - can contain a dof
-    - possible holder: mesh entities, quadrature points, element centroids, etc.
-  - node - a location on a mesh entitiy that is a dof holder, multiple nodes can
-           exist per mesh entity
-- storage - scalar, vector, matrix per dof
+## Terminology
+
+- dof - exists at a dof holder, can be scalar, vector, matrix, etc.
+- dof holder
+  - can contain a dof
+  - possible holder: mesh entities, quadrature points, element centroids, etc.
+- node - a location on a mesh entitiy that is a dof holder. Multiple nodes can
+         exist per mesh entity.  For example, a mesh edge could have multiple
+         nodes for a high order shape function.
+
+## Functionality
+
+- data types - any POD, don't store everything as a double
+- primative data containers that can be stored per dof in a given field
+  - scalar
+  - vector - three components 
+     - is it general enough to support vectorNd where N={1,2,3}
 - field
   - requires shape, ownership, and mesh association
 - shape - defines the node distribution where the coordinates and field values (DOF’s) are stored
-  - pumi supports the following 
-    - name, order, notes
+  - pumi supports the following - each row contains <name, order [, notes]>
     - linear, 1
     - lagrange, {1,2}
     - serendipity, 2
@@ -61,9 +76,11 @@
   - add - add a constant (scalar/vector/matrix) to each dof
   - scale - multiply each dof by scalar value
   - evaluate - compute value of field at parametric location within mesh entity
+             - see Beall Section 8.2, pg 79 (of 139)
              - **how does this work with the shape function definitions? axpy is part of it IIUC**
-- parallel - distributed memory (i.e., multiple GPUs)
-  - ownership - which process owns each node, can be defined via function (a protocol) or array of ints (one for each node)
+- inter-process parallelism - distributed memory across multiple GPUs/CPUs via MPI
+  - ownership - which process owns each node, can be defined via 
+                function (a protocol) or array of ints (one for each node)
   - synchronize - owner to non-owners
   - accumulate - sum non-owners and owner then synchronize
   - isSynchronized - checks if field is synchronized 
@@ -82,6 +99,8 @@
     APIs from kernels)
 
 ## PUMI Fields Review
+
+Questions - how is data stored?  which class has the data?
 
 ### Classes:
 
