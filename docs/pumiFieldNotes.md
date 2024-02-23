@@ -4,6 +4,7 @@
 - pumi TOMS paper: https://www.scorec.rpi.edu/REPORTS/2015-4.pdf
 - pumi apf source code
 - pumi doxygen: https://www.scorec.rpi.edu/pumi/doxygen/
+- pumi apf library documentation: https://github.com/SCOREC/core/blob/bcfbd128b65a629241b629c90e3665b539e2e9ae/apf/apf.tex
 - Mark Beall's thesis, Chapter 8: https://scorec.rpi.edu/REPORTS/1999-6.pdf 
   - An object-oriented field API used within the framework ('Trellis') of
     other objects described in the thesis (mesh, model, solution, etc.).
@@ -13,6 +14,11 @@
 
 - don't want dependency on omegah
 - have omegah implement the interface outside of meshfields
+- pumi APF requires attaching the data to the mesh object
+  - omegah supports attached data
+  - can the per-entity functions in apf be made callable on the GPU? e.g., call `getValues()` within a kernel
+     - no, `getValues` allocates memory for the result via can::NewArray which
+       calls the runtime can::Array(n) constructor
 
 ## Questions
 
