@@ -110,11 +110,62 @@ Questions - how is data stored?  which class has the data?
 
 ### Classes:
 
-Field (derived from Field) - ?
-FieldBase - ?
-Element - this support integration etc. and is not just mesh topology
-FieldData - 
-FieldDataOf (derived from FieldData) - templated on type, which seems to be hardcoded to double
+FieldBase 
+- pure virtual
+- parent of Field <- FieldOf <- MatrixField, MixedVectorField, ScalarField, VectorField
+- parent of NumberingOf
+- includes pointer to Mesh, FieldShape, and FieldData
+- not templated
+- provide meta data functions - counts, types, {set|get}{Data|Shape}, rename, etc.
+- no math
+
+Field
+- pure virtual
+- parent of FieldOf <- MatrixField, MixedVectorField, ScalarField, VectorField
+- parent of PackedField
+- not templated
+- adds public methods
+  - getElement - see below
+  - getValueType - scalar, vector, mixedVector (nedelec)
+  - project and axpy - PackedField does not support these
+
+FieldOf
+- pure virtual
+  - does not implement Field::get{Value|Shape}Type
+- parent of MatrixField, MixedVectorField, ScalarField, VectorField
+- templated on field data type
+  - explicitly instantiated in apfFieldOf.cc for Matrix3x3, double, Vector3
+- adds {set|get}NodeValue
+- implements Field::project and Field::axpy by calling wrapper version defined
+  in apfFieldOf.cc
+
+{Scalar|Vector|Matrix3x3}Field
+- can be instaniated 
+- derived from FieldOf<{double|Vector3|Matrix3x3}>
+- implements getElement, countComponents, Field::get{Value|Shape}Type
+
+PackedField
+- can be instaniated
+- contains multiple field values instead of a single double, vector3, etc. in a
+  user defined layout that is not known to the class
+  - we had a CFD applicaton whose native storage was seven or so doubles per
+    mesh vertex that defined velocity (x3), pressure (x1), temperature (x1),
+    etc.
+  - doc string: 
+    > Create a field of N components without a tensor type.
+    > Packed fields are used to interface with applications whose fields are 
+    > not easily categorized as tensors of order 0,1,2. They contain enough 
+    > information to interpolate values in an element and such, but some
+    > higher-level functionality is left out.
+- implements Field::project and Field::axpy - error if called
+- adds private member 'components'
+- storage is `double`
+
+FieldData
+- pure virtual
+- parent of FieldDataOf <- CoordData, UserData, TagDataOf
+
+
 EntityShape
 FieldShape
 
