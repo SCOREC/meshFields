@@ -20,13 +20,21 @@
      - no, `getValues` allocates memory for the result via can::NewArray which
        calls the runtime can::Array(n) constructor
 
+# Implementation notes
+
+- consider using the kokkos reference implementation of mdspan for a backend agnostic type
+  - https://github.com/kokkos/mdspan
+  - works on GPUs
+  - pcms adds memory space compile time checks here:
+    https://github.com/SCOREC/pcms/blob/65dd260b902b3e3229a860c94fcdaa83a347cc5a/src/pcms/arrays.h#L15-L20
+
 ## Questions
 
 - Do we want/need to support the following features?
-  - non-uniform P
-  - Nedelec shape functions
-  - mixed meshes
-  - polygonal meshes - i.e., wachpress shape functions for seaice
+  - non-uniform P - no, will require different storage structure
+  - polygonal meshes - i.e., wachpress shape functions for seaice - no, will require different storage structure
+  - Nedelec shape functions - yes
+  - mixed meshes - yes
 - How will these fields interact with mesh adaptation?
   - convert back to mesh library native format?
     - consider defining a field backend that uses flat arrays for easy/clean
@@ -51,11 +59,20 @@
 
 - data types - any POD, don't store everything as a double
 - primative data containers that can be stored per dof in a given field
-  - scalar
-  - vector - three components 
+  - scalar (rank 0 tensor)
+  - vector (rank 1 tensor)
+     - three components 
      - is it general enough to support vectorNd where N={1,2,3}
+  - tensor up to rank 4
+     - rank N is an Nd matrix
 - field
   - requires shape, ownership, and mesh association
+  - mesh association will have to encode the type of faces (tri, quad) and
+    element (tet, wedge, hex, pyramid)
+    - this is sufficient for storage of DG and Nedelec basis functions assuming the same
+      basis for each type is used 
+  - initially, just focus on simplicies but encode the type explicitly and don't
+    assume only one face and element type for a given field
 - shape - defines the node distribution where the coordinates and field values (DOF’s) are stored
   - pumi supports the following - each row contains <name, order [, notes]>
     - linear, 1
@@ -118,6 +135,9 @@ FieldBase
 - not templated
 - provide meta data functions - counts, types, {set|get}{Data|Shape}, rename, etc.
 - no math
+- I think this class was an after thought, possibly to support NumberingOf
+  - git history shows FieldBase and Field being added at the same time... the
+    change may predate our use of git (or at least the repo)
 
 Field
 - pure virtual
