@@ -1,9 +1,9 @@
 name: run-coverage
 on:
   push:
-    branches: [ main, NM-Rework, pw/lcovGithubAction ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, NM-Rework ]
+    branches: [ main ]
   schedule:
     - cron: '23 14 * * 3'
 
