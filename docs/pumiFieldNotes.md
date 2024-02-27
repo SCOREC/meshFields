@@ -43,7 +43,20 @@
   - can omegah adapt use these operations for cavity based field transfer
     without invasive changes? Do we define 'cavity' specific field operations?
 - Are their fields that require storage of a matrix of values at each dof?
-
+  - yes
+- What are the common use cases
+  - create the field
+  - evaluate the field 
+- What data is needed from the mesh *after* the field is created?
+  - should be minimal as field and mesh are immutable
+  - need to look at how 'elements' are created
+    - this will need to understand local vs global ordering of entities on the
+      closure of the 'element'
+    - I assume the equivalent set of objects need to be created during field construction
+  - pumi uses the meshtag for storage which uses mesh entity storage order for
+    access
+    - we can simply use local indices for now - may want to abstract this at
+      some point
 
 ## Terminology
 
@@ -64,7 +77,9 @@
      - three components 
      - is it general enough to support vectorNd where N={1,2,3}
   - tensor up to rank 4
-     - rank N is an Nd matrix
+     - rank N is a 'square' matrix 
+       - e.g., a rank 3 matrix is sized dxdxd where d is the extent/size
+     - what is the maximum size of each dimension? do we care?
 - field
   - requires shape, ownership, and mesh association
   - mesh association will have to encode the type of faces (tri, quad) and
@@ -123,12 +138,16 @@
 
 ## PUMI Fields Review
 
-Questions - how is data stored?  which class has the data?
+Questions:
+- how is data stored?  
+  - apf::MeshTag (an abstract type that each mesh implements)
+- what class has the data? 
+  - FieldData (derived class is TagDataOf), which is stored as a pointer from Field
 
 ### Classes:
 
 FieldBase 
-- pure virtual
+- abstract class
 - parent of Field <- FieldOf <- MatrixField, MixedVectorField, ScalarField, VectorField
 - parent of NumberingOf
 - includes pointer to Mesh, FieldShape, and FieldData
@@ -140,7 +159,7 @@ FieldBase
     change may predate our use of git (or at least the repo)
 
 Field
-- pure virtual
+- abstract class
 - parent of FieldOf <- MatrixField, MixedVectorField, ScalarField, VectorField
 - parent of PackedField
 - not templated
@@ -148,9 +167,10 @@ Field
   - getElement - see below
   - getValueType - scalar, vector, mixedVector (nedelec)
   - project and axpy - PackedField does not support these
+- the apf::Mesh stores a vector of Field*
 
 FieldOf
-- pure virtual
+- abstract class
   - does not implement Field::get{Value|Shape}Type
 - parent of MatrixField, MixedVectorField, ScalarField, VectorField
 - templated on field data type
@@ -182,8 +202,33 @@ PackedField
 - storage is `double`
 
 FieldData
-- pure virtual
+- abstract class
 - parent of FieldDataOf <- CoordData, UserData, TagDataOf
+- stores pointer to FieldBase
+- pure virtual classes
+  - [has|remove]Entity(MeshEntity* )
+  - clone, isFrozen, init ...
+
+FieldDataOf
+- abstract class
+- templated on type (double, int, etc..)
+- parent of CoordData, UserData, TagDataOf
+- [get/set]NodeComponents
+- pure virtual classes
+  - get|set(MeshEntity*, T*)
+
+TagDataOf
+- child of FieldDataOf
+- templated on type (double, int, etc..)
+- appears to *mostly* be for internal use during field creation
+- contains a TagData object
+
+TagData
+- appears to be for internal use only
+
+TagMaker, TagHelper
+- helper functions that create MeshTag objects that are the underlying storage
+  of fields
 
 
 EntityShape
