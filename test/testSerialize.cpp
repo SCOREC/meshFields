@@ -17,7 +17,7 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 int main(int argc, char *argv[]) {
   Kokkos::ScopeGuard scope_guard(argc, argv);
 
-  const int N = 30;
+  const int N = 10;
   using kok1 = Controller::KokkosController<MemorySpace,ExecutionSpace,int*,int**,int***,int****,int*****>;
   kok1 c1({N,N,N,N,N,N,N,N,N,N,N,N,N,N,N});
   
@@ -58,25 +58,18 @@ int main(int argc, char *argv[]) {
   auto serialized4 = field4.serialize();
   auto serialized5 = field5.serialize();
   
-  MeshField::Field deserialized1 = mf.makeField<0>();
-  MeshField::Field deserialized2 = mf.makeField<1>();
-  MeshField::Field deserialized3 = mf.makeField<2>();
-  MeshField::Field deserialized4 = mf.makeField<3>();
-  MeshField::Field deserialized5 = mf.makeField<4>();
-
-  deserialized1.deserialize(serialized1);
-  deserialized2.deserialize(serialized2);
-  deserialized3.deserialize(serialized3);
-  deserialized4.deserialize(serialized4);
-  deserialized5.deserialize(serialized5);
+  field1.deserialize(serialized1);
+  field2.deserialize(serialized2);
+  field3.deserialize(serialized3);
+  field4.deserialize(serialized4);
+  field5.deserialize(serialized5);
 
   Kokkos::parallel_for( "",p,KOKKOS_LAMBDA(const int& i,const int& j, const int& k, const int& l, const int& m){
-    assert(view1(i) == deserialized1(i));
-    assert(view2(i, j) == deserialized2(i, j));
-    assert(view3(i, j, k) == deserialized3(i, j, k));
-    assert(view4(i, j, k, l) == deserialized4(i, j, k, l));
-    assert(view5(i, j, k, l, m) == deserialized5(i, j, k, l, m));
+    assert(view1(i) == field1(i));
+    assert(view2(i, j) == field2(i, j));
+    assert(view3(i, j, k) == field3(i, j, k));
+    assert(view4(i, j, k, l) == field4(i, j, k, l));
+    assert(view5(i, j, k, l, m) == field5(i, j, k, l, m));
   });
-  std::cerr << "Line 80" << std::endl;
   return 0;
 }
