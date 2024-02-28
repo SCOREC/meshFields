@@ -55,10 +55,14 @@ target_link_libraries(CabanaTests PRIVATE meshFields)
 add_executable(LogicTests test/test.cpp)
 target_link_libraries(LogicTests PRIVATE meshFields)
 
+add_executable(SerializationTests test/testSerialize.cpp)
+target_link_libraries(SerializationTests PRIVATE meshFields)
+
 add_test(MainTests ./Main)
 add_test(KokkosTests ./KokkosTests)
 add_test(CabanaTests ./CabanaTests)
-add_test(logicTests ./LogicTests)
+add_test(LogicTests ./LogicTests)
+add_test(SerializationTests ./SerializationTests)
 
 #Code Coverage set up -------------------------------------------------------
 
