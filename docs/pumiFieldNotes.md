@@ -27,6 +27,23 @@
   - works on GPUs
   - pcms adds memory space compile time checks here:
     https://github.com/SCOREC/pcms/blob/65dd260b902b3e3229a860c94fcdaa83a347cc5a/src/pcms/arrays.h#L15-L20
+  - Is a cabana slice (i.e., the object associated with a single type in the parameter pack that stores its values) physically using a contiguous portion of memory?
+    - it seems like it: https://github.com/ECP-copa/Cabana/wiki/Core-Slice#raw-data-access-pointers-and-strides
+  - **We already have a 'Slice' wrapper interface - does using mdspan instead solve a problem or make our code easier to read/maintain?**
+
+- The controller interface is functionally replacing the Tag mechanism in PUMI
+- A FieldData and Field class hierarchies could be created to abstract node/entity operations
+- A non-templated Field base class is needed to allow applications to organize
+  fields in C++ std:: containers (i.e., vector, map, set, etc.)
+  - for that class to not be templated a non-templated FieldData base class is
+    needed
+  - for now, we'll merge FieldBase and Field - not clear why they are separate
+  - ignore the Mesh and FieldShape interfaces for now - we can test a lot of things without it
+    - the Mesh interface will require careful consideration
+- Is there a better design pattern [2] than simple composition, association,
+  aggregation, inheritance etc.[1] to define the relationship between Field and FieldData?
+  - [1] https://stackoverflow.com/questions/885937/what-is-the-difference-between-association-aggregation-and-composition
+  - [2] https://refactoring.guru/design-patterns/cpp
 
 ## Questions
 
@@ -155,7 +172,7 @@ FieldBase
 - provide meta data functions - counts, types, {set|get}{Data|Shape}, rename, etc.
 - no math
 - I think this class was an after thought, possibly to support NumberingOf
-  - git history shows FieldBase and Field being added at the same time... the
+  - not clear - git history shows FieldBase and Field being added at the same time... the
     change may predate our use of git (or at least the repo)
 
 Field
