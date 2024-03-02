@@ -44,6 +44,44 @@
   aggregation, inheritance etc.[1] to define the relationship between Field and FieldData?
   - [1] https://stackoverflow.com/questions/885937/what-is-the-difference-between-association-aggregation-and-composition
   - [2] https://refactoring.guru/design-patterns/cpp
+- A function will be needed to create a controller with specific storage
+  requirements to satisfy a FieldShape definition
+  - we'll worry about the return type once we have a clearer picture of the design pattern
+  - the following code defines a few structs that provide the needed mesh and
+    storage info for implementing `createRealStorage_[kk|cab](...)`
+  - extending this to support storing a other types (instead of just 'Real', see the note about 
+    'primative data containers' in the #Functionality section) per node may be an interesting next step
+```
+  struct EntityStorage {
+     std::array<bool,4> isEntDimActive; //entDims[i] = true means dimension i needs storage
+     int numTriNodes;
+     int numQuadNodes;
+     int numTetNodes;
+     int numHexNodes;
+     int numPrismNodes;
+     int numPyramidNodes;
+  }; 
+  struct Mesh {
+     int numVtx;    // entDim = 0
+     int numEdge;   // entDim = 1
+     int numTri;    // entDim = 2
+     int numQuad;   // entDim = 2
+     int numTet;    // entDim = 3
+     int numHex;    // entDim = 3
+     int numPrism;  // entDim = 3
+     int numPyramid;// entDim = 3
+  };
+  // the test code should select values of the 
+  void createRealStorage_kk(EntityStorage storage, Mesh mesh) {
+      // create a kokkos controller that stores an array of 'Real's
+      // (double precision floating point) for each entity type (EntType)
+      // with size = num<EntType>*num<EntType>Nodes 
+      // *if* EntityStorage.isEntDimActive[dim(EntType)] == true
+  }
+  void createRealStorage_cab(EntityStorage storage) {
+      // see createRealStorage_kk, but using cabana controller
+  }
+```
 
 ## Questions
 
