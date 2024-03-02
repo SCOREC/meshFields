@@ -40,10 +40,11 @@
   - for now, we'll merge FieldBase and Field - not clear why they are separate
   - ignore the Mesh and FieldShape interfaces for now - we can test a lot of things without it
     - the Mesh interface will require careful consideration
-- Is there a better design pattern [2] than simple composition, association,
+- Is there a better design pattern [2,3] than simple composition, association,
   aggregation, inheritance etc.[1] to define the relationship between Field and FieldData?
   - [1] https://stackoverflow.com/questions/885937/what-is-the-difference-between-association-aggregation-and-composition
   - [2] https://refactoring.guru/design-patterns/cpp
+  - [3] Type Erasure. https://www.youtube.com/watch?v=qn6OqefuH08 
 - A function will be needed to create a controller with specific storage
   requirements to satisfy a FieldShape definition
   - we'll worry about the return type once we have a clearer picture of the design pattern
