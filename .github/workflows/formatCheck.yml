@@ -22,4 +22,4 @@ jobs:
       shell: bash
       run: |
        clang-format-15 --version
-       clang-format-15 --dry-run --Werror --style="file" src/* test/*
+       clang-format-15 --dry-run --Werror src/* test/*
