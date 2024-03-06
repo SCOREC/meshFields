@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: MeshFields Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: SCOREC/meshFields
         path: meshFields
@@ -20,4 +20,6 @@ jobs:
     - name: Format check
       working-directory: meshFields
       shell: bash
-      run: clang-format --dry-run -Werror src/* test/*
+      run: |
+       clang-format-15 --version
+       clang-format-15 --dry-run --Werror src/* test/*

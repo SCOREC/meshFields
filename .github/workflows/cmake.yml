@@ -49,7 +49,7 @@ jobs:
 
     ## Omegah
     - name: Omega_h Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: sandialabs/omega_h
         path: omegah
