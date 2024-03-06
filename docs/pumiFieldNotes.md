@@ -4,39 +4,148 @@
 - pumi TOMS paper: https://www.scorec.rpi.edu/REPORTS/2015-4.pdf
 - pumi apf source code
 - pumi doxygen: https://www.scorec.rpi.edu/pumi/doxygen/
+- pumi apf library documentation: https://github.com/SCOREC/core/blob/bcfbd128b65a629241b629c90e3665b539e2e9ae/apf/apf.tex
+- Mark Beall's thesis, Chapter 8: https://scorec.rpi.edu/REPORTS/1999-6.pdf 
+  - An object-oriented field API used within the framework ('Trellis') of
+    other objects described in the thesis (mesh, model, solution, etc.).
+  - Designed to support p-adaptivity (i.e., non-uniform field order)
 
 ## Design Ideas
 
 - don't want dependency on omegah
 - have omegah implement the interface outside of meshfields
+- pumi APF requires attaching the data to the mesh object
+  - omegah supports attached data
+  - can the per-entity functions in apf be made callable on the GPU? e.g., call `getValues()` within a kernel
+     - no, `getValues` allocates memory for the result via can::NewArray which
+       calls the runtime can::Array(n) constructor
+
+# Implementation notes
+
+- consider using the kokkos reference implementation of mdspan for a backend agnostic type
+  - https://github.com/kokkos/mdspan
+  - works on GPUs
+  - pcms adds memory space compile time checks here:
+    https://github.com/SCOREC/pcms/blob/65dd260b902b3e3229a860c94fcdaa83a347cc5a/src/pcms/arrays.h#L15-L20
+  - Is a cabana slice (i.e., the object associated with a single type in the parameter pack that stores its values) physically using a contiguous portion of memory?
+    - it seems like it: https://github.com/ECP-copa/Cabana/wiki/Core-Slice#raw-data-access-pointers-and-strides
+  - **We already have a 'Slice' wrapper interface - does using mdspan instead solve a problem or make our code easier to read/maintain?**
+
+- The controller interface is functionally replacing the Tag mechanism in PUMI
+- A FieldData and Field class hierarchies could be created to abstract node/entity operations
+- A non-templated Field base class is needed to allow applications to organize
+  fields in C++ std:: containers (i.e., vector, map, set, etc.)
+  - for that class to not be templated a non-templated FieldData base class is
+    needed
+  - for now, we'll merge FieldBase and Field - not clear why they are separate
+  - ignore the Mesh and FieldShape interfaces for now - we can test a lot of things without it
+    - the Mesh interface will require careful consideration
+- Is there a better design pattern [2,3] than simple composition, association,
+  aggregation, inheritance etc.[1] to define the relationship between Field and FieldData?
+  - [1] https://stackoverflow.com/questions/885937/what-is-the-difference-between-association-aggregation-and-composition
+  - [2] https://refactoring.guru/design-patterns/cpp
+  - [3] Type Erasure. https://www.youtube.com/watch?v=qn6OqefuH08 
+- A function will be needed to create a controller with specific storage
+  requirements to satisfy a FieldShape definition
+  - we'll worry about the return type once we have a clearer picture of the design pattern
+  - the following code defines a few structs that provide the needed mesh and
+    storage info for implementing `createRealStorage_[kk|cab](...)`
+  - extending this to support storing a other types (instead of just 'Real', see the note about 
+    'primative data containers' in the #Functionality section) per node may be an interesting next step
+```
+  struct EntityStorage {
+     std::array<bool,4> isEntDimActive; //entDims[i] = true means dimension i needs storage
+     int numTriNodes;
+     int numQuadNodes;
+     int numTetNodes;
+     int numHexNodes;
+     int numPrismNodes;
+     int numPyramidNodes;
+  }; 
+  struct Mesh {
+     int numVtx;    // entDim = 0
+     int numEdge;   // entDim = 1
+     int numTri;    // entDim = 2
+     int numQuad;   // entDim = 2
+     int numTet;    // entDim = 3
+     int numHex;    // entDim = 3
+     int numPrism;  // entDim = 3
+     int numPyramid;// entDim = 3
+  };
+  // the test code should select values of the 
+  void createRealStorage_kk(EntityStorage storage, Mesh mesh) {
+      // create a kokkos controller that stores an array of 'Real's
+      // (double precision floating point) for each entity type (EntType)
+      // with size = num<EntType>*num<EntType>Nodes 
+      // *if* EntityStorage.isEntDimActive[dim(EntType)] == true
+  }
+  void createRealStorage_cab(EntityStorage storage) {
+      // see createRealStorage_kk, but using cabana controller
+  }
+```
 
 ## Questions
 
 - Do we want/need to support the following features?
-  - non-uniform P
-  - Nedelec shape functions
-  - mixed meshes
-  - polygonal meshes - i.e., wachpress shape functions for seaice
+  - non-uniform P - no, will require different storage structure
+  - polygonal meshes - i.e., wachpress shape functions for seaice - no, will require different storage structure
+  - Nedelec shape functions - yes
+  - mixed meshes - yes
 - How will these fields interact with mesh adaptation?
   - convert back to mesh library native format?
+    - consider defining a field backend that uses flat arrays for easy/clean
+      conversion. Christian's serialize/deserialize functions do this.  It may
+      be 'better' for these operations to be explicit/exposed.
   - can omegah adapt use these operations for cavity based field transfer
     without invasive changes? Do we define 'cavity' specific field operations?
+- Are their fields that require storage of a matrix of values at each dof?
+  - yes
+- What are the common use cases
+  - create the field
+  - evaluate the field 
+- What data is needed from the mesh *after* the field is created?
+  - should be minimal as field and mesh are immutable
+  - need to look at how 'elements' are created
+    - this will need to understand local vs global ordering of entities on the
+      closure of the 'element'
+    - I assume the equivalent set of objects need to be created during field construction
+  - pumi uses the meshtag for storage which uses mesh entity storage order for
+    access
+    - we can simply use local indices for now - may want to abstract this at
+      some point
 
-## Functions
+## Terminology
 
-- terminology
-  - dof - exists at a dof holder, can be scalar, vector, matrix, etc.
-  - dof holder
-    - can contain a dof
-    - possible holder: mesh entities, quadrature points, element centroids, etc.
-  - node - a location on a mesh entitiy that is a dof holder, multiple nodes can
-           exist per mesh entity
-- storage - scalar, vector, matrix per dof
+- dof - exists at a dof holder, can be scalar, vector, matrix, etc.
+- dof holder
+  - can contain a dof
+  - possible holder: mesh entities, quadrature points, element centroids, etc.
+- node - a location on a mesh entitiy that is a dof holder. Multiple nodes can
+         exist per mesh entity.  For example, a mesh edge could have multiple
+         nodes for a high order shape function.
+
+## Functionality
+
+- data types - any POD, don't store everything as a double
+- primative data containers that can be stored per dof in a given field
+  - scalar (rank 0 tensor)
+  - vector (rank 1 tensor)
+     - three components 
+     - is it general enough to support vectorNd where N={1,2,3}
+  - tensor up to rank 4
+     - rank N is a 'square' matrix 
+       - e.g., a rank 3 matrix is sized dxdxd where d is the extent/size
+     - what is the maximum size of each dimension? do we care?
 - field
   - requires shape, ownership, and mesh association
+  - mesh association will have to encode the type of faces (tri, quad) and
+    element (tet, wedge, hex, pyramid)
+    - this is sufficient for storage of DG and Nedelec basis functions assuming the same
+      basis for each type is used 
+  - initially, just focus on simplicies but encode the type explicitly and don't
+    assume only one face and element type for a given field
 - shape - defines the node distribution where the coordinates and field values (DOF’s) are stored
-  - pumi supports the following 
-    - name, order, notes
+  - pumi supports the following - each row contains <name, order [, notes]>
     - linear, 1
     - lagrange, {1,2}
     - serendipity, 2
@@ -61,9 +170,11 @@
   - add - add a constant (scalar/vector/matrix) to each dof
   - scale - multiply each dof by scalar value
   - evaluate - compute value of field at parametric location within mesh entity
+             - see Beall Section 8.2, pg 79 (of 139)
              - **how does this work with the shape function definitions? axpy is part of it IIUC**
-- parallel - distributed memory (i.e., multiple GPUs)
-  - ownership - which process owns each node, can be defined via function (a protocol) or array of ints (one for each node)
+- inter-process parallelism - distributed memory across multiple GPUs/CPUs via MPI
+  - ownership - which process owns each node, can be defined via 
+                function (a protocol) or array of ints (one for each node)
   - synchronize - owner to non-owners
   - accumulate - sum non-owners and owner then synchronize
   - isSynchronized - checks if field is synchronized 
@@ -83,13 +194,99 @@
 
 ## PUMI Fields Review
 
+Questions:
+- how is data stored?  
+  - apf::MeshTag (an abstract type that each mesh implements)
+- what class has the data? 
+  - FieldData (derived class is TagDataOf), which is stored as a pointer from Field
+
 ### Classes:
 
-Field (derived from Field) - ?
-FieldBase - ?
-Element - this support integration etc. and is not just mesh topology
-FieldData - 
-FieldDataOf (derived from FieldData) - templated on type, which seems to be hardcoded to double
+FieldBase 
+- abstract class
+- parent of Field <- FieldOf <- MatrixField, MixedVectorField, ScalarField, VectorField
+- parent of NumberingOf
+- includes pointer to Mesh, FieldShape, and FieldData
+- not templated
+- provide meta data functions - counts, types, {set|get}{Data|Shape}, rename, etc.
+- no math
+- I think this class was an after thought, possibly to support NumberingOf
+  - not clear - git history shows FieldBase and Field being added at the same time... the
+    change may predate our use of git (or at least the repo)
+
+Field
+- abstract class
+- parent of FieldOf <- MatrixField, MixedVectorField, ScalarField, VectorField
+- parent of PackedField
+- not templated
+- adds public methods
+  - getElement - see below
+  - getValueType - scalar, vector, mixedVector (nedelec)
+  - project and axpy - PackedField does not support these
+- the apf::Mesh stores a vector of Field*
+
+FieldOf
+- abstract class
+  - does not implement Field::get{Value|Shape}Type
+- parent of MatrixField, MixedVectorField, ScalarField, VectorField
+- templated on field data type
+  - explicitly instantiated in apfFieldOf.cc for Matrix3x3, double, Vector3
+- adds {set|get}NodeValue
+- implements Field::project and Field::axpy by calling wrapper version defined
+  in apfFieldOf.cc
+
+{Scalar|Vector|Matrix3x3}Field
+- can be instaniated 
+- derived from FieldOf<{double|Vector3|Matrix3x3}>
+- implements getElement, countComponents, Field::get{Value|Shape}Type
+
+PackedField
+- can be instaniated
+- contains multiple field values instead of a single double, vector3, etc. in a
+  user defined layout that is not known to the class
+  - we had a CFD applicaton whose native storage was seven or so doubles per
+    mesh vertex that defined velocity (x3), pressure (x1), temperature (x1),
+    etc.
+  - doc string: 
+    > Create a field of N components without a tensor type.
+    > Packed fields are used to interface with applications whose fields are 
+    > not easily categorized as tensors of order 0,1,2. They contain enough 
+    > information to interpolate values in an element and such, but some
+    > higher-level functionality is left out.
+- implements Field::project and Field::axpy - error if called
+- adds private member 'components'
+- storage is `double`
+
+FieldData
+- abstract class
+- parent of FieldDataOf <- CoordData, UserData, TagDataOf
+- stores pointer to FieldBase
+- pure virtual classes
+  - [has|remove]Entity(MeshEntity* )
+  - clone, isFrozen, init ...
+
+FieldDataOf
+- abstract class
+- templated on type (double, int, etc..)
+- parent of CoordData, UserData, TagDataOf
+- [get/set]NodeComponents
+- pure virtual classes
+  - get|set(MeshEntity*, T*)
+
+TagDataOf
+- child of FieldDataOf
+- templated on type (double, int, etc..)
+- appears to *mostly* be for internal use during field creation
+- contains a TagData object
+
+TagData
+- appears to be for internal use only
+
+TagMaker, TagHelper
+- helper functions that create MeshTag objects that are the underlying storage
+  of fields
+
+
 EntityShape
 FieldShape
 
