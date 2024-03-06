@@ -20,4 +20,6 @@ jobs:
     - name: Format check
       working-directory: meshFields
       shell: bash
-      run: clang-format --dry-run --Werror --style="file" src/* test/*
+      run: |
+       clang-format --version
+       clang-format --dry-run --Werror --style="file" src/* test/*
