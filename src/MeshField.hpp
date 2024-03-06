@@ -1,11 +1,11 @@
 #ifndef meshfield_hpp
 #define meshfield_hpp
 
+#include <Kokkos_Array.hpp>
 #include <array>
 #include <cstdio>
 #include <stdexcept>
 #include <type_traits> // std::same_v<t1,t2>
-#include <Kokkos_Array.hpp>
 
 #include "MeshField_Utility.hpp"
 #include <Kokkos_Core.hpp>
@@ -22,36 +22,36 @@ template <class Slice> class Field {
   typedef typename std::remove_pointer<type_rank3>::type type_rank4;
   typedef typename std::remove_pointer<type_rank4>::type type_rank5;
   typedef type_rank5 base_type;
-  
+
   KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankTwo(size_t index) const{
+  auto serialIndexRankTwo(size_t index) const {
     size_t s = index / size(1);
     size_t a = index % size(1);
-    Kokkos::Array<size_t, 2>sIndex{{s, a}};
+    Kokkos::Array<size_t, 2> sIndex{{s, a}};
     return sIndex;
   }
   KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankThree(size_t index) const{
+  auto serialIndexRankThree(size_t index) const {
     size_t s = index / (size(2) * size(1));
     size_t temp_index = index - s * size(2) * size(1);
     size_t a = temp_index / size(1);
     size_t i = temp_index % size(1);
-    Kokkos::Array<size_t, 3>sIndex{{s, a, i}};
+    Kokkos::Array<size_t, 3> sIndex{{s, a, i}};
     return sIndex;
   }
   KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankFour(size_t index) const{
+  auto serialIndexRankFour(size_t index) const {
     size_t s = index / (size(3) * size(2) * size(1));
     size_t temp_index = index - s * size(3) * size(2) * size(1);
     size_t a = temp_index / (size(2) * size(1));
     temp_index -= a * size(2) * size(1);
     size_t i = temp_index / size(1);
     size_t j = temp_index % size(1);
-    Kokkos::Array<size_t, 4>sIndex{{s, a, i, j}};
+    Kokkos::Array<size_t, 4> sIndex{{s, a, i, j}};
     return sIndex;
   }
   KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankFive(size_t index) const{
+  auto serialIndexRankFive(size_t index) const {
     size_t s = index / (size(4) * size(3) * size(2) * size(1));
     size_t temp_index = index - s * size(4) * size(3) * size(2) * size(1);
     size_t a = temp_index / (size(3) * size(2) * size(1));
@@ -60,10 +60,9 @@ template <class Slice> class Field {
     temp_index -= i * size(2) * size(1);
     size_t j = temp_index / size(1);
     size_t k = temp_index % size(1);
-    Kokkos::Array<size_t, 5>sIndex{{s, a, i, j, k}};
+    Kokkos::Array<size_t, 5> sIndex{{s, a, i, j, k}};
     return sIndex;
   }
-
 
 public:
   static const int MAX_RANK = Slice::MAX_RANK;
@@ -91,67 +90,65 @@ public:
   auto &operator()(int s, int a, int i, int j, int k) const {
     return slice(s, a, i, j, k);
   }
-  Kokkos::View<base_type*> serialize() const {
+  Kokkos::View<base_type *> serialize() const {
     size_t N = size(0);
-    for(size_t i = 1; i < RANK; ++i)
+    for (size_t i = 1; i < RANK; ++i)
       N *= size(i);
- 
-    Kokkos::View<base_type*> serial ("serialized field", N);
 
-    Kokkos::parallel_for("field serializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-      constexpr std::size_t rank = RANK;
-      auto serial_data = serial;
-      if constexpr(rank == 1) {
-        serial_data(index) = slice(index);
-      }
-      else if constexpr (rank == 2) {
-        auto sIndex = serialIndexRankTwo(index); 
-        serial_data(index) = slice(sIndex[0], sIndex[1]);
-      }
-      else if constexpr (rank == 3) { 
-        auto sIndex = serialIndexRankThree(index); 
-        serial_data(index) = slice(sIndex[0], sIndex[1], sIndex[2]);
-      }
-      else if constexpr (rank == 4) { 
-        auto sIndex = serialIndexRankFour(index); 
-        serial_data(index) = slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3]);
-      }
-      else if constexpr (rank == 5) { 
-        auto sIndex = serialIndexRankFive(index); 
-        serial_data(index) = slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]);
-      } 
-    }); 
+    Kokkos::View<base_type *> serial("serialized field", N);
+
+    Kokkos::parallel_for(
+        "field serializer", N, KOKKOS_CLASS_LAMBDA(const int index) {
+          constexpr std::size_t rank = RANK;
+          auto serial_data = serial;
+          if constexpr (rank == 1) {
+            serial_data(index) = slice(index);
+          } else if constexpr (rank == 2) {
+            auto sIndex = serialIndexRankTwo(index);
+            serial_data(index) = slice(sIndex[0], sIndex[1]);
+          } else if constexpr (rank == 3) {
+            auto sIndex = serialIndexRankThree(index);
+            serial_data(index) = slice(sIndex[0], sIndex[1], sIndex[2]);
+          } else if constexpr (rank == 4) {
+            auto sIndex = serialIndexRankFour(index);
+            serial_data(index) =
+                slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3]);
+          } else if constexpr (rank == 5) {
+            auto sIndex = serialIndexRankFive(index);
+            serial_data(index) =
+                slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]);
+          }
+        });
     return std::move(serial);
   }
-  void deserialize(const Kokkos::View<const base_type*>  &serialized) {
+  void deserialize(const Kokkos::View<const base_type *> &serialized) {
     size_t N = size(0);
-    for(size_t i = 1; i < RANK; ++i)
-      N *= size(i);    
+    for (size_t i = 1; i < RANK; ++i)
+      N *= size(i);
     assert(N == serialized.size());
-    Kokkos::parallel_for("field deserializer", N, KOKKOS_CLASS_LAMBDA (const int index) {
-      auto serialized_data = serialized;
+    Kokkos::parallel_for(
+        "field deserializer", N, KOKKOS_CLASS_LAMBDA(const int index) {
+          auto serialized_data = serialized;
 
-      constexpr std::size_t rank = RANK;
-      if constexpr(rank == 1) {
-        slice(index) = serialized_data(index);
-      }
-      else if constexpr (rank == 2) {
-        auto sIndex = serialIndexRankTwo(index); 
-        slice(sIndex[0], sIndex[1]) = serialized_data(index);
-      }
-      else if constexpr (rank == 3) { 
-        auto sIndex = serialIndexRankThree(index); 
-        slice(sIndex[0], sIndex[1], sIndex[2]) = serialized_data(index);
-      }
-      else if constexpr (rank == 4) { 
-        auto sIndex = serialIndexRankFour(index); 
-        slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3]) = serialized_data(index);
-      }
-      else if constexpr (rank == 5) { 
-        auto sIndex = serialIndexRankFive(index); 
-        slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]) = serialized_data(index);
-      } 
-    });
+          constexpr std::size_t rank = RANK;
+          if constexpr (rank == 1) {
+            slice(index) = serialized_data(index);
+          } else if constexpr (rank == 2) {
+            auto sIndex = serialIndexRankTwo(index);
+            slice(sIndex[0], sIndex[1]) = serialized_data(index);
+          } else if constexpr (rank == 3) {
+            auto sIndex = serialIndexRankThree(index);
+            slice(sIndex[0], sIndex[1], sIndex[2]) = serialized_data(index);
+          } else if constexpr (rank == 4) {
+            auto sIndex = serialIndexRankFour(index);
+            slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3]) =
+                serialized_data(index);
+          } else if constexpr (rank == 5) {
+            auto sIndex = serialIndexRankFive(index);
+            slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]) =
+                serialized_data(index);
+          }
+        });
   }
 };
 

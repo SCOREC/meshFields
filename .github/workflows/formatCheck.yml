@@ -3,6 +3,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
+    branches: [ main ]
   schedule:
     - cron: '23 14 * * 3'
 
