@@ -83,8 +83,8 @@ class CabanaController {
 
 public:
   typedef ExecutionSpace exe;
-  static const int MAX_RANK =
-      4; // Including num_tuples -> so 3 additional extents
+  // Including num_tuples -> so 3 additional extents
+  static const int MAX_RANK = 4;
   static constexpr int vecLen =
       Cabana::AoSoA<DataTypes, MemorySpace>::vector_length;
 
