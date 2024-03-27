@@ -26,7 +26,7 @@ function getname() {
 export kk=$root/`getname kokkos`/install
 export oh=$root/`getname omegah`/install
 export cab=$root/`getname cabana`/install
-CMAKE_PREFIX_PATH=$kk:$kk/lib64/cmake:$oh:$cab:$CMAKE_PREFIX_PATH
+export CMAKE_PREFIX_PATH=$kk:$kk/lib64/cmake:$oh:$cab:$CMAKE_PREFIX_PATH
 
 cm=`which cmake`
 echo "cmake: $cm"
