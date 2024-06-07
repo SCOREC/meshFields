@@ -47,28 +47,6 @@ jobs:
       shell: bash
       run: cmake --build ${{runner.workspace}}/build-kokkos --parallel 2 --target install
 
-    ## Omegah
-    - name: Omega_h Checkout repo
-      uses: actions/checkout@v4
-      with:
-        repository: sandialabs/omega_h
-        path: omegah
-
-    - name: Omega_h Configure CMake
-      shell: bash
-      run: cmake -S $GITHUB_WORKSPACE/omegah -B ${{runner.workspace}}/build-omegah
-           -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
-           -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
-           -DBUILD_SHARED_LIBS=OFF
-           -DOmega_h_USE_Kokkos=ON
-           -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib/cmake
-           -DOmega_h_USE_MPI=OFF
-           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-omegah/install
-
-    - name: Omega_h Build
-      shell: bash
-      run: cmake --build ${{runner.workspace}}/build-omegah --parallel 2 --target install
-
     ## Cabana
     - name: Cabana Checkout repo
       uses: actions/checkout@v2
@@ -104,7 +82,6 @@ jobs:
            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
            -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
            -DCabana_DIR=${{runner.workspace}}/build-cabana/install/lib/cmake/Cabana
-           -DOmega_h_DIR=${{runner.workspace}}/build-omegah/install/lib/cmake/Omega_h
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
 
     # Initializes the CodeQL tools for scanning.  This must be done before the code is built.

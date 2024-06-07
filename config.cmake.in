@@ -6,6 +6,5 @@ check_required_components(meshFields)
 
 include(CMakeFindDependencyMacro)
 
-find_dependency(Omega_h)
 find_dependency(Cabana)
 
