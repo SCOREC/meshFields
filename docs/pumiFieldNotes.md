@@ -296,11 +296,14 @@ getValueType - returns integer that maps to
  - Scalar (1 dof/node)
  - Vector (3 dofs/node)
  - Mixed  (??? dofs/node) - the comment in apfField.h is not clear
-getShapeType - returns integer that maps to 'Regular' or something else - need
-to look into this
+   
+getShapeType - returns integer that maps to 'Regular' or something else; need to look into this
+
 getScalarType - always returns 'Mesh::DOUBLE' - can we modernize this with
                 (C++17) type traits (https://www.internalpointers.com/post/quick-primer-type-traits-modern-cpp)
+
 getData - returns instance of 'FieldDataOf<double>'
+
 project(Field* from) - pure virtual, returns void, ?
 axpy(double a, Field* from)
  - used in field projection routine
