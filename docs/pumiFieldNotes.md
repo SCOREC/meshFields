@@ -347,3 +347,8 @@ getOrder - get polynomial order of shape function scheme
 getNodeXi - get the parametric coordinates of a given node for a given entity type
 
 getNodeTangent - get the tangent vector of a node for a given entity type
+
+### apf::Element class functions - apfElement.h
+
+getComponents - evaluate field at parametric coordinate 
+- calls apfShape::getValues(...)
