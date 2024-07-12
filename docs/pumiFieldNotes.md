@@ -291,7 +291,9 @@ EntityShape
 FieldShape
 
 ### Field class functions
+
 getElement - creates an 'Element' instance
+
 getValueType - returns integer that maps to
  - Scalar (1 dof/node)
  - Vector (3 dofs/node)
@@ -305,6 +307,7 @@ getScalarType - always returns 'Mesh::DOUBLE' - can we modernize this with
 getData - returns instance of 'FieldDataOf<double>'
 
 project(Field* from) - pure virtual, returns void, ?
+
 axpy(double a, Field* from)
  - used in field projection routine
  - constant times a vector plus a vector (see BLAS 'daxpy')
@@ -320,8 +323,11 @@ Shape functions over an entity (called 'element' in the code).
 Note, nedelec specific functions ommitted.
 
 getValues - evaluate shape function at parametric location within a mesh entity
+
 getLocalGradients - evaluate shape function gradients at parametric location within a mesh entity
+
 countNodes - nodes on the specified entity
+
 alignSharedNodes - convert from shared node order to local/canonical entity order - longer description in code
 
 ### FieldShape class functions - apfShape.h
@@ -331,8 +337,13 @@ Describes field distribution and shape functions.  Typically singletons, one for
 Note, nedelec specific functions ommitted. This is a 'vector' based shape function.
 
 getEntityShape - get an EntityShape object for a given entity type (vtx, edge, face, region)
+
 hasNodesIn - check if there are nodes associated with the given entity type
+
 countNodesOn - return the number of nodes associated with the given entity type
+
 getOrder - get polynomial order of shape function scheme
+
 getNodeXi - get the parametric coordinates of a given node for a given entity type
+
 getNodeTangent - get the tangent vector of a node for a given entity type
