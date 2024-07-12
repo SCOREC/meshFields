@@ -177,7 +177,7 @@ class Field
     public:
 
         template< typename FieldT >
-        Field( FieldT field )
+        Field( FieldT field ) //this will copy - or construct then move
             : pimpl{ std::make_unique<FieldModel<FieldT>>( std::move(field) ) }
         {}
 
