@@ -352,3 +352,7 @@ getNodeTangent - get the tangent vector of a node for a given entity type
 
 getComponents - evaluate field at parametric coordinate 
 - calls apfShape::getValues(...)
+- examples
+  - used in `apf::Integrator` derived class implementations
+  - spr/sprEstimate[Target]Error.cc
+  - test/test_matrix_grad.cc
