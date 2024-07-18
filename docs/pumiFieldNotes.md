@@ -298,9 +298,11 @@ TagMaker, TagHelper
 - helper functions that create MeshTag objects that are the underlying storage
   of fields
 
-
 EntityShape
-FieldShape
+
+FieldShape - from docstring in apfShape.h
+- Describes field distribution and shape functions
+- typically singletons
 
 Element
 - ![elementHierarchy](elementHierarchy.png)
