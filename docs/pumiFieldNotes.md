@@ -4,6 +4,7 @@
 - pumi TOMS paper: https://www.scorec.rpi.edu/REPORTS/2015-4.pdf
 - pumi apf source code
 - pumi doxygen: https://www.scorec.rpi.edu/pumi/doxygen/
+  - with internal headers: https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/
 - pumi apf library documentation: https://github.com/SCOREC/core/blob/bcfbd128b65a629241b629c90e3665b539e2e9ae/apf/apf.tex
 - Mark Beall's thesis, Chapter 8: https://scorec.rpi.edu/REPORTS/1999-6.pdf 
   - An object-oriented field API used within the framework ('Trellis') of
@@ -350,9 +351,35 @@ getNodeTangent - get the tangent vector of a node for a given entity type
 
 ### apf::Element class functions - apfElement.h
 
-getComponents - evaluate field at parametric coordinate 
-- calls apfShape::getValues(...)
-- examples
-  - used in `apf::Integrator` derived class implementations
-  - spr/sprEstimate[Target]Error.cc
-  - test/test_matrix_grad.cc
+> * \details A Mesh Element allows queries to the coordinate field,
+> * including mapping, differential and total volume, as well as
+> * gauss integration point data. A Mesh Element is also required
+> * to build a Field Element.
+
+- getComponents - evaluate field at parametric coordinate 
+  - calls apfShape::getValues(...)
+  - examples
+    - used in `apf::Integrator` derived class implementations
+    - spr/sprEstimate[Target]Error.cc
+    - test/test_matrix_grad.cc
+
+### apf::ElementOf class functions - apfElementOf.h
+
+![elementHierarchy](elementHierarchy.png)
+
+- derived from apf::Element
+- requires `FieldOf` objects in ctor
+  - `FieldOf` is the parent of MatrixField, MixedVectorField, ScalarField, VectorField
+- 
+
+### apf::Integrator class - apf.h and apfIntegrate.cc
+
+- https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/classapf_1_1Integrator.html
+- defines integration points for up to 7th order tets (`N7`), 2nd order hex, etc..
+- call backs
+  - inElement - allow creation of additional element info
+  - outElement - destroy additional element info
+  - atPoint - called at integration points to accumulate results
+  - parallelReduce - called at end of process(mesh) to support distributed memory reduction - used in spr/sprEstimateError.cc
+  - process - runs the integrator on an element or all elements in the mesh using call backs
+
