@@ -156,8 +156,7 @@
     - integration point fixed, ?, not clear
     - hierarchic, {1,2}
   - do we want to support different orders across a given mesh
-    (adaptive/non-uniform p)? - may need something like element blocks to do
-    this effectively on gpus
+    (adaptive/non-uniform p)? - no (see 'non-uniform P' above)
 - dof numbering
   - pumi supports this
   - landice needs this
