@@ -203,6 +203,10 @@ Questions:
 
 ### Classes:
 
+The heirarchy for the field classes:
+
+![fieldHierarchy](fieldHierarchy.png)
+
 FieldBase 
 - abstract class
 - parent of Field <- FieldOf <- MatrixField, MixedVectorField, ScalarField, VectorField
@@ -235,6 +239,14 @@ FieldOf
 - adds {set|get}NodeValue
 - implements Field::project and Field::axpy by calling wrapper version defined
   in apfFieldOf.cc
+
+MixedVectorField
+- doc string apfMixedVectorElement.h
+  > Fields with vector shapes are a bit peculiar, in that
+  > the shapes functions are vectors but the dof holders are
+  > scalars. Hence the need for this Mixed class. An example of
+  > such fields are Nedelec fields.
+- used for Nedelec shape functions
 
 {Scalar|Vector|Matrix3x3}Field
 - can be instaniated 
@@ -290,6 +302,25 @@ TagMaker, TagHelper
 
 EntityShape
 FieldShape
+
+Element
+- ![elementHierarchy](elementHierarchy.png)
+- parent of ElementOf
+- generic type that appears in most interface functions
+- doc string from apf.h
+  > A Mesh Element allows queries to the coordinate field,
+  > including mapping, differential and total volume, as well as
+  > gauss integration point data. A Mesh Element is also required
+  > to build a Field Element.
+
+ElementOf
+- templated on T and S
+  - T is the shape function type (scalar, vector, matrix) and
+  - S is the dof holder type
+  - for all but MixedVectorElement, T and S are the same
+- instantiated to define [Scalar|Vector|Matrix|MixedVector]Element, 
+- requires `FieldOf` objects in ctor
+  - `FieldOf` is the parent of MatrixField, MixedVectorField, ScalarField, VectorField
 
 ### Field class functions
 
@@ -351,11 +382,6 @@ getNodeTangent - get the tangent vector of a node for a given entity type
 
 ### apf::Element class functions - apfElement.h
 
-> * \details A Mesh Element allows queries to the coordinate field,
-> * including mapping, differential and total volume, as well as
-> * gauss integration point data. A Mesh Element is also required
-> * to build a Field Element.
-
 - getComponents - evaluate field at parametric coordinate 
   - calls apfShape::getValues(...)
   - examples
@@ -365,11 +391,6 @@ getNodeTangent - get the tangent vector of a node for a given entity type
 
 ### apf::ElementOf class functions - apfElementOf.h
 
-![elementHierarchy](elementHierarchy.png)
-
-- derived from apf::Element
-- requires `FieldOf` objects in ctor
-  - `FieldOf` is the parent of MatrixField, MixedVectorField, ScalarField, VectorField
 - 
 
 ### apf::Integrator class - apf.h and apfIntegrate.cc
