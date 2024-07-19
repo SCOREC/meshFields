@@ -92,6 +92,7 @@
   - polygonal meshes - i.e., wachpress shape functions for seaice - no, will require different storage structure
   - Nedelec shape functions - yes
   - mixed meshes - yes
+  - non-conforming - no
 - How will these fields interact with mesh adaptation?
   - convert back to mesh library native format?
     - consider defining a field backend that uses flat arrays for easy/clean
