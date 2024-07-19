@@ -102,9 +102,19 @@
     without invasive changes? Do we define 'cavity' specific field operations?
 - Are their fields that require storage of a matrix of values at each dof?
   - yes
-- What are the common use cases
-  - create the field
-  - evaluate the field 
+- What are the common use cases?
+  - for each field:
+    - what are the dof holders
+    - what is the data type associated with each dof holder
+    - what shape functions are associated with the field (they provide metadata query functions)
+    - serialize dof holder values for i/o (rendering, communication, etc.)
+  - for each mesh entity of a given order/dimension (these are 'Element'
+    operations in PUMI terminology):
+    - given parametric coords return a value, derivative, shape function evaluation, jacobian evaluation, det jacobian evaluation, jacobian inverse, (maybe hessian)
+    - dof values for all dofholders that are part of the element
+    - type of base element (tri, quad, tet, wedge, hex, ...)
+  - for cavities of mesh entities surrounding a key mesh entity (i.e., a vertex):
+    - ...
 - What data is needed from the mesh *after* the field is created?
   - should be minimal as field and mesh are immutable
   - need to look at how 'elements' are created
