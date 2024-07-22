@@ -9,12 +9,10 @@ void loop(OuterFunc& outer, InnerFunc& inner) {
     static_assert( std::is_invocable_v<decltype(&InnerFunc::inner), InnerFunc&, int, int> );
     Kokkos::parallel_for(10, 
       KOKKOS_LAMBDA(const int i) {
-        // Kokko::printf works for all backends in a parallel kernel;
-        // std::ostream does not.
-        outer.outer(i);
-        for (int j = 0; j < 5; j++) {
-            inner.inner(i,j);
-        }
+        outer.outer(i); //does not compile, error indicates that outer is const, possibly due to pass by value
+//        for (int j = 0; j < 5; j++) {
+//            inner.inner(i,j);
+//        }
         Kokkos::printf("Hello from i = %i\n", i);
     });
 }
@@ -46,10 +44,10 @@ int main(int argc, char** argv) {
     Foo f{0};
     Bar b{0};
 
-    loop(f,b);
     std::cout << f.x << " " << b.x << "\n";
+    loop(f,b);
 
-    Baz z{0};
+    //Baz z{0};
     //loop(f,z); //fails static assert, as expected
     Kokkos::finalize();
     return 0;
