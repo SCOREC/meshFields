@@ -26,7 +26,11 @@
 - pumi apf source code
 - pumi doxygen: https://www.scorec.rpi.edu/pumi/doxygen/
   - with internal headers: https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/
-- pumi apf library documentation: https://github.com/SCOREC/core/blob/bcfbd128b65a629241b629c90e3665b539e2e9ae/apf/apf.tex
+- pumi apf library documentation:
+  - The APF Library: https://github.com/SCOREC/core/blob/bcfbd128b65a629241b629c90e3665b539e2e9ae/apf/apf.tex
+  - The Cavity Operator: https://github.com/SCOREC/core/blob/8959c599cc05e21d0fb470f941d9f892da62aa02/apf/cavity.tex 
+  - Interface For Field Access: https://github.com/SCOREC/core/blob/8959c599cc05e21d0fb470f941d9f892da62aa02/apf/attach.tex
+  - Hierarchic Shape Functions: https://github.com/SCOREC/core/blob/8959c599cc05e21d0fb470f941d9f892da62aa02/apf/hierarchic.tex
 - Mark Beall's thesis, Chapter 8: https://scorec.rpi.edu/REPORTS/1999-6.pdf 
   - An object-oriented field API used within the framework ('Trellis') of
     other objects described in the thesis (mesh, model, solution, etc.).
