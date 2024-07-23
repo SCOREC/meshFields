@@ -85,6 +85,14 @@
   }
 ```
 
+- A cavity operator could work as follows:
+  - user identifies the dimension/order `k` of entities of interest (e.g., vertices, edges, or faces)
+  - form the [elements](#elements) for all dimension `d` mesh entities (where `d` is the highest dimension entity in the mesh)
+  - query the mesh for the (irregular) list of dimension `d` entities that are adjacent to each dimension `k` entity
+  - parallel loop over the dimension `k` entities
+    - [parallel] loop over the list of adjacent `d` entities
+      - pass the element to the the callback #todo need to check this...
+
 ## Questions
 
 - Do we want/need to support the following features?
@@ -125,6 +133,15 @@
     access
     - we can simply use local indices for now - may want to abstract this at
       some point
+- How will the interface work for integration and cavity operations that need to
+  support user defined actions?
+  - In PUMI the user implements a derived class (see
+    [apf::Integrator](#apf-integrator-class-functions)) and those routines get
+    called by a user call to a base class function that loops over all the
+    elements and calls the derived class routines.
+  - This can be done on GPUs via templates: see the subdirectory `integrationSandbox`
+    for implementation of a callback from a `Kokkos::parallel_for` via a functor.
+   
 
 ## Terminology
 
@@ -315,7 +332,7 @@ FieldShape - from docstring in apfShape.h
 - Describes field distribution and shape functions
 - typically singletons
 
-Element
+Element <a name="element"></a>
 - ![elementHierarchy](elementHierarchy.png)
 - parent of ElementOf
 - generic type that appears in most interface functions
@@ -405,14 +422,15 @@ getNodeTangent - get the tangent vector of a node for a given entity type
 
 - 
 
-### apf::Integrator class - apf.h and apfIntegrate.cc
+### apf Integrator Class functions
 
+- apf.h and apfIntegrate.cc
 - https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/classapf_1_1Integrator.html
 - defines integration points for up to 7th order tets (`N7`), 2nd order hex, etc..
-- call backs
+- callbacks
   - inElement - allow creation of additional element info
   - outElement - destroy additional element info
   - atPoint - called at integration points to accumulate results
   - parallelReduce - called at end of process(mesh) to support distributed memory reduction - used in spr/sprEstimateError.cc
-  - process - runs the integrator on an element or all elements in the mesh using call backs
+  - process - runs the integrator on an element or all elements in the mesh using callbacks
 
