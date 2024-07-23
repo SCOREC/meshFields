@@ -115,6 +115,9 @@
 ```
 
 - A cavity operator could work as follows:
+  - ghosting is used, instead of migration, to guarantee that all needed cavity entities are on-process
+    - multiple layers may be needed depending on the definition of the cavity
+      (e.g., conservative field transfer with mesh intersection)
   - user identifies the dimension/order `k` of entities of interest (e.g., vertices, edges, or faces)
   - form the [elements](#elements) for all dimension `d` mesh entities (where `d` is the highest dimension entity in the mesh)
   - query the mesh for the (irregular) list of dimension `d` entities that are adjacent to each dimension `k` entity
@@ -138,7 +141,9 @@
       conversion. Christian's serialize/deserialize functions do this.  It may
       be 'better' for these operations to be explicit/exposed.
   - can omegah adapt use these operations for cavity based field transfer
-    without invasive changes? Do we define 'cavity' specific field operations?
+    without invasive changes?
+  - Do we define 'cavity' specific field operations? - yes.  cavity operations are
+    needed for hessians and routines like super convergent patch recovery see 
 - Are their fields that require storage of a matrix of values at each dof?
   - yes
 - What are the common use cases?
@@ -172,6 +177,12 @@
     elements and calls the derived class routines.
   - This can be done on GPUs via templates: see the subdirectory `integrationSandbox`
     for implementation of a callback from a `Kokkos::parallel_for` via a functor.
+- Does it make sense to support the cavity intersections needed for conservative
+  field transfer outside of Omega_h?
+  - Omega_h already supports it; see:
+    - source: https://github.com/SCOREC/omega_h/blob/master/src/Omega_h_conserve.cpp
+    - Figure 3.14 of [Dan Ibanez's Ph.D. Thesis](https://scorec.rpi.edu/REPORTS/2016-25.pdf)
+  - what mesh information is needed if we don't use the Omega_h capability?
    
 
 <div id='section-id-146'/>
@@ -485,3 +496,21 @@ getNodeTangent - get the tangent vector of a node for a given entity type
   - parallelReduce - called at end of process(mesh) to support distributed memory reduction - used in spr/sprEstimateError.cc
   - process - runs the integrator on an element or all elements in the mesh using callbacks
 
+### apf CavityOp Class functions
+
+- apfCavityOp.[h|cc]
+- https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/cavity.html
+- https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/classapf_1_1CavityOp.html
+- not specific to fields, also handles mesh modifications
+- users implement on-process callbacks
+- steps
+  1. apply the operator on cavities that are on-process
+  2. mark requests for local cavities
+  3. migrate mesh elements to satisfy requests for local cavities 
+  4. goto 1
+- callbacks
+  - setEntity 
+    - if the cavity does not need to be processed, return SKIP
+    - if the cavity is local build it, return OK
+    - otherwise request migration, return REQUEST
+  - apply - run the cavity operator
