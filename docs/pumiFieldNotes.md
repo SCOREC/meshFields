@@ -1,3 +1,24 @@
+#Summary 
+
+  - [References](#section-id-1)
+  - [Design Ideas](#section-id-14)
+  - [Implementation notes](#section-id-24)
+  - [Questions](#section-id-96)
+  - [Terminology](#section-id-146)
+  - [Functionality](#section-id-156)
+  - [PUMI Fields Review](#section-id-223)
+    - [Classes:](#section-id-231)
+    - [Field class functions](#section-id-354)
+    - [EntityShape class functions - apfShape.h](#section-id-380)
+    - [FieldShape class functions - apfShape.h](#section-id-394)
+    - [apf::Element class functions - apfElement.h](#section-id-412)
+    - [apf::ElementOf class functions - apfElementOf.h](#section-id-421)
+    - [apf Integrator Class functions](#section-id-425)
+  
+
+
+<div id='section-id-1'/>
+
 ## References
 
 - pumi users guide: https://www.scorec.rpi.edu/pumi/PUMI.pdf
@@ -11,6 +32,8 @@
     other objects described in the thesis (mesh, model, solution, etc.).
   - Designed to support p-adaptivity (i.e., non-uniform field order)
 
+<div id='section-id-14'/>
+
 ## Design Ideas
 
 - don't want dependency on omegah
@@ -21,7 +44,9 @@
      - no, `getValues` allocates memory for the result via can::NewArray which
        calls the runtime can::Array(n) constructor
 
-# Implementation notes
+<div id='section-id-24'/>
+
+## Implementation notes
 
 - consider using the kokkos reference implementation of mdspan for a backend agnostic type
   - https://github.com/kokkos/mdspan
@@ -93,6 +118,8 @@
     - [parallel] loop over the list of adjacent `d` entities
       - pass the element to the the callback #todo need to check this...
 
+<div id='section-id-96'/>
+
 ## Questions
 
 - Do we want/need to support the following features?
@@ -143,6 +170,8 @@
     for implementation of a callback from a `Kokkos::parallel_for` via a functor.
    
 
+<div id='section-id-146'/>
+
 ## Terminology
 
 - dof - exists at a dof holder, can be scalar, vector, matrix, etc.
@@ -152,6 +181,8 @@
 - node - a location on a mesh entitiy that is a dof holder. Multiple nodes can
          exist per mesh entity.  For example, a mesh edge could have multiple
          nodes for a high order shape function.
+
+<div id='section-id-156'/>
 
 ## Functionality
 
@@ -220,6 +251,8 @@
   - in longer term we will have to modify omegah (e.g., hooks to call meshField
     APIs from kernels)
 
+<div id='section-id-223'/>
+
 ## PUMI Fields Review
 
 Questions:
@@ -227,6 +260,8 @@ Questions:
   - apf::MeshTag (an abstract type that each mesh implements)
 - what class has the data? 
   - FieldData (derived class is TagDataOf), which is stored as a pointer from Field
+
+<div id='section-id-231'/>
 
 ### Classes:
 
@@ -351,6 +386,8 @@ ElementOf
 - requires `FieldOf` objects in ctor
   - `FieldOf` is the parent of MatrixField, MixedVectorField, ScalarField, VectorField
 
+<div id='section-id-354'/>
+
 ### Field class functions
 
 getElement - creates an 'Element' instance
@@ -377,6 +414,8 @@ axpy(double a, Field* from)
      - two FieldOf pointers
      - a 'MeshEntity' (this is likely something specific to Fields)
 
+<div id='section-id-380'/>
+
 ### EntityShape class functions - apfShape.h
 
 Shape functions over an entity (called 'element' in the code).
@@ -390,6 +429,8 @@ getLocalGradients - evaluate shape function gradients at parametric location wit
 countNodes - nodes on the specified entity
 
 alignSharedNodes - convert from shared node order to local/canonical entity order - longer description in code
+
+<div id='section-id-394'/>
 
 ### FieldShape class functions - apfShape.h
 
@@ -409,6 +450,8 @@ getNodeXi - get the parametric coordinates of a given node for a given entity ty
 
 getNodeTangent - get the tangent vector of a node for a given entity type
 
+<div id='section-id-412'/>
+
 ### apf::Element class functions - apfElement.h
 
 - getComponents - evaluate field at parametric coordinate 
@@ -418,9 +461,13 @@ getNodeTangent - get the tangent vector of a node for a given entity type
     - spr/sprEstimate[Target]Error.cc
     - test/test_matrix_grad.cc
 
+<div id='section-id-421'/>
+
 ### apf::ElementOf class functions - apfElementOf.h
 
 - 
+
+<div id='section-id-425'/>
 
 ### apf Integrator Class functions
 
