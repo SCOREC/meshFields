@@ -367,7 +367,7 @@ FieldShape - from docstring in apfShape.h
 - Describes field distribution and shape functions
 - typically singletons
 
-Element <a name="element"></a>
+Element <div id="element"/>
 - ![elementHierarchy](elementHierarchy.png)
 - parent of ElementOf
 - generic type that appears in most interface functions
