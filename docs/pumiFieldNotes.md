@@ -9,12 +9,12 @@
   - [PUMI Fields Review](#section-id-223)
     - [Classes:](#section-id-231)
     - [Field class functions](#section-id-354)
-    - [EntityShape class functions - apfShape.h](#section-id-380)
-    - [FieldShape class functions - apfShape.h](#section-id-394)
-    - [apf::Element class functions - apfElement.h](#section-id-412)
-    - [apf::ElementOf class functions - apfElementOf.h](#section-id-421)
-    - [apf Integrator Class functions](#section-id-425)
-    - [apf CavityOp Class functions](#section-id-499)
+    - [EntityShape class functions](#section-id-380)
+    - [FieldShape class functions](#section-id-394)
+    - [apf::Element class functions](#section-id-412)
+    - [apf::VectorElement class functions](#section-id-421)
+    - [apf::Integrator Class functions](#section-id-425)
+    - [apf::CavityOp Class functions](#section-id-499)
   
 
 
@@ -385,7 +385,8 @@ FieldShape - from docstring in apfShape.h
 
 Element <div id="elements"/>
 - ![elementHierarchy](elementHierarchy.png)
-- parent of ElementOf
+- parent of ElementOf whose specializations are 
+  VectorElement, MatrixElement, ScalarElement, and MixedVectorElement
 - generic type that appears in most interface functions
 - doc string from apf.h
   > A Mesh Element allows queries to the coordinate field,
@@ -470,22 +471,65 @@ getNodeTangent - get the tangent vector of a node for a given entity type
 
 ### apf::Element class functions - apfElement.h
 
+- https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/classapf_1_1Element.html
+
+math operations
+
 - getComponents - evaluate field at parametric coordinate 
   - calls apfShape::getValues(...)
   - examples
     - used in `apf::Integrator` derived class implementations
     - spr/sprEstimate[Target]Error.cc
     - test/test_matrix_grad.cc
+- getGlobalGradients - applies jacobian inverse to element local gradiants
+- getJacobianInverse - free function, operates on Matrix3x3
+- see [apf::VectorElement]
+
+object access
+
+- getParent - returns `VectorElement` object (`ElementOf<Vector3>`)
+- getEntity - return the mesh entity the element was created from
+- getMesh - return the mesh the entity belongs to
+- getFieldShape 
+- getShape 
+- getElementNodeData
+
+metadata functions
+
+- getType
+- getDimension
+- getOrder 
+
+member variables
+
+- nodeData
+  - size: number of components per dof holder * number of nodes in the mesh element closure
+  - see apfFieldData.cc `FieldDataOf<T>::getElementData(...)`
+    - dynamically allocates storage for field values at dof holders on the closure of specified
+      mesh entity (i.e., vertex, edge, face or region)
+    - reorders the storage according to dof holders that are shared with
+      adjacent entities (i.e., a dof holder on an edge) via call to
+      `alignSharedNodes(...)` (implemented in apfShape.cc)
 
 <div id='section-id-421'/>
 
-### apf::ElementOf class functions - apfElementOf.h
+### apf::VectorElement class functions
 
-- 
+- https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/classapf_1_1VectorElement.html
+- apfVectorElement.[cc|h]
+
+math operations at parametric coordinates
+- div
+- grad
+- curl
+- getJacobian
+- getDV
+- gradHelper
+- getJacobianDeterminant - free function, operates on Matrix3x3
 
 <div id='section-id-425'/>
 
-### apf Integrator Class functions
+### apf::Integrator Class functions
 
 - apf.h and apfIntegrate.cc
 - https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/classapf_1_1Integrator.html
@@ -499,7 +543,7 @@ getNodeTangent - get the tangent vector of a node for a given entity type
 
 <div id='section-id-499'/>
 
-### apf CavityOp Class functions
+### apf::CavityOp Class functions
 
 - apfCavityOp.[h|cc]
 - https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/cavity.html
