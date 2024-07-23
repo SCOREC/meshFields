@@ -14,6 +14,7 @@
     - [apf::Element class functions - apfElement.h](#section-id-412)
     - [apf::ElementOf class functions - apfElementOf.h](#section-id-421)
     - [apf Integrator Class functions](#section-id-425)
+    - [apf CavityOp Class functions](#section-id-499)
   
 
 
@@ -495,6 +496,8 @@ getNodeTangent - get the tangent vector of a node for a given entity type
   - atPoint - called at integration points to accumulate results
   - parallelReduce - called at end of process(mesh) to support distributed memory reduction - used in spr/sprEstimateError.cc
   - process - runs the integrator on an element or all elements in the mesh using callbacks
+
+<div id='section-id-499'/>
 
 ### apf CavityOp Class functions
 
