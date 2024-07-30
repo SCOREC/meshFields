@@ -61,6 +61,8 @@
   - Is a cabana slice (i.e., the object associated with a single type in the parameter pack that stores its values) physically using a contiguous portion of memory?
     - it seems like it: https://github.com/ECP-copa/Cabana/wiki/Core-Slice#raw-data-access-pointers-and-strides
   - **We already have a 'Slice' wrapper interface - does using mdspan instead solve a problem or make our code easier to read/maintain?**
+  - can support non-contiguous memory
+    - SOA example: https://bernhardmgruber.github.io/2023/11/26/soa-mdspan.html
 
 - The controller interface is functionally replacing the Tag mechanism in PUMI
 - A FieldData and Field class hierarchies could be created to abstract node/entity operations
@@ -125,6 +127,10 @@
   - parallel loop over the dimension `k` entities
     - [parallel] loop over the list of adjacent `d` entities
       - pass the element to the the callback #todo need to check this...
+  - boundaries need be handled by the mesh interaction - fields won't
+    necessarily understand how they are handled and it isn't clear if it cares
+
+- Elements could be stored using the field backend
 
 <div id='section-id-96'/>
 
@@ -163,7 +169,7 @@
 - What data is needed from the mesh *after* the field is created?
   - should be minimal as field and mesh are immutable
   - need to look at how 'elements' are created
-    - this will need to understand local vs global ordering of entities on the
+    - need to understand local vs global ordering of entities on the
       closure of the 'element'
     - I assume the equivalent set of objects need to be created during field construction
   - pumi uses the meshtag for storage which uses mesh entity storage order for
