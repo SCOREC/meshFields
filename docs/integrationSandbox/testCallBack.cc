@@ -99,7 +99,7 @@ struct AvgPosOp {
 // - an index of a mesh element (highest dimension entity in the mesh) that
 //   is part of the cavity associated with the key entity.
 template <typename Functor>
-void applyToCavities(Functor& a, CSR& cavities) {
+void applyToCavities(Functor&& a, CSR& cavities) { //"universal reference"
     const auto numEnts = cavities.offsets.size()-1;
     const auto elmIdx = cavities.vals;
     const auto offsets = cavities.offsets;
@@ -126,7 +126,14 @@ int main(int argc, char** argv) {
     MeshFields::FieldElement<double> f(numComps,numNodes,numElms,dim);
     setCentroids(f);
     auto cavities = getCavities();
-    AvgPosOp op(numVerts,f);
+    //AvgPosOp op(numVerts,f);
+    Kokkos::View<int*> avgPos("avgPos", numVerts); //this would be a field at vertices
+    auto op = KOKKOS_LAMBDA (int vtx, int elm) {
+      auto x = f(0,0,elm);  //this causes a cuda sync error
+      Kokkos::printf("avgPosOp %d %d\n", vtx, elm);
+      avgPos(vtx) = x; 
+      return avgPos(vtx);
+    };
     applyToCavities(op,cavities);
     std::cerr << "done\n";
   }
