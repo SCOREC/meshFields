@@ -17,7 +17,7 @@ struct FieldElement {
   const size_t numNodesPerEnt;
   const size_t numMeshEnts;
   const size_t meshEntDim;
-  Kokkos::View<T*> nodeData;
+  Kokkos::View<T*> nodeData; //replaced by a 'meshfield' 
   FieldElement(size_t in_numCompsPerDof,
                size_t in_numNodesPerEnt,
                size_t in_numMeshEnts,
@@ -28,7 +28,8 @@ struct FieldElement {
     meshEntDim(in_meshEntDim),
     nodeData("nodeData", numCompsPerDof*numNodesPerEnt*numMeshEnts) {}
   //need accessor here that handles indexing - fieldSlice provides this
-  KOKKOS_INLINE_FUNCTION T operator() (int comp, int node, int ent) const {
+  KOKKOS_INLINE_FUNCTION T& operator() (int comp, int node, int ent) const {
+    //assert(ent < numMeshEnts);
     //simple stub for prototype
     //assert(numCompsPerDof==1);
     //assert(numNodesPerEnt==1);
@@ -69,30 +70,36 @@ CSR getCavities() {
 
 template <typename T>
 void setCentroids(MeshFields::FieldElement<T>& f) {
-  auto nodeData = f.nodeData;
   Kokkos::parallel_for(f.numMeshEnts,
     KOKKOS_LAMBDA(const int ent) {
-      nodeData(ent) = static_cast<double>(ent);
+      f(0,0,ent) = static_cast<double>(ent);
     }
   );
 }
 
 template <typename T>
 struct AvgPosOp {
-    Kokkos::View<int*> avgPos;
-    MeshFields::FieldElement<T>& fes;
+    Kokkos::View<int*> avgPos; //this would be a field at vertices
+    MeshFields::FieldElement<T> fes;
     AvgPosOp(size_t numVtx, MeshFields::FieldElement<T>& fieldElms) : 
       avgPos(Kokkos::View<int*>("avgPos", numVtx)), 
-      fes(fieldElms) {}
+      fes(fieldElms) {} //copy 
     KOKKOS_INLINE_FUNCTION int operator()(int vtx, int elm) const {
-      auto x = fes(0,0,elm);
-      avgPos(vtx) += x; //this causes a cuda sync error
+      auto x = fes(0,0,elm);  //this causes a cuda sync error
+      Kokkos::printf("avgPosOp %d %d\n", vtx, elm);
+      avgPos(vtx) = x; 
       return avgPos(vtx);
     };
 };
 
+// provided by meshfields
+// User passes in a functor that has an paren operator function
+// that takes two arguments:
+// - the key entity index and
+// - an index of a mesh element (highest dimension entity in the mesh) that
+//   is part of the cavity associated with the key entity.
 template <typename Functor>
-void cavityOp(Functor a, CSR& cavities) {
+void applyToCavities(Functor& a, CSR& cavities) {
     const auto numEnts = cavities.offsets.size()-1;
     const auto elmIdx = cavities.vals;
     const auto offsets = cavities.offsets;
@@ -111,15 +118,16 @@ void cavityOp(Functor a, CSR& cavities) {
 int main(int argc, char** argv) {
   Kokkos::initialize(argc, argv);
   {
+    const auto numVerts = 5;
     const auto numComps = 1;
     const auto numNodes = 1;
-    const auto numEnts = 5;
+    const auto numElms = 3;
     const auto dim = 2;
-    MeshFields::FieldElement<double> f(numComps,numNodes,numEnts,dim);
+    MeshFields::FieldElement<double> f(numComps,numNodes,numElms,dim);
     setCentroids(f);
     auto cavities = getCavities();
-    AvgPosOp op(numEnts,f);
-    cavityOp(op,cavities);
+    AvgPosOp op(numVerts,f);
+    applyToCavities(op,cavities);
     std::cerr << "done\n";
   }
   Kokkos::finalize();
