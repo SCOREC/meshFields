@@ -8,29 +8,6 @@ struct CSR {
   Kokkos::View<int*> offsets;
 };
 
-template <typename Functor>
-void cavityOp(Functor a, CSR& cavities) {
-    const auto numEnts = cavities.offsets.size()-1;
-    const auto vals = cavities.vals;
-    const auto offsets = cavities.offsets;
-    Kokkos::parallel_for(numEnts,
-      KOKKOS_LAMBDA(const int ent) {
-        for(int elm=offsets[ent]; elm<offsets[ent+1]-offsets[ent]; elm++) {
-          Kokkos::printf("ent %d elm %d\n", ent, elm);
-          auto val = a(ent,elm);
-          Kokkos::printf("ent %d elm %d = %d\n", ent, elm, val);
-        }
-    });
-}
-
-struct AvgPosOp {
-    Kokkos::View<int*> avgPos;
-    AvgPosOp(size_t numVtx) : avgPos(Kokkos::View<int*>("avgPos", numVtx)) {}
-    KOKKOS_INLINE_FUNCTION int operator()(int vtx, int elm) const {
-      avgPos(vtx) += vtx+10;
-      return avgPos(vtx);
-    };
-};
 
 namespace MeshFields {
 template <typename T>
@@ -50,6 +27,15 @@ struct FieldElement {
     numMeshEnts(in_numMeshEnts),
     meshEntDim(in_meshEntDim),
     nodeData("nodeData", numCompsPerDof*numNodesPerEnt*numMeshEnts) {}
+  //need accessor here that handles indexing - fieldSlice provides this
+  KOKKOS_INLINE_FUNCTION T operator() (int comp, int node, int ent) {
+    //simple stub for prototype
+    assert(numCompsPerDof==1);
+    assert(numNodesPerEnt==1);
+    (void)comp;
+    (void)node;
+    return nodeData(ent);
+  }
 };
 }
 
@@ -59,14 +45,15 @@ CSR getCavities() {
   //  /\  /\
   // /__\/__\
   //
+  // The centroid of each element is x=[0, 1, 2] respectively.
   // The vertices are numbered clockwise from the top left: 0, ..., 4.
   // The cavities for each vertex are defined as the set of triangles they bound:
-  // <vtx> : <list of triangle indices>  <degree>
-  // 0: 0,1    2
-  // 1: 1,2    2
-  // 2: 2      1
-  // 3: 0,1,2  3
-  // 4: 0      1
+  // <vtx> : <list of triangle indices>  <degree> <avgPosOfCentroid>
+  // 0: 0,1    2   0.5
+  // 1: 1,2    2   1.5
+  // 2: 2      1   2.0
+  // 3: 0,1,2  3   1.5
+  // 4: 0      1   0.0
   std::array<int,9> arr = {0,1,1,2,2,0,1,2,0};
   Kokkos::View<int[9], Kokkos::HostSpace, Kokkos::MemoryUnmanaged> vals_h(arr.data(), arr.size());
   Kokkos::View<int[9]> vals("cavities_vals");
@@ -77,6 +64,45 @@ CSR getCavities() {
   return CSR{vals,off};
 }
 
+template <typename T>
+void setCentroids(MeshFields::FieldElement<T>& f) {
+  auto nodeData = f.nodeData;
+  Kokkos::parallel_for(f.numMeshEnts,
+    KOKKOS_LAMBDA(const int ent) {
+      nodeData(ent) = static_cast<double>(ent);
+    }
+  );
+}
+
+template <typename T>
+struct AvgPosOp {
+    Kokkos::View<int*> avgPos;
+    MeshFields::FieldElement<T>& fes;
+    AvgPosOp(size_t numVtx, MeshFields::FieldElement<T>& fieldElms) : 
+      avgPos(Kokkos::View<int*>("avgPos", numVtx)), 
+      fes(fieldElms) {}
+    KOKKOS_INLINE_FUNCTION int operator()(int vtx, int elm) const {
+      avgPos(vtx) += fes(0,0,elm);
+      return avgPos(vtx);
+    };
+};
+
+template <typename Functor>
+void cavityOp(Functor a, CSR& cavities) {
+    const auto numEnts = cavities.offsets.size()-1;
+    const auto elmIdx = cavities.vals;
+    const auto offsets = cavities.offsets;
+    Kokkos::printf("%d\n", cavities.offsets.size());
+    Kokkos::parallel_for(numEnts,
+      KOKKOS_LAMBDA(const int ent) {
+        for(int elm=offsets(ent); elm<offsets(ent+1); elm++) {
+          auto v = a(ent,elmIdx(elm));
+          Kokkos::printf("ent %d elm %d = %f\n", ent, elmIdx(elm), v);
+        }
+    });
+    Kokkos::fence();
+}
+
 int main(int argc, char** argv) {
   Kokkos::initialize(argc, argv);
   {
@@ -84,10 +110,12 @@ int main(int argc, char** argv) {
     const auto numNodes = 1;
     const auto numEnts = 5;
     const auto dim = 2;
-    MeshFields::FieldElement<double>(numComps,numNodes,numEnts,dim);
+    MeshFields::FieldElement<double> f(numComps,numNodes,numEnts,dim);
+    setCentroids(f);
     auto cavities = getCavities();
-    AvgPosOp f(numEnts);
-    cavityOp(f,cavities); //this loop is too short - FIXME
+    AvgPosOp op(numEnts,f);
+    cavityOp(op,cavities);
+    std::cerr << "done\n";
   }
   Kokkos::finalize();
   return 0;
