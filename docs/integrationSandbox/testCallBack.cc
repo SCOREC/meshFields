@@ -28,12 +28,15 @@ struct FieldElement {
     meshEntDim(in_meshEntDim),
     nodeData("nodeData", numCompsPerDof*numNodesPerEnt*numMeshEnts) {}
   //need accessor here that handles indexing - fieldSlice provides this
-  KOKKOS_INLINE_FUNCTION T operator() (int comp, int node, int ent) {
+  KOKKOS_INLINE_FUNCTION T operator() (int comp, int node, int ent) const {
     //simple stub for prototype
-    assert(numCompsPerDof==1);
-    assert(numNodesPerEnt==1);
-    (void)comp;
-    (void)node;
+    //assert(numCompsPerDof==1);
+    //assert(numNodesPerEnt==1);
+    //(void)comp;
+    //(void)node;
+    Kokkos::printf("ent a %d\n", ent);
+    nodeData(ent) = 1.0;
+    Kokkos::printf("ent b %d\n", ent);
     return nodeData(ent);
   }
 };
@@ -82,7 +85,8 @@ struct AvgPosOp {
       avgPos(Kokkos::View<int*>("avgPos", numVtx)), 
       fes(fieldElms) {}
     KOKKOS_INLINE_FUNCTION int operator()(int vtx, int elm) const {
-      avgPos(vtx) += fes(0,0,elm);
+      auto x = fes(0,0,elm);
+      avgPos(vtx) += x; //this causes a cuda sync error
       return avgPos(vtx);
     };
 };
@@ -92,6 +96,7 @@ void cavityOp(Functor a, CSR& cavities) {
     const auto numEnts = cavities.offsets.size()-1;
     const auto elmIdx = cavities.vals;
     const auto offsets = cavities.offsets;
+    Kokkos::fence();
     Kokkos::printf("%d\n", cavities.offsets.size());
     Kokkos::parallel_for(numEnts,
       KOKKOS_LAMBDA(const int ent) {
