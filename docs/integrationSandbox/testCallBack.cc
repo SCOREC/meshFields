@@ -17,7 +17,7 @@ struct FieldElement {
   const size_t numNodesPerEnt;
   const size_t numMeshEnts;
   const size_t meshEntDim;
-  Kokkos::View<T*> nodeData; //replaced by a 'meshfield' 
+  Kokkos::View<T*> nodeData; //replaced by a 'meshfield'
   FieldElement(size_t in_numCompsPerDof,
                size_t in_numNodesPerEnt,
                size_t in_numMeshEnts,
@@ -29,15 +29,12 @@ struct FieldElement {
     nodeData("nodeData", numCompsPerDof*numNodesPerEnt*numMeshEnts) {}
   //need accessor here that handles indexing - fieldSlice provides this
   KOKKOS_INLINE_FUNCTION T& operator() (int comp, int node, int ent) const {
-    //assert(ent < numMeshEnts);
     //simple stub for prototype
-    //assert(numCompsPerDof==1);
-    //assert(numNodesPerEnt==1);
-    //(void)comp;
-    //(void)node;
-    Kokkos::printf("ent a %d\n", ent);
-    nodeData(ent) = 1.0;
-    Kokkos::printf("ent b %d\n", ent);
+    assert(ent < numMeshEnts);
+    assert(numCompsPerDof==1);
+    assert(numNodesPerEnt==1);
+    (void)comp;
+    (void)node;
     return nodeData(ent);
   }
 };
@@ -81,13 +78,11 @@ template <typename T>
 struct AvgPosOp {
     Kokkos::View<int*> avgPos; //this would be a field at vertices
     MeshFields::FieldElement<T> fes;
-    AvgPosOp(size_t numVtx, MeshFields::FieldElement<T>& fieldElms) : 
-      avgPos(Kokkos::View<int*>("avgPos", numVtx)), 
-      fes(fieldElms) {} //copy 
+    AvgPosOp(size_t numVtx, MeshFields::FieldElement<T>& fieldElms) :
+      avgPos(Kokkos::View<int*>("avgPos", numVtx)),
+      fes(fieldElms) {} //copy
     KOKKOS_INLINE_FUNCTION int operator()(int vtx, int elm) const {
-      auto x = fes(0,0,elm);  //this causes a cuda sync error
-      Kokkos::printf("avgPosOp %d %d\n", vtx, elm);
-      avgPos(vtx) = x; 
+      avgPos(vtx) += fes(0,0,elm);
       return avgPos(vtx);
     };
 };
@@ -104,12 +99,10 @@ void applyToCavities(Functor&& a, CSR& cavities) { //"universal reference"
     const auto elmIdx = cavities.vals;
     const auto offsets = cavities.offsets;
     Kokkos::fence();
-    Kokkos::printf("%d\n", cavities.offsets.size());
     Kokkos::parallel_for(numEnts,
       KOKKOS_LAMBDA(const int ent) {
         for(int elm=offsets(ent); elm<offsets(ent+1); elm++) {
           auto v = a(ent,elmIdx(elm));
-          Kokkos::printf("ent %d elm %d = %f\n", ent, elmIdx(elm), v);
         }
     });
     Kokkos::fence();
@@ -126,15 +119,20 @@ int main(int argc, char** argv) {
     MeshFields::FieldElement<double> f(numComps,numNodes,numElms,dim);
     setCentroids(f);
     auto cavities = getCavities();
-    //AvgPosOp op(numVerts,f);
-    Kokkos::View<int*> avgPos("avgPos", numVerts); //this would be a field at vertices
-    auto op = KOKKOS_LAMBDA (int vtx, int elm) {
-      auto x = f(0,0,elm);  //this causes a cuda sync error
-      Kokkos::printf("avgPosOp %d %d\n", vtx, elm);
-      avgPos(vtx) = x; 
-      return avgPos(vtx);
-    };
-    applyToCavities(op,cavities);
+    { //functor version
+      AvgPosOp op(numVerts,f);
+      applyToCavities(op,cavities);
+    }
+    { //lambda version
+      Kokkos::View<int*> avgPos("avgPos", numVerts); //this would be a field at vertices
+      auto op = KOKKOS_LAMBDA (int vtx, int elm) {
+        avgPos(vtx) += f(0,0,elm);
+        return avgPos(vtx);
+      };
+      applyToCavities(op,cavities);
+      //TODO need to support a 'end' step to divide by the number of cavity elements
+      //TODO maybe a reduction interface makes sense?
+    }
     std::cerr << "done\n";
   }
   Kokkos::finalize();
