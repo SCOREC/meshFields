@@ -87,14 +87,24 @@ struct AvgPosOp {
     };
 };
 
-// provided by meshfields
-// User passes in a functor that has an paren operator function
+// Provided by meshfields.
+// User passes in an Element functor that has an paren operator function
 // that takes two arguments:
 // - the key entity index and
 // - an index of a mesh element (highest dimension entity in the mesh) that
 //   is part of the cavity associated with the key entity.
-template <typename Functor>
-void applyToCavities(Functor&& a, CSR& cavities) { //"universal reference"
+// and a Cavity functor that has a paren operator function
+// that takes one argument; the key entity index.
+//
+// ##########
+//
+// Remark: I'm not sure we need to provide the hook for the 'Cavity' functor, the user
+// could manage this outside this function independently....  It does reduce the
+// need for another parallel_for loop... which shouldn't really matter
+// performance wise.
+//
+template <typename ElementFunctor, typename CavityFunctor>
+void applyToCavities(ElementFunctor&& ef, CavityFunctor&& cf, CSR& cavities) { //"universal reference"
     const auto numEnts = cavities.offsets.size()-1;
     const auto elmIdx = cavities.vals;
     const auto offsets = cavities.offsets;
@@ -102,8 +112,9 @@ void applyToCavities(Functor&& a, CSR& cavities) { //"universal reference"
     Kokkos::parallel_for(numEnts,
       KOKKOS_LAMBDA(const int ent) {
         for(int elm=offsets(ent); elm<offsets(ent+1); elm++) {
-          auto v = a(ent,elmIdx(elm));
+          ef(ent,elmIdx(elm));
         }
+        cf(ent);
     });
     Kokkos::fence();
 }
@@ -119,19 +130,21 @@ int main(int argc, char** argv) {
     MeshFields::FieldElement<double> f(numComps,numNodes,numElms,dim);
     setCentroids(f);
     auto cavities = getCavities();
-    { //functor version
-      AvgPosOp op(numVerts,f);
-      applyToCavities(op,cavities);
+    { //functor version - TODO - UPDATE
+      //AvgPosOp op(numVerts,f);
+      //applyToCavities(op,cavities);
     }
     { //lambda version
       Kokkos::View<int*> avgPos("avgPos", numVerts); //this would be a field at vertices
-      auto op = KOKKOS_LAMBDA (int vtx, int elm) {
+      Kokkos::View<int*> count("count", numVerts); //this would be a field at vertices
+      auto sum = KOKKOS_LAMBDA (int vtx, int elm) {
         avgPos(vtx) += f(0,0,elm);
-        return avgPos(vtx);
+        count(vtx) += 1;
       };
-      applyToCavities(op,cavities);
-      //TODO need to support a 'end' step to divide by the number of cavity elements
-      //TODO maybe a reduction interface makes sense?
+      auto div = KOKKOS_LAMBDA (int vtx) {
+        avgPos(vtx) /= count(vtx);
+      };
+      applyToCavities(sum,div,cavities);
     }
     std::cerr << "done\n";
   }
