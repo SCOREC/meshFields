@@ -3,6 +3,7 @@
   - [References](#section-id-1)
   - [Design Ideas](#section-id-14)
   - [Implementation notes](#section-id-24)
+    - [Cavity Operator](#subsection-id-42)
   - [Questions](#section-id-96)
   - [Terminology](#section-id-146)
   - [Functionality](#section-id-156)
@@ -115,7 +116,7 @@
   }
 ```
 
-- A cavity operator could work as follows:
+- A cavity operator could work as follows:  <div id='subsection-id-42'/>
   - ghosting is used, instead of migration, to guarantee that all needed cavity entities are on-process
     - multiple layers may be needed depending on the definition of the cavity
       (e.g., conservative field transfer with mesh intersection)
