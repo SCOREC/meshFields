@@ -122,10 +122,11 @@
       (e.g., conservative field transfer with mesh intersection)
   - user identifies the dimension/order `k` of entities of interest (e.g., vertices, edges, or faces)
   - form the [elements](#elements) for all dimension `d` mesh entities (where `d` is the highest dimension entity in the mesh)
-  - query the mesh for the (irregular) list of dimension `d` entities that are adjacent to each dimension `k` entity
+  - query the mesh for the (irregular) list of dimension `d` entities that are adjacent to each dimension `k` entity and store in CSR
+  - user defines cavity operation functor/lambda with storage and other state/variables needed for operation on each element of each cavity
   - parallel loop over the dimension `k` entities
     - [parallel] loop over the list of adjacent `d` entities
-      - pass the element to the the callback #todo need to check this...
+      - pass the `k` dimension entity and element to the cavity operation callback
 
 <div id='section-id-96'/>
 
@@ -562,3 +563,15 @@ math operations at parametric coordinates
     - if the cavity is local build it, return OK
     - otherwise request migration, return REQUEST
   - apply - run the cavity operator
+
+### spr/sprRecoverField.cc
+
+- recoverField()
+  - PatchOp::runSpr() 
+    - called on each cavity
+    - getSampleValues(...) - evaluates field at sample points (depends on integration order)
+    - runPolynomialFit(...) 
+      - fits polynomial to patch per component
+      - solves least squares problem using QR factorization (see spr/spr.tex for details)
+    - evalPolynomial(...) - evaluates polynomial at dof holders
+    - sets field values
