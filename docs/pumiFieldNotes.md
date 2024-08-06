@@ -157,9 +157,16 @@
     - serialize dof holder values for i/o (rendering, communication, etc.)
   - for each mesh entity of a given order/dimension (these are 'Element'
     operations in PUMI terminology):
-    - given parametric coords return a value, derivative, shape function evaluation, jacobian evaluation, det jacobian evaluation, jacobian inverse, (maybe hessian)
-    - dof values for all dofholders that are part of the element
-    - type of base element (tri, quad, tet, wedge, hex, ...)
+    - given parametric coords return:
+      - value - see apf::getScalar(...)
+      - derivative - see apf::getGrad(...) - I don't see a function that returns the derivative (a scalar)
+      - shape function evaluation - see apf/element::getComponents(...) - evaluates the shape function at dof holders and returns an array of values (one per dof holder))
+      - jacobian evaluation - see apf::getJacobian(...)
+      - det jacobian evaluation - see apf::getJacobianDeterminant(...)
+      - jacobian inverse - see apf::getJacobianInv(...)
+      - hessian (maybe?)
+    - dof values for all dofholders that are part of the element - see apf::Element::getElementNodeData(...)
+    - type of base element (tri, quad, tet, wedge, hex, ...) - see apf::Element::getType()
   - for cavities of mesh entities surrounding a key mesh entity (i.e., a vertex):
     - ...
 - What data is needed from the mesh *after* the field is created?
