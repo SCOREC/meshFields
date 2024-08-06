@@ -8,10 +8,26 @@ struct CSR {
   Kokkos::View<int*> offsets;
 };
 
+using Real = double;
+using LO = int;
 
 namespace MeshFields {
 // functions in this namespace are provided by the library
 
+struct LinearTriangleShape {
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<double,3> getValues(Kokkos::Array<double, 2> const& xi) const {
+    return {
+      1-xi[0]-xi[1],
+      xi[0],
+      xi[1]
+    };
+  }
+
+  int countNodes() const {return 3;}
+};
+
+// hardcoded as a linear triangular element 
 template <typename T>
 struct FieldElement {
   //prototype as SOA
@@ -20,6 +36,7 @@ struct FieldElement {
   const size_t numMeshEnts;
   const size_t meshEntDim;
   Kokkos::View<T*> nodeData; //replaced by a 'meshfield'
+  LinearTriangleShape linTriShape;                           
   FieldElement(size_t in_numCompsPerDof,
                size_t in_numNodesPerEnt,
                size_t in_numMeshEnts,
@@ -38,6 +55,16 @@ struct FieldElement {
     (void)comp;
     (void)node;
     return nodeData(ent);
+  }
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> getValue(int ent, Kokkos::Array<Real, 2> localCoord) const {
+    Kokkos::Array<Real,3> c;
+    const auto shapeValues = linTriShape.getValues(localCoord);
+    for (int ci = 0; ci < numCompsPerDof; ++ci)
+      c[ci] = 0;
+    for (int ni = 0; ni < numNodesPerEnt; ++ni)
+      for (int ci = 0; ci < numCompsPerDof; ++ci)
+        c[ci] += nodeData[ni * numCompsPerDof + ci] * shapeValues[ni];
+    return c;
   }
 };
 
@@ -71,7 +98,25 @@ void applyToCavities(ElementFunctor&& ef, CavityFunctor&& cf, CSR& cavities) { /
     });
     Kokkos::fence();
 }
+
+// given an array of parametric coordinates 'localCoords', one per mesh element, evaluate the
+// fields value within each element
+template <typename T>
+Kokkos::View<Real*> evaluate(MeshFields::FieldElement<T>& fes, Kokkos::View<Real*> localCoords) {
+  assert(localCoords.size() == fes.numMeshEnts*fes.meshEntDim);
+  Kokkos::View<Real*> res("result", fes.numMeshEnts);
+  Kokkos::parallel_for(fes.numMeshEnts,
+    KOKKOS_LAMBDA(const int ent) {
+      Kokkos::Array<Real,2> lc{ //not coallesced 
+        localCoords[ent*3], 
+        localCoords[ent*3+1]};
+      res(ent) = fes.evaluate(ent, lc);
+    }
+  );
+  return res;
 }
+
+} //end Meshfields namespace
 
 CSR getCavities() {
   //Hardcoded for three triangles numbered 0, 1, 2 from left to right.
@@ -154,8 +199,15 @@ int main(int argc, char** argv) {
       };
       MeshFields::applyToCavities(sum,div,cavities);
     }
-    std::cerr << "done\n";
+    {
+      std::array<Real,6> localCoords = {0.5,0.5, 0.5,0.2, 0.2,0.5};
+      Kokkos::View<Real[6], Kokkos::HostSpace, Kokkos::MemoryUnmanaged> lc_h(localCoords.data(), localCoords.size());
+      Kokkos::View<Real[6]> lc("localCoords");
+      Kokkos::deep_copy(lc, lc_h);
+      auto x = MeshFields::evaluate(f, lc);
+    }
   }
+  std::cerr << "done\n";
   Kokkos::finalize();
   return 0;
 }
