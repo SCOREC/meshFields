@@ -16,7 +16,7 @@ namespace MeshFields {
 
 struct LinearTriangleShape {
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<double,3> getValues(Kokkos::Array<double, 2> const& xi) const {
+  Kokkos::Array<double,3> getValues(Kokkos::Array<double, 3> const& xi) const {
     return {
       1-xi[0]-xi[1],
       xi[0],
@@ -56,7 +56,7 @@ struct FieldElement {
     (void)node;
     return nodeData(ent);
   }
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> getValue(int ent, Kokkos::Array<Real, 2> localCoord) const {
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> getValue(int ent, Kokkos::Array<Real, 3> localCoord) const {
     Kokkos::Array<Real,3> c;
     const auto shapeValues = linTriShape.getValues(localCoord);
     for (int ci = 0; ci < numCompsPerDof; ++ci)
@@ -103,14 +103,16 @@ void applyToCavities(ElementFunctor&& ef, CavityFunctor&& cf, CSR& cavities) { /
 // fields value within each element
 template <typename T>
 Kokkos::View<Real*> evaluate(MeshFields::FieldElement<T>& fes, Kokkos::View<Real*> localCoords) {
-  assert(localCoords.size() == fes.numMeshEnts*fes.meshEntDim);
+  assert(localCoords.size() == fes.numMeshEnts*(fes.meshEntDim+1));
   Kokkos::View<Real*> res("result", fes.numMeshEnts);
   Kokkos::parallel_for(fes.numMeshEnts,
     KOKKOS_LAMBDA(const int ent) {
-      Kokkos::Array<Real,2> lc{ //not coallesced 
+      Kokkos::Array<Real,3> lc{ //not coallesced 
         localCoords[ent*3], 
-        localCoords[ent*3+1]};
-      res(ent) = fes.evaluate(ent, lc);
+        localCoords[ent*3+1],
+        localCoords[ent*3+2]};
+      auto val = fes.getValue(ent, lc);
+      res(ent) = val[0]; //hardcoded to be a scalar field 
     }
   );
   return res;
@@ -199,10 +201,10 @@ int main(int argc, char** argv) {
       };
       MeshFields::applyToCavities(sum,div,cavities);
     }
-    {
-      std::array<Real,6> localCoords = {0.5,0.5, 0.5,0.2, 0.2,0.5};
-      Kokkos::View<Real[6], Kokkos::HostSpace, Kokkos::MemoryUnmanaged> lc_h(localCoords.data(), localCoords.size());
-      Kokkos::View<Real[6]> lc("localCoords");
+    { //evaluate a field at the specified local coordinate for each element
+      std::array<Real,9> localCoords = {0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,0.5};
+      Kokkos::View<Real[9], Kokkos::HostSpace, Kokkos::MemoryUnmanaged> lc_h(localCoords.data(), localCoords.size());
+      Kokkos::View<Real[9]> lc("localCoords");
       Kokkos::deep_copy(lc, lc_h);
       auto x = MeshFields::evaluate(f, lc);
     }
