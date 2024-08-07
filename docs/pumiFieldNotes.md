@@ -402,6 +402,11 @@ Element <div id="elements"/>
   > including mapping, differential and total volume, as well as
   > gauss integration point data. A Mesh Element is also required
   > to build a Field Element.
+- element definitions are formed by a combination of:
+  - mesh topology: vtx edge tri quad tet hex prism pyramid
+  - shape function type
+  - shape function order 
+  - field data type
 
 ElementOf
 - templated on T and S
