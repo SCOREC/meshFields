@@ -185,11 +185,11 @@ int main(int argc, char** argv) {
     MeshFields::FieldElement<double> f(numComps,numNodes,numElms,dim);
     setCentroids(f);
     auto cavities = getCavities();
-    { //functor version
+    { //cavity operation - functor version
       AvgPosOp op(numVerts,f);
       MeshFields::applyToCavities(op,op,cavities);
     }
-    { //lambda version
+    { //cavity operation - lambda version
       Kokkos::View<int*> avgPos("avgPos", numVerts); //this would be a field at vertices
       Kokkos::View<int*> count("count", numVerts); //this would be a field at vertices
       auto sum = KOKKOS_LAMBDA (int vtx, int elm) {
