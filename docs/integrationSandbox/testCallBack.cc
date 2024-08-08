@@ -181,38 +181,48 @@ struct AvgPosOp {
     };
 };
 
+//for each vertex, compute the average centroid of the triangles that are
+//adjacent to it
+void triangleCavityOp() {
+  const auto numVerts = 5; //provided by the mesh
+  const auto numElms = 3; //provided by the mesh
+  MeshFields::FieldElement<double, MeshFields::LinearTriangleShape> f(numElms);
+  setCentroids(f);
+  auto cavities = getCavities();
+  { //cavity operation - functor version
+    AvgPosOp op(numVerts,f);
+    MeshFields::applyToCavities(op,op,cavities);
+  }
+  { //cavity operation - lambda version
+    Kokkos::View<int*> avgPos("avgPos", numVerts); //this would be a field at vertices
+    Kokkos::View<int*> count("count", numVerts); //this would be a field at vertices
+    auto sum = KOKKOS_LAMBDA (int vtx, int elm) {
+      avgPos(vtx) += f(0,0,elm);
+      Kokkos::atomic_increment(&count(vtx));
+    };
+    auto div = KOKKOS_LAMBDA (int vtx) {
+      avgPos(vtx) /= count(vtx);
+    };
+    MeshFields::applyToCavities(sum,div,cavities);
+  }
+}
+
+//evaluate a field at the specified local coordinate for each element
+void triangleLocalPointEval() {
+  const auto numElms = 3; //provided by the mesh
+  MeshFields::FieldElement<double, MeshFields::LinearTriangleShape> f(numElms);
+
+  std::array<Real,9> localCoords = {0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,0.5};
+  Kokkos::View<Real[9], Kokkos::HostSpace, Kokkos::MemoryUnmanaged> lc_h(localCoords.data(), localCoords.size());
+  Kokkos::View<Real[9]> lc("localCoords");
+  Kokkos::deep_copy(lc, lc_h);
+  auto x = MeshFields::evaluate(f, lc);
+}
+
 int main(int argc, char** argv) {
   Kokkos::initialize(argc, argv);
-  {
-    const auto numVerts = 5;
-    const auto numElms = 3;
-    MeshFields::FieldElement<double, MeshFields::LinearTriangleShape> f(numElms);
-    setCentroids(f);
-    auto cavities = getCavities();
-    { //cavity operation - functor version
-      AvgPosOp op(numVerts,f);
-      MeshFields::applyToCavities(op,op,cavities);
-    }
-    { //cavity operation - lambda version
-      Kokkos::View<int*> avgPos("avgPos", numVerts); //this would be a field at vertices
-      Kokkos::View<int*> count("count", numVerts); //this would be a field at vertices
-      auto sum = KOKKOS_LAMBDA (int vtx, int elm) {
-        avgPos(vtx) += f(0,0,elm);
-        Kokkos::atomic_increment(&count(vtx));
-      };
-      auto div = KOKKOS_LAMBDA (int vtx) {
-        avgPos(vtx) /= count(vtx);
-      };
-      MeshFields::applyToCavities(sum,div,cavities);
-    }
-    { //evaluate a field at the specified local coordinate for each element
-      std::array<Real,9> localCoords = {0.5,0.5,0.5, 0.5,0.5,0.5, 0.5,0.5,0.5};
-      Kokkos::View<Real[9], Kokkos::HostSpace, Kokkos::MemoryUnmanaged> lc_h(localCoords.data(), localCoords.size());
-      Kokkos::View<Real[9]> lc("localCoords");
-      Kokkos::deep_copy(lc, lc_h);
-      auto x = MeshFields::evaluate(f, lc);
-    }
-  }
+  triangleCavityOp();
+  triangleLocalPointEval();
   std::cerr << "done\n";
   Kokkos::finalize();
   return 0;
