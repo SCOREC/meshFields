@@ -14,6 +14,20 @@ using LO = int;
 namespace MeshFields {
 // functions in this namespace are provided by the library
 
+struct LinearEdgeShape {
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<double,2> getValues(Kokkos::Array<double, 2> const& xi) const {
+    return {
+      (1.0-xi[0])/2.0,
+      (1.0+xi[0])/2.0
+    };
+  }
+  static const size_t numNodes = 2;
+  static const size_t numComponentsPerDof = 1;
+  static const size_t meshEntDim = 1;
+};
+
+
 struct LinearTriangleShape {
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<double,3> getValues(Kokkos::Array<double, 3> const& xi) const {
@@ -23,47 +37,40 @@ struct LinearTriangleShape {
       xi[1]
     };
   }
-
-  int countNodes() const {return 3;}
+  static const size_t numNodes = 3;
+  static const size_t numComponentsPerDof = 1;
+  static const size_t meshEntDim = 2;
 };
 
 // hardcoded as a linear triangular element 
-template <typename T>
+template <typename T, typename Shape>
 struct FieldElement {
   //prototype as SOA
-  const size_t numCompsPerDof;
-  const size_t numNodesPerEnt;
   const size_t numMeshEnts;
-  const size_t meshEntDim;
   Kokkos::View<T*> nodeData; //replaced by a 'meshfield'
-  LinearTriangleShape linTriShape;                           
-  FieldElement(size_t in_numCompsPerDof,
-               size_t in_numNodesPerEnt,
-               size_t in_numMeshEnts,
-               size_t in_meshEntDim) :
-    numCompsPerDof(in_numCompsPerDof),
-    numNodesPerEnt(in_numNodesPerEnt),
+  Shape shapeFn;
+  size_t meshEntDim() { 
+    return shapeFn.meshEntDim;
+  }
+  FieldElement(size_t in_numMeshEnts) :
     numMeshEnts(in_numMeshEnts),
-    meshEntDim(in_meshEntDim),
-    nodeData("nodeData", numCompsPerDof*numNodesPerEnt*numMeshEnts) {}
+    nodeData("nodeData", shapeFn.numComponentsPerDof*shapeFn.numNodes*numMeshEnts) {}
   //need accessor here that handles indexing - fieldSlice provides this
   KOKKOS_INLINE_FUNCTION T& operator() (int comp, int node, int ent) const {
     //simple stub for prototype
     assert(ent < numMeshEnts);
-    assert(numCompsPerDof==1);
-    assert(numNodesPerEnt==1);
     (void)comp;
     (void)node;
     return nodeData(ent);
   }
   KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> getValue(int ent, Kokkos::Array<Real, 3> localCoord) const {
     Kokkos::Array<Real,3> c;
-    const auto shapeValues = linTriShape.getValues(localCoord);
-    for (int ci = 0; ci < numCompsPerDof; ++ci)
+    const auto shapeValues = shapeFn.getValues(localCoord);
+    for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
-    for (int ni = 0; ni < numNodesPerEnt; ++ni)
-      for (int ci = 0; ci < numCompsPerDof; ++ci)
-        c[ci] += nodeData[ni * numCompsPerDof + ci] * shapeValues[ni];
+    for (int ni = 0; ni < shapeFn.numNodes; ++ni)
+      for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
+        c[ci] += nodeData[ni * shapeFn.numComponentsPerDof + ci] * shapeValues[ni];
     return c;
   }
 };
@@ -101,9 +108,9 @@ void applyToCavities(ElementFunctor&& ef, CavityFunctor&& cf, CSR& cavities) { /
 
 // given an array of parametric coordinates 'localCoords', one per mesh element, evaluate the
 // fields value within each element
-template <typename T>
-Kokkos::View<Real*> evaluate(MeshFields::FieldElement<T>& fes, Kokkos::View<Real*> localCoords) {
-  assert(localCoords.size() == fes.numMeshEnts*(fes.meshEntDim+1));
+template <typename Element>
+Kokkos::View<Real*> evaluate(Element& fes, Kokkos::View<Real*> localCoords) {
+  assert(localCoords.size() == fes.numMeshEnts*(fes.meshEntDim()+1));
   Kokkos::View<Real*> res("result", fes.numMeshEnts);
   Kokkos::parallel_for(fes.numMeshEnts,
     KOKKOS_LAMBDA(const int ent) {
@@ -145,8 +152,8 @@ CSR getCavities() {
   return CSR{vals,off};
 }
 
-template <typename T>
-void setCentroids(MeshFields::FieldElement<T>& f) {
+template <typename Element>
+void setCentroids(Element& f) {
   Kokkos::parallel_for(f.numMeshEnts,
     KOKKOS_LAMBDA(const int ent) {
       f(0,0,ent) = static_cast<double>(ent);
@@ -154,12 +161,12 @@ void setCentroids(MeshFields::FieldElement<T>& f) {
   );
 }
 
-template <typename T>
+template <typename Element>
 struct AvgPosOp {
     Kokkos::View<int*> avgPos; //this would be a field at vertices
     Kokkos::View<int*> count; //this would be a field at vertices
-    MeshFields::FieldElement<T> fes;
-    AvgPosOp(size_t numVtx, MeshFields::FieldElement<T>& fieldElms) :
+    Element fes;
+    AvgPosOp(size_t numVtx, Element& fieldElms) :
       avgPos(Kokkos::View<int*>("avgPos", numVtx)),
       count(Kokkos::View<int*>("count", numVtx)),
       fes(fieldElms) {} //copy
@@ -178,11 +185,8 @@ int main(int argc, char** argv) {
   Kokkos::initialize(argc, argv);
   {
     const auto numVerts = 5;
-    const auto numComps = 1;
-    const auto numNodes = 1;
     const auto numElms = 3;
-    const auto dim = 2;
-    MeshFields::FieldElement<double> f(numComps,numNodes,numElms,dim);
+    MeshFields::FieldElement<double, MeshFields::LinearTriangleShape> f(numElms);
     setCentroids(f);
     auto cavities = getCavities();
     { //cavity operation - functor version
