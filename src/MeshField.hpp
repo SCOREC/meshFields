@@ -63,6 +63,7 @@ template <class Slice> class Field {
     Kokkos::Array<size_t, 5> sIndex{{s, a, i, j, k}};
     return sIndex;
   }
+  
 
 public:
   static const int MAX_RANK = Slice::MAX_RANK;
@@ -97,12 +98,9 @@ public:
       N *= size(i);
     return N;
   }
-  Kokkos::View<base_type *> serialize() const {
-    auto N = this->getFlatViewSize();
-    Kokkos::View<base_type *> serial("serialized field", N);
-
+  void serialize_impl(Kokkos::View<base_type *> &serial) const {
     Kokkos::parallel_for(
-        "field serializer", N, KOKKOS_CLASS_LAMBDA(const int index) {
+                   "field serializer", serial.size(), KOKKOS_CLASS_LAMBDA(const int index) {
           constexpr std::size_t rank = RANK;
           auto serial_data = serial;
           if constexpr (rank == 1) {
@@ -123,34 +121,17 @@ public:
                 slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]);
           }
         });
+  }
+  Kokkos::View<base_type *> serialize() const {
+    auto N = this->getFlatViewSize();
+    Kokkos::View<base_type *> serial("serialized field", N);
+    serialize_impl(serial);
     return std::move(serial);
   }
   void serialize(Kokkos::View<base_type *> &serial) const {
     size_t N = getFlatViewSize();
     assert(N == serial.size());
-
-    Kokkos::parallel_for(
-        "field serializer", N, KOKKOS_CLASS_LAMBDA(const int index) {
-          constexpr std::size_t rank = RANK;
-          auto serial_data = serial;
-          if constexpr (rank == 1) {
-            serial_data(index) = slice(index);
-          } else if constexpr (rank == 2) {
-            auto sIndex = serialIndexRankTwo(index);
-            serial_data(index) = slice(sIndex[0], sIndex[1]);
-          } else if constexpr (rank == 3) {
-            auto sIndex = serialIndexRankThree(index);
-            serial_data(index) = slice(sIndex[0], sIndex[1], sIndex[2]);
-          } else if constexpr (rank == 4) {
-            auto sIndex = serialIndexRankFour(index);
-            serial_data(index) =
-                slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3]);
-          } else if constexpr (rank == 5) {
-            auto sIndex = serialIndexRankFive(index);
-            serial_data(index) =
-                slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]);
-          }
-        });
+    serialize_impl(serial);
   }
 
 
