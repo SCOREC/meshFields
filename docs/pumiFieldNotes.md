@@ -15,7 +15,7 @@
     - [apf::VectorElement class functions](#section-id-421)
     - [apf::Integrator Class functions](#section-id-425)
     - [apf::CavityOp Class functions](#section-id-499)
-  
+    - [SPR functions](#section-id-525)
 
 
 <div id='section-id-1'/>
@@ -567,3 +567,16 @@ math operations at parametric coordinates
     - if the cavity is local build it, return OK
     - otherwise request migration, return REQUEST
   - apply - run the cavity operator
+
+<div id='section-id-525'/>
+
+### SPR
+
+- QR test cases in test/qr.cc
+- QR dependencies
+  - prepareSpr(....) -> preparePolynomialFit -> mth::decomposeQR() - checks the
+    rank of Q to determine if the patch needs to be larger
+  - runPolynomialFit(....) -> mth::solveFromQR()
+  - mth/mthQR.h - implements QR functions
+  - mth/mthMatrix.h - "small compile-time and run-time linear algebra matrices"
+  - mth/mthVector.h - see above, but for vectors
