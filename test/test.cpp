@@ -10,7 +10,7 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 int main(int argc, char **argv) {
-  Kokkos::ScopeGuard scope_gaurd(argc, argv);
+  Kokkos::ScopeGuard scope_guard(argc, argv);
   /*
   auto rank1 = KOKKOS_LAMBDA(const int& i) {
     printf("I am rank 1:(%d)\n",i);
