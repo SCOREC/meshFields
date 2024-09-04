@@ -57,10 +57,14 @@ target_link_libraries(CabanaTests PRIVATE meshFields)
 add_executable(SerializationTests test/testSerialize.cpp)
 target_link_libraries(SerializationTests PRIVATE meshFields)
 
+add_executable(QRTests test/testQR.cpp)
+target_link_libraries(QRTests PRIVATE meshFields)
+
 add_test(MainTests ./Main)
 add_test(KokkosTests ./KokkosTests)
 add_test(CabanaTests ./CabanaTests)
 add_test(SerializationTests ./SerializationTests)
+add_test(QRTests ./QRTests)
 
 #Code Coverage set up -------------------------------------------------------
 
