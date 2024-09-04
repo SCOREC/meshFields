@@ -574,9 +574,16 @@ math operations at parametric coordinates
 
 - QR test cases in test/qr.cc
 - QR dependencies
-  - prepareSpr(....) -> preparePolynomialFit -> mth::decomposeQR() - checks the
-    rank of Q to determine if the patch needs to be larger
+  - prepareSpr(....) -> preparePolynomialFit -> mth::decomposeQR()
+    - passed matrix A_(m,n) of polynomial terms (see evalPolynomialTerms(...))
+    - stores Q and R in the QRDecomp object (owned by the Patch)
+    - returns true if the rank of Q is equal to the number of columns in A
   - runPolynomialFit(....) -> mth::solveFromQR()
+    - called once per field component (i.e., once per each entry in the field tensor of
+      dofs at a dof holder)
+    - passed Q, R, and the vector of input field values at the quadrature points
+      in the patch
+    - returns vector of coefficients that define the polynomial fit
   - mth/mthQR.h - implements QR functions
   - mth/mthMatrix.h - "small compile-time and run-time linear algebra matrices"
   - mth/mthVector.h - see above, but for vectors
