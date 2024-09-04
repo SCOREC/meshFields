@@ -129,5 +129,5 @@ int main(int argc, char **argv) {
   typedef Kokkos::View<ValueType **, Kokkos::LayoutLeft, DeviceType> VectorViewType;
   typedef Kokkos::View<ValueType **, Kokkos::LayoutRight, DeviceType> WorkViewType;
   typedef KokkosBlas::Algo::QR::Unblocked AlgoTagType;
-  impl_test_batched_qr<DeviceType, MatrixViewType, VectorViewType, WorkViewType, AlgoTagType>(0, 10);
+  impl_test_batched_qr<DeviceType, MatrixViewType, VectorViewType, WorkViewType, AlgoTagType>(1024, 10);
 }
