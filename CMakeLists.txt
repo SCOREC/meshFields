@@ -12,6 +12,8 @@ set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
 find_package(Cabana 0.7.0 REQUIRED)
 
+find_package(KokkosKernels REQUIRED)
+
 set(MESHFIELD_HEADERS
   src/MeshField_Utility.hpp
   src/MeshField_Macros.hpp
@@ -29,6 +31,7 @@ target_include_directories(meshFields
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
 target_link_libraries(meshFields INTERFACE Cabana::Core)
+target_link_libraries(meshFields INTERFACE Kokkos::kokkoskernels)
 target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 
 #Settings options for testing
@@ -71,6 +74,7 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
 
   set(CABANA_INSTALL_DIR "" CACHE PATH "Set the path to the cabana install directory so it isn't processed by lcov")
   set(KOKKOS_INSTALL_DIR "" CACHE PATH "Set the path to the kokkos install directory so it isn't processed by lcov")
+  set(KOKKOSKERNELS_INSTALL_DIR "" CACHE PATH "Set the path to the kokkos kernels install directory so it isn't processed by lcov")
   set(OMEGAH_INSTALL_DIR "" CACHE PATH "Set the path to the omegah install directory so it isn't processed by lcov")
   set(LCOV_SYSTEM_EXCLUDE_PATHS "" CACHE PATH "Set path to system libraries, c++ compiler and cuda-11.4 by default, to be excluded from lcov analysis")
 
@@ -81,6 +85,10 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
 
   if (NOT DEFINED CACHE{KOKKOS_INSTALL_DIR})
     message(ERROR " KOKKOS_INSTALL_DIR was not set or the path does not exist")
+  endif()
+
+  if (NOT DEFINED CACHE{KOKKOSKERNELS_INSTALL_DIR})
+    message(ERROR " KOKKOSKERNELS_INSTALL_DIR was not set or the path does not exist")
   endif()
 
   if (NOT DEFINED CACHE{OMEGAH_INSTALL_DIR})
@@ -97,6 +105,7 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
       "/tmp/*"
       "${CABANA_INSTALL_DIR}"
       "${KOKKOS_INSTALL_DIR}"
+      "${KOKKOSKERNELS_INSTALL_DIR}"
       "${OMEGAH_INSTALL_DIR}"
       "${LCOV_SYSTEM_EXCLUDE_PATHS}"  
   )
