@@ -18,7 +18,6 @@ set(MESHFIELD_HEADERS
   src/KokkosController.hpp
   src/CabanaController.hpp
   src/MeshField.hpp
-  src/test.hpp
 )
 
 #create header only library
@@ -52,16 +51,12 @@ target_link_libraries(KokkosTests PRIVATE meshFields)
 add_executable(CabanaTests test/testCabana.cpp)
 target_link_libraries(CabanaTests PRIVATE meshFields)
 
-add_executable(LogicTests test/test.cpp)
-target_link_libraries(LogicTests PRIVATE meshFields)
-
 add_executable(SerializationTests test/testSerialize.cpp)
 target_link_libraries(SerializationTests PRIVATE meshFields)
 
 add_test(MainTests ./Main)
 add_test(KokkosTests ./KokkosTests)
 add_test(CabanaTests ./CabanaTests)
-add_test(LogicTests ./LogicTests)
 add_test(SerializationTests ./SerializationTests)
 
 #Code Coverage set up -------------------------------------------------------
