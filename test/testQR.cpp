@@ -42,6 +42,7 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 using DeviceType = ExecutionSpace::device_type;
 
+//based on pumi (github.com/SCOREC/core) test/qr.cc
 static void testSolveQR() {
   typedef Kokkos::View<double[16][10], Kokkos::LayoutLeft, DeviceType> MatrixViewType;
   typedef Kokkos::View<double[16], Kokkos::LayoutLeft, DeviceType> RowVectorViewType;
