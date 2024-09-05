@@ -3,6 +3,7 @@
 #include <KokkosBatched_Util.hpp> //KokkosBlas::Algo, KokkosBatched::Diag
 #include <KokkosBlas1_set.hpp> //KokkosBlas::TeamVectorSet
 #include <KokkosBlas2_team_gemv.hpp> //KokkosBlas::TeamVectorGemv
+#include <KokkosBlas2_gemv.hpp> //KokkosBlas::gemv
 #include <KokkosBatched_Vector.hpp> //KokkosBlas::TeamVectorCopy
 #include <KokkosBatched_QR_Decl.hpp> //KokkosBlas::TeamVectorQR
 #include <KokkosBatched_Copy_Decl.hpp> //KokkosBlas::TeamVectorCopy
@@ -48,8 +49,11 @@ using DeviceType = ExecutionSpace::device_type;
 
 static void testSolveQR() {
   typedef Kokkos::View<double[16][10], Kokkos::LayoutLeft, DeviceType> MatrixViewType;
-  typedef Kokkos::View<double[10], Kokkos::LayoutLeft, DeviceType> VectorViewType;
-  typedef Kokkos::View<double[10], Kokkos::LayoutRight, DeviceType> WorkViewType;
+  typedef Kokkos::View<double[16], Kokkos::LayoutLeft, DeviceType> RowVectorViewType;
+  typedef Kokkos::View<double[10], Kokkos::LayoutLeft, DeviceType> ColVectorViewType;
+  typedef Kokkos::View<double[10], Kokkos::LayoutRight, DeviceType> ColWorkViewType;
+  const auto one = 1.0;
+  const auto zero = 0.0;
 
   MatrixViewType A("A");
   typename MatrixViewType::HostMirror A_host = Kokkos::create_mirror_view(A);
@@ -58,29 +62,50 @@ static void testSolveQR() {
       A_host(i,j) = a_data[i][j];
   Kokkos::deep_copy(A, A_host);
 
-  VectorViewType x("x");
-  typename VectorViewType::HostMirror x_host = Kokkos::create_mirror_view(x);
+  ColVectorViewType kx("kx");
+  typename ColVectorViewType::HostMirror kx_host = Kokkos::create_mirror_view(kx);
   for(int j=0; j<10; j++)
-    x_host(j) = x_data[j];
-  Kokkos::deep_copy(x, x_host);
+    kx_host(j) = x_data[j];
+  Kokkos::deep_copy(kx, kx_host);
 
-  VectorViewType t("t");
-  WorkViewType w("w");
+  //b = A*kx
+  RowVectorViewType b("b");
+  KokkosBlas::gemv("N", one, A, kx, zero, b);
 
-  Kokkos::fence();
+  //x = b
+  RowVectorViewType x("x");
+  Kokkos::deep_copy(x, b);
+
+  //t: tau (see SerialQR call below)
+  ColVectorViewType t("t");
+
+  //w: working space for SerialQR
+  ColWorkViewType w("w");
+
+  //roughly following kokkos-kernels/batched/dense/unit_test/Test_Batched_TeamVectorQR.hpp
   typedef KokkosBlas::Algo::QR::Unblocked AlgoTagType;
-  Kokkos::parallel_for("testQR", 1, KOKKOS_LAMBDA(int) {
+  Kokkos::parallel_for("solveQR", 1, KOKKOS_LAMBDA(int) {
+    //compute the QR factorization of A and store the results in A and t (tau) -
+    //see the lapack dgeqp3(...) documentation:
+    //www.netlib.org/lapack/explore-html-3.6.1/dd/d9a/group__double_g_ecomputational_ga1b0500f49e03d2771b797c6e88adabbb.html 
     KokkosBatched::SerialQR<AlgoTagType>::invoke(A, t, w);
-  }); 
-//  mth::Vector<double> kx(a.cols());
-//  for (unsigned i = 0; i < kx.size(); ++i)
-//    kx(i) = x_data[i];
-//  mth::Vector<double> b;
-//  multiply(a, kx, b);
-//  mth::Vector<double> x;
-//  mth::solveQR(a, b, x);
-//  for (unsigned i = 0; i < kx.size(); ++i)
-//    PCU_ALWAYS_ASSERT(fabs(kx(i) - x(i)) < 1e-15);
+    //x = Q^{T}x
+    KokkosBatched::SerialApplyQ<
+       KokkosBatched::Side::Left,
+       KokkosBatched::Trans::Transpose,
+       KokkosBlas::Algo::ApplyQ::Unblocked>::invoke(A, t, x, w);
+    //x = R^{-1}x
+    KokkosBatched::SerialTrsv<
+       KokkosBatched::Uplo::Upper, 
+       KokkosBatched::Trans::NoTranspose,
+       KokkosBatched::Diag::NonUnit,
+       KokkosBlas::Algo::Trsv::Unblocked>::invoke(one, A, x);
+  });
+  Kokkos::parallel_for("compare", kx.size(), KOKKOS_LAMBDA(int i) {
+    if(Kokkos::fabs(kx(i) - x(i)) > 1e-15) {
+       Kokkos::printf("kx(%d) %f != x(%d) %f\n", i, kx(i), i, x(i));
+    }
+  });
 }
 
 
