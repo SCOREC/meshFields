@@ -63,7 +63,6 @@ template <class Slice> class Field {
     Kokkos::Array<size_t, 5> sIndex{{s, a, i, j, k}};
     return sIndex;
   }
-  
 
 public:
   static const int MAX_RANK = Slice::MAX_RANK;
@@ -100,7 +99,8 @@ public:
   }
   void serialize_impl(Kokkos::View<base_type *> &serial) const {
     Kokkos::parallel_for(
-                   "field serializer", serial.size(), KOKKOS_CLASS_LAMBDA(const int index) {
+        "field serializer", serial.size(),
+        KOKKOS_CLASS_LAMBDA(const int index) {
           constexpr std::size_t rank = RANK;
           auto serial_data = serial;
           if constexpr (rank == 1) {
@@ -133,7 +133,6 @@ public:
     assert(N == serial.size());
     serialize_impl(serial);
   }
-
 
   void deserialize(const Kokkos::View<const base_type *> &serialized) {
     size_t N = getFlatViewSize();
