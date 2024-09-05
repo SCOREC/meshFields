@@ -47,6 +47,25 @@ jobs:
       shell: bash
       run: cmake --build ${{runner.workspace}}/build-kokkos --parallel 2 --target install
 
+    ## Kokkos-Kernels
+    - name: Kokkos Kernels Checkout repo
+      uses: actions/checkout@v2
+      with:
+        repository: kokkos/kokkos-kernels
+        path: kokkos-kernels
+
+    - name: Kokkos Kernels Configure CMake
+      shell: bash
+      run: cmake -S $GITHUB_WORKSPACE/kokkos-kernels -B ${{runner.workspace}}/build-kokkos-kernels
+           -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+           -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
+           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-kokkos-kernels/install
+
+    - name: Kokkos Kernels Build
+      shell: bash
+      run: cmake --build ${{runner.workspace}}/build-kokkos-kernels --parallel 2 --target install
+
+
     ## Omegah
     - name: Omega_h Checkout repo
       uses: actions/checkout@v4
@@ -102,9 +121,10 @@ jobs:
       shell: bash
       run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
-           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
-           -DCabana_DIR=${{runner.workspace}}/build-cabana/install/lib/cmake/Cabana
-           -DOmega_h_DIR=${{runner.workspace}}/build-omegah/install/lib/cmake/Omega_h
+           -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
+           -DKokkosKernels_ROOT=${{runner.workspace}}/build-kokkos-kernels/install
+           -DCabana_ROOT=${{runner.workspace}}/build-cabana/install
+           -DOmega_h_ROOT=${{runner.workspace}}/build-omegah/install
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
 
     # Initializes the CodeQL tools for scanning.  This must be done before the code is built.
