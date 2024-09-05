@@ -51,26 +51,26 @@ static void testSolveQR() {
   typedef Kokkos::View<double[10], Kokkos::LayoutLeft, DeviceType> VectorViewType;
   typedef Kokkos::View<double[10], Kokkos::LayoutRight, DeviceType> WorkViewType;
 
-  MatrixViewType A;
+  MatrixViewType A("A");
   typename MatrixViewType::HostMirror A_host = Kokkos::create_mirror_view(A);
   for(int i=0; i<16; i++)
     for(int j=0; j<10; j++)
       A_host(i,j) = a_data[i][j];
   Kokkos::deep_copy(A, A_host);
 
-  VectorViewType x;
+  VectorViewType x("x");
   typename VectorViewType::HostMirror x_host = Kokkos::create_mirror_view(x);
   for(int j=0; j<10; j++)
     x_host(j) = x_data[j];
   Kokkos::deep_copy(x, x_host);
 
-  VectorViewType t;
-  WorkViewType w;
+  VectorViewType t("t");
+  WorkViewType w("w");
 
   Kokkos::fence();
   typedef KokkosBlas::Algo::QR::Unblocked AlgoTagType;
   Kokkos::parallel_for("testQR", 1, KOKKOS_LAMBDA(int) {
-    KokkosBatched::SerialQR<AlgoTagType>::invoke(A, t, w); //illegal access
+    KokkosBatched::SerialQR<AlgoTagType>::invoke(A, t, w);
   }); 
 //  mth::Vector<double> kx(a.cols());
 //  for (unsigned i = 0; i < kx.size(); ++i)
