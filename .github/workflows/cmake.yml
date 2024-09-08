@@ -12,6 +12,7 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         compiler: [g++,clang++]
         language: ['cpp']
@@ -30,7 +31,7 @@ jobs:
 
     ## Kokkos
     - name: Kokkos Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: kokkos/kokkos
         path: kokkos
@@ -49,7 +50,7 @@ jobs:
 
     ## Kokkos-Kernels
     - name: Kokkos Kernels Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: kokkos/kokkos-kernels
         path: kokkos-kernels
@@ -90,7 +91,7 @@ jobs:
 
     ## Cabana
     - name: Cabana Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: ECP-copa/Cabana
         path: cabana
@@ -112,7 +113,7 @@ jobs:
 
     ## MeshFields
     - name: MeshFields Checkout repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: SCOREC/meshFields
         path: meshFields
