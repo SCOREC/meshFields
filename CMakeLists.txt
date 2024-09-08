@@ -42,6 +42,28 @@ option(IS_TESTING "Build for CTest" OFF)
 message(STATUS "IS_TESTING: ${IS_TESTING}")
 
 #tests
+function(test_func_impl TEST_NAME NUM_PROCS)
+  set(TEST_STR ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${NUM_PROCS} ${VALGRIND} ${ARGN})
+  # need to run as a cmake script to capture assert and other 'system failures'
+  # https://cmake.org/cmake/help/latest/prop_test/WILL_FAIL.html#prop_test:WILL_FAIL
+  add_test(NAME ${TEST_NAME} COMMAND ${CMAKE_COMMAND} -E env ${TEST_STR})
+endfunction(test_func_impl)
+
+function(test_func TEST_NAME NUM_PROCS)
+  test_func_impl(${TEST_NAME} ${NUM_PROCS} ${ARGN})
+  if(TEST ${TEST_NAME})
+    set_property(TEST ${TEST_NAME} PROPERTY LABELS "mesh")
+  endif()
+endfunction(test_func)
+
+# Unlike test_func, will_fail_test_func assumes the command for the test will fail
+function(will_fail_test_func TEST_NAME NUM_PROCS)
+  test_func_impl(${TEST_NAME} ${NUM_PROCS} ${ARGN})
+  set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
+  if(TEST ${TEST_NAME})
+    set_property(TEST ${TEST_NAME} PROPERTY LABELS "mesh")
+  endif()
+endfunction()
 
 
 # Creating minimal reproduction of error
@@ -60,11 +82,17 @@ target_link_libraries(SerializationTests PRIVATE meshFields)
 add_executable(QRTests test/testQR.cpp)
 target_link_libraries(QRTests PRIVATE meshFields)
 
-add_test(MainTests ./Main)
-add_test(KokkosTests ./KokkosTests)
-add_test(CabanaTests ./CabanaTests)
-add_test(SerializationTests ./SerializationTests)
-add_test(QRTests ./QRTests)
+test_func(MainTests ./Main)
+test_func(KokkosTests ./KokkosTests)
+test_func(CabanaTests ./CabanaTests)
+test_func(SerializationTests ./SerializationTests)
+if(Kokkos_ENABLE_CUDA) #haven't tested with HIP or SYCL
+ test_func(QRTests ./QRTests)
+else()
+  #with the serial backend the QR tests fail,
+  #see https://github.com/kokkos/kokkos-kernels/issues/2328
+  will_fail_test_func(QRTests ./QRTests)
+endif
 
 #Code Coverage set up -------------------------------------------------------
 
