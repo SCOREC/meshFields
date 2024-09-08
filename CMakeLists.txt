@@ -92,7 +92,7 @@ else()
   #with the serial backend the QR tests fail,
   #see https://github.com/kokkos/kokkos-kernels/issues/2328
   will_fail_test_func(QRTests ./QRTests)
-endif
+endif()
 
 #Code Coverage set up -------------------------------------------------------
 
