@@ -52,7 +52,7 @@ endfunction(test_func_impl)
 function(test_func TEST_NAME NUM_PROCS)
   test_func_impl(${TEST_NAME} ${NUM_PROCS} ${ARGN})
   if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "mesh")
+    set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
   endif()
 endfunction(test_func)
 
@@ -61,7 +61,7 @@ function(will_fail_test_func TEST_NAME NUM_PROCS)
   test_func_impl(${TEST_NAME} ${NUM_PROCS} ${ARGN})
   set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
   if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "mesh")
+    set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
   endif()
 endfunction()
 
@@ -82,16 +82,16 @@ target_link_libraries(SerializationTests PRIVATE meshFields)
 add_executable(QRTests test/testQR.cpp)
 target_link_libraries(QRTests PRIVATE meshFields)
 
-test_func(MainTests ./Main)
-test_func(KokkosTests ./KokkosTests)
-test_func(CabanaTests ./CabanaTests)
-test_func(SerializationTests ./SerializationTests)
+test_func(MainTests 1 ./Main)
+test_func(KokkosTests 1 ./KokkosTests)
+test_func(CabanaTests 1 ./CabanaTests)
+test_func(SerializationTests 1 ./SerializationTests)
 if(Kokkos_ENABLE_CUDA) #haven't tested with HIP or SYCL
- test_func(QRTests ./QRTests)
+  test_func(QRTestsCUDA 1 ./QRTests)
 else()
   #with the serial backend the QR tests fail,
   #see https://github.com/kokkos/kokkos-kernels/issues/2328
-  will_fail_test_func(QRTests ./QRTests)
+  will_fail_test_func(QRTestsSerial 1 ./QRTests)
 endif()
 
 #Code Coverage set up -------------------------------------------------------
