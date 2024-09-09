@@ -228,7 +228,7 @@ void kokkosParallelReduceTest() {
         }
       }
     }
-    assert(result_verify == result);
+    assert(doubleCompare(result_verify, result));
     printf("Reduce test 4-D Result: %d %.2lf\n", N, result);
   }
 
