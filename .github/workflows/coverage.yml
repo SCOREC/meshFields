@@ -150,7 +150,7 @@ jobs:
 
      #Uploads coverage directory with lcov generated HTML
     - name: Upload lcov report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: coverage
         path: ${{runner.workspace}}/build-meshFields/coverage
@@ -159,7 +159,7 @@ jobs:
     # Generate a report readable from console -------------------------------------
 
     - name: Setup python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
