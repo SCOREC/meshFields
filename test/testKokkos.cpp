@@ -105,8 +105,8 @@ void testKokkosParallelFor() {
         Controller::KokkosController<MemorySpace, ExecutionSpace, int[a],
                                      int[a][b], int[a][b][c], int[a][b][c][d],
                                      int[a][b][c][d][e]>;
-    Ctrlr c;
-    MeshField::MeshField<Ctrlr> kok(c);
+    Ctrlr ctrl;
+    MeshField::MeshField<Ctrlr> kok(ctrl);
 
     auto rk1 = kok.makeField<0>();
     auto rk2 = kok.makeField<1>();
@@ -134,15 +134,12 @@ void testKokkosParallelFor() {
       rk5(i, j, k, l, m) = i + j + k + l + m;
       assert(rk5(i, j, k, l, m) == i + j + k + l + m);
     };
-    // idk why I cant use c,d,e to reference the extents
-    // of each index but it doesn't compile if I use them.
-    // -> github issue
     kok.parallel_for({0}, {a}, k1, "testKokkosParallelFor(rank1)");
     kok.parallel_for({0, 0}, {a, b}, k2, "testKokkosParallelFor(rank2)");
-    kok.parallel_for({0, 0, 0}, {a, b, 8}, k3, "testKokkosParallelFor(rank3)");
-    kok.parallel_for({0, 0, 0, 0}, {a, b, 8, 7}, k4,
+    kok.parallel_for({0, 0, 0}, {a, b, c}, k3, "testKokkosParallelFor(rank3)");
+    kok.parallel_for({0, 0, 0, 0}, {a, b, c, d}, k4,
                      "testKokkosParallelFor(rank4)");
-    kok.parallel_for({0, 0, 0, 0, 0}, {a, b, 8, 7, 6}, k5,
+    kok.parallel_for({0, 0, 0, 0, 0}, {a, b, c, d, e}, k5,
                      "testKokkosParallelFor(rank5)");
   }
 
