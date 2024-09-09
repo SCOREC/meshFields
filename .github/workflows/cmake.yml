@@ -143,7 +143,7 @@ jobs:
     - name: MeshFields Test
       working-directory: ${{runner.workspace}}/build-meshFields
       shell: bash
-      run: ctest --timeout 10 --output-on-failure
+      run: ctest -V --timeout 10
       
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
