@@ -128,6 +128,8 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.  This must be done before the code is built.
     - name: Initialize CodeQL
+      # only need to scan with a single build config if the installed cmake config files work
+      if: matrix.compiler == 'g++' && matrix.build_type == 'Release'
       uses: github/codeql-action/init@v3
       with:
         languages: ${{ matrix.language }}
@@ -144,5 +146,7 @@ jobs:
       run: ctest -V --timeout 10
       
     - name: Perform CodeQL Analysis
+      # only need to scan with a single build config if the installed cmake config files work
+      if: matrix.compiler == 'g++' && matrix.build_type == 'Release'
       uses: github/codeql-action/analyze@v3
 
