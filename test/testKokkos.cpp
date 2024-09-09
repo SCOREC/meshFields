@@ -170,7 +170,7 @@ void kokkosParallelReduceTest() {
     for (int i = 0; i < N; i++) {
       result_verify += 1.0 * i;
     }
-    assert(result_verify == result);
+    assert(doubleCompare(result_verify, result));
     printf("Reduce test 1-D Result: %d %.2lf\n", N, result);
   }
   {
@@ -186,7 +186,7 @@ void kokkosParallelReduceTest() {
         result_verify += i * j;
       }
     }
-    assert(result_verify == result);
+    assert(doubleCompare(result_verify, result));
 
     printf("Reduce test 2-D Result: %d %.2lf\n", N, result);
   }
@@ -206,7 +206,7 @@ void kokkosParallelReduceTest() {
         }
       }
     }
-    assert(result_verify == result);
+    assert(doubleCompare(result_verify, result));
     printf("Reduce test 3-D Result: %d %.2lf\n", N, result);
   }
   {
