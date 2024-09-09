@@ -41,9 +41,12 @@ include(CTest)
 option(IS_TESTING "Build for CTest" OFF)
 message(STATUS "IS_TESTING: ${IS_TESTING}")
 
+#check for valgrind
+find_program(VALGRIND_CMD valgrind DOC "Location of the valgrind program")
+
 #tests
 function(test_func_impl TEST_NAME)
-  set(TEST_STR ${VALGRIND} ${ARGN})
+  set(TEST_STR ${ARGN})
   # need to run as a cmake script to capture assert and other 'system failures'
   # https://cmake.org/cmake/help/latest/prop_test/WILL_FAIL.html#prop_test:WILL_FAIL
   add_test(NAME ${TEST_NAME} COMMAND ${CMAKE_COMMAND} -E env ${TEST_STR})
@@ -62,6 +65,19 @@ function(will_fail_test_func TEST_NAME)
   set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
   if(TEST ${TEST_NAME})
     set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
+  endif()
+endfunction()
+
+function(will_fail_valgrind_test_func TEST_NAME)
+  if(VALGRIND_CMD)
+    test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
+    set_property(TEST ${TEST_NAME} PROPERTY
+      FAIL_REGULAR_EXPRESSION "Invalid read;Invalid write"
+    )
+    set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
+    if(TEST ${TEST_NAME})
+      set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
+    endif()
   endif()
 endfunction()
 
@@ -89,9 +105,9 @@ test_func(SerializationTests ./SerializationTests)
 if(Kokkos_ENABLE_CUDA) #haven't tested with HIP or SYCL
   test_func(QRTestsCUDA ./QRTests)
 else()
-  #with the serial backend the QR tests fail,
+  #with the serial backend the QR tests fail when run under valgrind
   #see https://github.com/kokkos/kokkos-kernels/issues/2328
-  will_fail_test_func(QRTestsSerial ./QRTests)
+  will_fail_valgrind_test_func(QRTestsSerialValgrind ./QRTests)
 endif()
 
 #Code Coverage set up -------------------------------------------------------
