@@ -99,7 +99,7 @@ endif()
 option(meshFields_ENABLE_COVERAGE_BUILD "Do a coverage build" OFF)
 if(meshFields_ENABLE_COVERAGE_BUILD)
 
-  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/CMakeModules)
+  list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
   include(CodeCoverage)
 
   append_coverage_compiler_flags()
