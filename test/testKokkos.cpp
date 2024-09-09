@@ -149,18 +149,6 @@ void testKokkosParallelFor() {
   printf("== END testKokkosParallelFor ==\n");
 }
 
-void kokkosDocumentationLiesTest() { // They dont...
-  printf("== START kokkosDocumentationLiesTest ==\n");
-  Kokkos::Array<int64_t, 3> start = {0, 0, 0};
-  Kokkos::Array<int64_t, 3> end = {2, 2, 2};
-  Kokkos::parallel_for(
-      "0_0", Kokkos::MDRangePolicy<Kokkos::Rank<3>>(start, end),
-      KOKKOS_LAMBDA(const int c, const int f, const int p) {
-        printf("Kokkos documentation lies!!!: c:%d f:%d p:%d\n", c, f, p);
-      });
-  printf("== END kokkosDocumentationLiesTest ==\n");
-}
-
 void kokkosParallelReduceTest() {
   /* Examples from Kokkos Documentation:
    * https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/parallel_reduce.html?highlight=parallel_reduce*/
@@ -466,6 +454,5 @@ int main(int argc, char *argv[]) {
   kokkosControllerSizeTest();
   kokkosFieldSizeTest();
 
-  // kokkosDocumentationLiesTest();
   return 0;
 }
