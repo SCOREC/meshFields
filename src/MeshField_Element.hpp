@@ -1,34 +1,11 @@
+#ifndef MESHFIELD_ELEMENT_H
+#define MESHFIELD_ELEMENT_H
+
 #include <Kokkos_Core.hpp>
 #include <MeshField_Defines.hpp>
+#include <MeshField_Shape.hpp>
 
 namespace MeshFields {
-
-struct LinearEdgeShape {
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<double,2> getValues(Kokkos::Array<double, 2> const& xi) const {
-    return {
-      (1.0-xi[0])/2.0,
-      (1.0+xi[0])/2.0
-    };
-  }
-  static const size_t numNodes = 2;
-  static const size_t numComponentsPerDof = 1;
-  static const size_t meshEntDim = 1;
-};
-
-struct LinearTriangleShape {
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<double,3> getValues(Kokkos::Array<double, 3> const& xi) const {
-    return {
-      1-xi[0]-xi[1],
-      xi[0],
-      xi[1]
-    };
-  }
-  static const size_t numNodes = 3;
-  static const size_t numComponentsPerDof = 1;
-  static const size_t meshEntDim = 2;
-};
 
 // hardcoded as a linear triangular element 
 template <typename T, typename Shape>
@@ -83,3 +60,4 @@ Kokkos::View<Real*> evaluate(Element& fes, Kokkos::View<Real*> localCoords) {
 }
 
 }
+#endif

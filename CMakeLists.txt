@@ -20,7 +20,8 @@ set(MESHFIELD_HEADERS
   src/KokkosController.hpp
   src/CabanaController.hpp
   src/MeshField.hpp
-  src/MeshFieldElement.hpp
+  src/MeshField_Element.hpp
+  src/MeshField_Shape.hpp
 )
 
 #create header only library
