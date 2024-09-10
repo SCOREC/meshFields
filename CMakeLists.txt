@@ -20,6 +20,7 @@ set(MESHFIELD_HEADERS
   src/KokkosController.hpp
   src/CabanaController.hpp
   src/MeshField.hpp
+  src/MeshFieldElement.hpp
 )
 
 #create header only library
@@ -92,6 +93,7 @@ meshfields_add_exe(KokkosTests test/testKokkos.cpp)
 meshfields_add_exe(CabanaTests test/testCabana.cpp)
 meshfields_add_exe(SerializationTests test/testSerialize.cpp)
 meshfields_add_exe(QRTests test/testQR.cpp)
+meshfields_add_exe(ElementTests test/testElement.cpp)
 
 test_func(MainTests ./Main)
 test_func(KokkosTests ./KokkosTests)
@@ -104,6 +106,7 @@ else()
   #see https://github.com/kokkos/kokkos-kernels/issues/2328
   will_fail_valgrind_test_func(QRTestsSerialValgrind ./QRTests)
 endif()
+test_func(ElementTests ./ElementTests)
 
 #Code Coverage set up -------------------------------------------------------
 
