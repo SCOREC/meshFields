@@ -8,11 +8,11 @@
 namespace MeshFields {
 
 // hardcoded as a linear triangular element 
-template <typename T, typename Shape>
+template <typename Shape>
 struct FieldElement {
   //prototype as SOA
   const size_t numMeshEnts;
-  Kokkos::View<T*> nodeData; //replaced by a 'meshfield'
+  Kokkos::View<T*> nodeData; //TODO replace with a functor that provides the paren/index operator
   Shape shapeFn;
   size_t meshEntDim() { 
     return shapeFn.meshEntDim;
@@ -20,7 +20,7 @@ struct FieldElement {
   FieldElement(size_t in_numMeshEnts) :
     numMeshEnts(in_numMeshEnts),
     nodeData("nodeData", shapeFn.numComponentsPerDof*shapeFn.numNodes*numMeshEnts) {}
-  //need accessor here that handles indexing - fieldSlice provides this
+  //TODO replace with a functor that provides the paren/index operator
   KOKKOS_INLINE_FUNCTION T& operator() (int comp, int node, int ent) const {
     //simple stub for prototype
     assert(ent < numMeshEnts);
@@ -28,6 +28,7 @@ struct FieldElement {
     (void)node;
     return nodeData(ent);
   }
+  //FIXME - remove the hardcoded return type, generalize to Shape
   KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> getValue(int ent, Kokkos::Array<Real, 3> localCoord) const {
     Kokkos::Array<Real,3> c;
     const auto shapeValues = shapeFn.getValues(localCoord);
