@@ -31,7 +31,7 @@ struct FieldElement {
       c[ci] = 0;
     for (int ni = 0; ni < shapeFn.numNodes; ++ni)
       for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
-        c[ci] += field(ni, ci, ent) * shapeValues[ni];
+        c[ci] += field(ni, ci, ent) * shapeValues[ni]; //the field(...) access here is a memory error... out of bounds
     return c;
   }
 };
