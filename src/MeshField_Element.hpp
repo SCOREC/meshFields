@@ -8,27 +8,22 @@
 namespace MeshFields {
 
 // hardcoded as a linear triangular element 
-template <typename Shape>
+template <typename Shape, typename FieldAccessor>
 struct FieldElement {
-  //prototype as SOA
+  //TODO add static asserts for functions provided by the templated types
   const size_t numMeshEnts;
-  Kokkos::View<T*> nodeData; //TODO replace with a functor that provides the paren/index operator
+  const FieldAccessor field;
   Shape shapeFn;
   size_t meshEntDim() { 
     return shapeFn.meshEntDim;
   }
-  FieldElement(size_t in_numMeshEnts) :
+  FieldElement(size_t in_numMeshEnts, const Shape shapeFnIn, const FieldAccessor& fieldIn) :
     numMeshEnts(in_numMeshEnts),
-    nodeData("nodeData", shapeFn.numComponentsPerDof*shapeFn.numNodes*numMeshEnts) {}
-  //TODO replace with a functor that provides the paren/index operator
-  KOKKOS_INLINE_FUNCTION T& operator() (int comp, int node, int ent) const {
-    //simple stub for prototype
-    assert(ent < numMeshEnts);
-    (void)comp;
-    (void)node;
-    return nodeData(ent);
-  }
+    shapeFn(shapeFnIn),
+    field(fieldIn) {}
   //FIXME - remove the hardcoded return type, generalize to Shape
+  //get value type from FieldAccessor (instead of hardcoding Real)
+  //get num components from FieldAccessor or Shape (instead of hardcoding 3)
   KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> getValue(int ent, Kokkos::Array<Real, 3> localCoord) const {
     Kokkos::Array<Real,3> c;
     const auto shapeValues = shapeFn.getValues(localCoord);
@@ -36,7 +31,7 @@ struct FieldElement {
       c[ci] = 0;
     for (int ni = 0; ni < shapeFn.numNodes; ++ni)
       for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
-        c[ci] += nodeData[ni * shapeFn.numComponentsPerDof + ci] * shapeValues[ni];
+        c[ci] += field(ni, ci, ent) * shapeValues[ni];
     return c;
   }
 };
