@@ -34,9 +34,8 @@ struct FieldElement {
       c[ci] = 0;
     for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
       for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
-        // need to map the triangle shape fn to the vertex based field
-        auto map = e2f(ni, ci, ent);
-        c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni]; //the field(...) access here is a memory error... out of bounds
+        auto map = e2f(ni, ci, ent); //map the triangle indices to the vertex based field
+        c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni];
       }
     }
     return c;
