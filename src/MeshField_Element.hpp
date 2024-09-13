@@ -8,19 +8,22 @@
 namespace MeshFields {
 
 // hardcoded as a linear triangular element 
-template <typename Shape, typename FieldAccessor>
+template <typename Shape, typename FieldAccessor, typename ElementToFieldMap>
 struct FieldElement {
   //TODO add static asserts for functions provided by the templated types
   const size_t numMeshEnts;
   const FieldAccessor field;
   Shape shapeFn;
+  ElementToFieldMap e2f;
   size_t meshEntDim() { 
     return shapeFn.meshEntDim;
   }
-  FieldElement(size_t in_numMeshEnts, const Shape shapeFnIn, const FieldAccessor& fieldIn) :
+  FieldElement(size_t in_numMeshEnts, const Shape shapeFnIn, 
+      const FieldAccessor& fieldIn, const ElementToFieldMap e2fIn) :
     numMeshEnts(in_numMeshEnts),
     shapeFn(shapeFnIn),
-    field(fieldIn) {}
+    field(fieldIn),
+    e2f(e2fIn) {}
   //FIXME - remove the hardcoded return type, generalize to Shape
   //get value type from FieldAccessor (instead of hardcoding Real)
   //get num components from FieldAccessor or Shape (instead of hardcoding 3)
@@ -29,9 +32,13 @@ struct FieldElement {
     const auto shapeValues = shapeFn.getValues(localCoord);
     for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
-    for (int ni = 0; ni < shapeFn.numNodes; ++ni)
-      for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
-        c[ci] += field(ni, ci, ent) * shapeValues[ni]; //the field(...) access here is a memory error... out of bounds
+    for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
+      for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
+        // need to map the triangle shape fn to the vertex based field
+        auto map = e2f(ni, ci, ent);
+        c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni]; //the field(...) access here is a memory error... out of bounds
+      }
+    }
     return c;
   }
 };

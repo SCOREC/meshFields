@@ -1,5 +1,5 @@
-#ifndef MESHFIELDS_DEFINES_H
-#define MESHFIELDS_DEFINES_H
+#ifndef MESHFIELD_DEFINES_H
+#define MESHFIELD_DEFINES_H
 namespace MeshFields {
 using Real = double;
 using LO = int;
