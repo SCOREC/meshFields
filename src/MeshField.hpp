@@ -67,6 +67,7 @@ template <class Slice> class Field {
 public:
   static const int MAX_RANK = Slice::MAX_RANK;
   static const int RANK = Slice::RANK;
+  using BaseType = base_type;
 
   Field(Slice s) : slice(s) {}
 

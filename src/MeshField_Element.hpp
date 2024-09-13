@@ -24,11 +24,10 @@ struct FieldElement {
     shapeFn(shapeFnIn),
     field(fieldIn),
     e2f(e2fIn) {}
-  //FIXME - remove the hardcoded return type, generalize to Shape
-  //get value type from FieldAccessor (instead of hardcoding Real)
-  //get num components from FieldAccessor or Shape (instead of hardcoding 3)
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> getValue(int ent, Kokkos::Array<Real, 3> localCoord) const {
-    Kokkos::Array<Real,3> c;
+  //FIXME - generalize to Shape
+  using ValArray = Kokkos::Array<typename FieldAccessor::BaseType, Shape::numNodes>;
+  KOKKOS_INLINE_FUNCTION ValArray getValue(int ent, Kokkos::Array<Real, 3> localCoord) const {
+    ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
     for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
