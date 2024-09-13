@@ -1,7 +1,7 @@
 #ifndef MESHFIELD_SHAPE_H
 #define MESHFIELD_SHAPE_H
 #include <MeshField_Defines.hpp>
-namespace MeshFields {
+namespace MeshField {
 struct LinearEdgeShape {
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real,2> getValues(Kokkos::Array<Real, 2> const& xi) const {

@@ -5,7 +5,7 @@
 #include <MeshField_Defines.hpp>
 #include <MeshField_Shape.hpp>
 
-namespace MeshFields {
+namespace MeshField {
 
 // hardcoded as a linear triangular element 
 template <typename Shape, typename FieldAccessor, typename ElementToFieldMap>
