@@ -15,10 +15,8 @@ struct FieldElement {
   const size_t numMeshEnts;
   const FieldAccessor field;
   Shape shapeFn;
+  static const size_t MeshEntDim = Shape::meshEntDim; //better way?
   ElementToFieldMap e2f;
-  size_t meshEntDim() { 
-    return shapeFn.meshEntDim;
-  }
   FieldElement(size_t in_numMeshEnts, const Shape shapeFnIn, 
       const FieldAccessor& fieldIn, const ElementToFieldMap e2fIn) :
     numMeshEnts(in_numMeshEnts),
@@ -27,7 +25,7 @@ struct FieldElement {
     e2f(e2fIn) {}
 
   using ValArray = Kokkos::Array<typename FieldAccessor::BaseType, Shape::numNodes>;
-  KOKKOS_INLINE_FUNCTION ValArray getValue(int ent, Kokkos::Array<Real, Shape::meshEntDim+1> localCoord) const {
+  KOKKOS_INLINE_FUNCTION ValArray getValue(int ent, Kokkos::Array<Real, MeshEntDim+1> localCoord) const {
     ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
     for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
@@ -49,18 +47,17 @@ struct FieldElement {
 // fields value within each element
 template <typename Element>
 Kokkos::View<Real*> evaluate(Element& fes, Kokkos::View<Real**> localCoords) {
+  //TODO add static asserts for values and functions provided by the templated types
   assert(localCoords.extent(0) == fes.numMeshEnts);
-  assert(localCoords.extent(1) == fes.meshEntDim()+1);
+  assert(localCoords.extent(1) == fes.MeshEntDim+1);
   Kokkos::View<Real*> res("result", fes.numMeshEnts);
   Kokkos::parallel_for(fes.numMeshEnts,
     KOKKOS_LAMBDA(const int ent) {
-      //FIXME - use rank 2 view of coords
-//      Kokkos::Array<Real,Element::Shape::meshEntDim+1> lc{ //not coallesced 
-//        localCoords[ent*3], 
-//        localCoords[ent*3+1],
-//        localCoords[ent*3+2]};
-//      auto val = fes.getValue(ent, lc);
-//      res(ent) = val[0]; //hardcoded to be a scalar field 
+      Kokkos::Array<Real,Element::MeshEntDim+1> lc;
+      for(int i=0; i<localCoords.extent(1); i++) //better way?
+        lc[i] = localCoords(ent,i);
+      auto val = fes.getValue(ent, lc);
+      res(ent) = val[0]; //hardcoded to be a scalar field 
     }
   );
   return res;
