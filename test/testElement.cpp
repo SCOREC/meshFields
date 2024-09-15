@@ -3,9 +3,7 @@
 #include "KokkosController.hpp"
 #include <iostream>
 #include <Kokkos_Core.hpp>
-#include <Kokkos_StdAlgorithms.hpp>
 
-namespace KE = Kokkos::Experimental;
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
