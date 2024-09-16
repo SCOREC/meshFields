@@ -15,10 +15,10 @@ struct LinearTriangleToVertexField {
   };
 
   KOKKOS_FUNCTION Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri) const {
-    //Need to find which mesh vertex is described by the triangle and one of its 
+    //Need to find which mesh vertex is described by the triangle and one of its
     //node indices.  This would be implemented using mesh database adjacencies, etc.
     //For the simplicity of the test case, it is hard coded here:
-    //     node 
+    //     node
     //tri 0 1 2
     //0   0 1 4
     //1   4 1 2
@@ -41,7 +41,7 @@ void triangleLocalPointEval() {
   auto field0 = kokkosMeshField.makeField<0>();
 
   MeshField::FieldElement f(numElms,
-                             MeshField::LinearTriangleShape(), 
+                             MeshField::LinearTriangleShape(),
                              field0,
                              LinearTriangleToVertexField());
 
@@ -58,18 +58,18 @@ struct LinearEdgeToVertexField {
   };
 
   KOKKOS_FUNCTION Map operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge) const {
-    //Need to find which mesh vertex is described by the edge and one of its 
+    //Need to find which mesh vertex is described by the edge and one of its
     //node indices.  This would be implemented using mesh database adjacencies, etc.
     //For the simplicity of the test case, it is hard coded here:
-    //     node 
+    //     node
     //edge 0 1
-    //0    0 1 
-    //1    1 2 
-    //2    2 3 
-    //3    3 4 
-    //4    4 0 
-    //5    4 1 
-    //6    4 2 
+    //0    0 1
+    //1    1 2
+    //2    2 3
+    //3    3 4
+    //4    4 0
+    //5    4 1
+    //6    4 2
     MeshField::LO edgeNode2Vtx[7][2] = {{0,1},{1,2},{2,3},{3,4},{4,0},{4,1},{4,2}};
     const MeshField::LO vtx = edgeNode2Vtx[edge][edgeNodeIdx];
     return {0, 0, vtx};
@@ -88,7 +88,7 @@ void edgeLocalPointEval() {
   auto field0 = kokkosMeshField.makeField<0>();
 
   MeshField::FieldElement f(numEdges,
-                             MeshField::LinearEdgeShape(), 
+                             MeshField::LinearEdgeShape(),
                              field0,
                              LinearEdgeToVertexField());
 
