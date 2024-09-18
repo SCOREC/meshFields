@@ -14,7 +14,8 @@ struct LinearTriangleToVertexField {
     MeshField::LO entity;
   };
 
-  KOKKOS_FUNCTION Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri) const {
+  KOKKOS_FUNCTION Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Triangle);
     //Need to find which mesh vertex is described by the triangle and one of its
     //node indices.
     //This could be implemented using element-to-dof holder
@@ -55,54 +56,6 @@ void triangleLocalPointEval() {
 }
 
 
-struct QuadraticTriangleToVertexField {
-  struct Map {
-    MeshField::LO node;
-    MeshField::LO component;
-    MeshField::LO entity;
-  };
-
-  KOKKOS_FUNCTION Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri) const {
-    //     node
-    //tri 0 1 2
-    //0   0 1 4
-    //1   4 1 2
-    //2   4 2 3
-    MeshField::LO triNode2Vtx[3][3] = {{0,1,4},{4,1,2},{4,2,3}};
-    const MeshField::LO vtx = triNode2Vtx[tri][triNodeIdx];
-    return {0, 0, vtx};
-  }
-};
-
-
-//evaluate a field at the specified local coordinate for each triangle using
-//quadratic shape functions
-void quadraticTriangleLocalPointEval() {
-  const auto numTri = 3;   //provided by the mesh
-  const auto numEdges = 7; //provided by the mesh
-  const int numVerts = 5;  //provided by the mesh
-  using Ctrlr =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, double ***, double ***>;
-  Ctrlr kk_ctrl({/*field 0*/ 1, 1, numVerts,   //1 dof with 1 component per vtx
-                 /*field 1*/ 1, 1, numEdges}); //1 dof with 1 component per edge
-  MeshField::MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
-
-  auto vtxField = kokkosMeshField.makeField<0>();
-  auto edgeField = kokkosMeshField.makeField<1>();
-
-// FIXME - HERE
-//  MeshField::FieldElement f(numTri,
-//                             MeshField::QuadraticTriangleShape(),
-//                             vtxField,
-//                             field0,
-//                             LinearTriangleToVertexField(),
-//                             LinearTriangleToEdgeField());
-//
-//  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
-//  Kokkos::deep_copy(lc, 0.5);
-//  auto x = MeshField::evaluate(f, lc);
-}
-
 struct LinearEdgeToVertexField {
   struct Map {
     MeshField::LO node;
@@ -110,7 +63,8 @@ struct LinearEdgeToVertexField {
     MeshField::LO entity;
   };
 
-  KOKKOS_FUNCTION Map operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge) const {
+  KOKKOS_FUNCTION Map operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Edge);
     //Need to find which mesh vertex is described by the edge and one of its
     //node indices.  This would be implemented using mesh database adjacencies, etc.
     //For the simplicity of the test case, it is hard coded here:
@@ -147,6 +101,57 @@ void edgeLocalPointEval() {
   Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
   Kokkos::deep_copy(lc, 0.5);
   auto x = MeshField::evaluate(f, lc);
+}
+
+struct QuadraticTriangleToField {
+  struct Map {
+    MeshField::LO node;
+    MeshField::LO component;
+    MeshField::LO entity;
+  };
+  LinearEdgeToVertexField edge2vtx;
+  LinearTriangleToVertexField tri2vtx;
+
+  KOKKOS_FUNCTION Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO ent, MeshField::Mesh_Topology topo) const {
+    if(topo == MeshField::Edge ) {
+      return edge2vtx(triNodeIdx, triCompIdx, ent, MeshField::Edge);
+    } else if (topo == MeshField::Triangle ) {
+      return tri2vtx(triNodeIdx, triCompIdx, ent, MeshField::Triangle);
+    } else {
+      std::cerr << "ERROR: Unsupported topology: " << __func__ << " supports MESH_VERTEX and MESH_TRIANGLE.\n";
+      assert(false);
+      return {};
+    }
+  }
+};
+
+//evaluate a field at the specified local coordinate for each triangle using
+//quadratic shape functions
+void quadraticTriangleLocalPointEval() {
+  const auto numTri = 3;   //provided by the mesh
+  const auto numEdges = 7; //provided by the mesh
+  const int numVerts = 5;  //provided by the mesh
+  using Ctrlr =
+      Controller::KokkosController<MemorySpace, ExecutionSpace, double ***, double ***>;
+  Ctrlr kk_ctrl({/*field 0*/ 1, 1, numVerts,   //1 dof with 1 component per vtx
+                 /*field 1*/ 1, 1, numEdges}); //1 dof with 1 component per edge
+  MeshField::MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
+
+  auto vtxField = kokkosMeshField.makeField<0>();
+  auto edgeField = kokkosMeshField.makeField<1>();
+
+  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), TriangleToVertexField() };
+
+// FIXME - HERE
+//  MeshField::FieldElement f(numTri,
+//                             vtxField,
+//                             edgeField,
+//                             LinearTriangleToVertexField(),
+//                             LinearTriangleToEdgeField());
+//
+//  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
+//  Kokkos::deep_copy(lc, 0.5);
+//  auto x = MeshField::evaluate(f, lc);
 }
 
 int main(int argc, char** argv) {

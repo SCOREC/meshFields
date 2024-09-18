@@ -38,6 +38,7 @@ struct FieldElement {
     const auto shapeValues = elm.shapeFn.getValues(localCoord);
     for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
+    //FIXME - loop over topology based on Element
     for (int ni = 0; ni < elm.shapeFn.numNodes; ++ni) {
       for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci) {
         //map the element indices to the underlying field storage
