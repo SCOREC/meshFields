@@ -8,34 +8,42 @@
 
 namespace MeshField {
 
+template <typename Shape, typename ElementToDofHolderMap>
+struct Element {
+  //TODO add static asserts for variables and functions provided by the templated types
+  Shape shapeFn;
+  static const size_t MeshEntDim = Shape::meshEntDim; //better way?
+  ElementToDofHolderMap elm2dof;
+  Element(const Shape shapeFnIn, const ElementToDofHolderMap elm2dofIn) :
+    shapeFn(shapeFnIn),
+    elm2dof(elm2dofIn) {}
+};
+
 // hardcoded as a linear triangular element 
-template <typename Shape, typename FieldAccessor, typename ElementToFieldMap>
+template <typename FieldAccessor, template<typename, typename> class ElementType, typename ShapeType, typename ElementToDofHolderMap>
 struct FieldElement {
   //TODO add static asserts for functions provided by the templated types
   const size_t numMeshEnts;
   const FieldAccessor field;
-  Shape shapeFn;
-  static const size_t MeshEntDim = Shape::meshEntDim; //better way?
-  ElementToFieldMap e2f;
-  FieldElement(size_t in_numMeshEnts, const Shape shapeFnIn, 
-      const FieldAccessor& fieldIn, const ElementToFieldMap e2fIn) :
+  ElementType<ShapeType, ElementToDofHolderMap> elm;
+  static const size_t MeshEntDim = ShapeType::meshEntDim;
+  FieldElement(size_t in_numMeshEnts, const FieldAccessor& fieldIn, const ElementType<ShapeType, ElementToDofHolderMap> elmIn) :
     numMeshEnts(in_numMeshEnts),
-    shapeFn(shapeFnIn),
     field(fieldIn),
-    e2f(e2fIn) {}
+    elm(elmIn) {}
 
-  using ValArray = Kokkos::Array<typename FieldAccessor::BaseType, Shape::numNodes>;
+  using ValArray = Kokkos::Array<typename FieldAccessor::BaseType, ShapeType::numNodes>;
   KOKKOS_INLINE_FUNCTION ValArray getValue(int ent, Kokkos::Array<Real, MeshEntDim+1> localCoord) const {
     ValArray c;
-    const auto shapeValues = shapeFn.getValues(localCoord);
-    for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
+    const auto shapeValues = elm.shapeFn.getValues(localCoord);
+    for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
-    for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
-      for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
+    for (int ni = 0; ni < elm.shapeFn.numNodes; ++ni) {
+      for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci) {
         //map the element indices to the underlying field storage
         //e.g., Element = Triangle and field storage is at mesh vertices
         //e.g., Element = Edge and field storage is at mesh vertices
-        auto map = e2f(ni, ci, ent);
+        auto map = elm.elm2dof(ni, ci, ent); //fixme, add topo arg
         c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni];
       }
     }

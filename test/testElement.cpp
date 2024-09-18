@@ -45,10 +45,9 @@ void triangleLocalPointEval() {
 
   auto field0 = kokkosMeshField.makeField<0>();
 
-  MeshField::FieldElement f(numElms,
-                             MeshField::LinearTriangleShape(),
-                             field0,
-                             LinearTriangleToVertexField());
+  MeshField::Element elm{ MeshField::LinearTriangleShape(), LinearTriangleToVertexField() };
+
+  MeshField::FieldElement f(numElms, field0, elm);
 
   Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
   Kokkos::deep_copy(lc, 0.5);
@@ -91,12 +90,13 @@ void quadraticTriangleLocalPointEval() {
   auto vtxField = kokkosMeshField.makeField<0>();
   auto edgeField = kokkosMeshField.makeField<1>();
 
+// FIXME - HERE
 //  MeshField::FieldElement f(numTri,
 //                             MeshField::QuadraticTriangleShape(),
-//                             vtxField, //FIXME
-//                             field0, //FIXME
-//                             QuadraticTriangleToVertexField(),
-//                             QuadraticTriangleToEdgeField());
+//                             vtxField,
+//                             field0,
+//                             LinearTriangleToVertexField(),
+//                             LinearTriangleToEdgeField());
 //
 //  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
 //  Kokkos::deep_copy(lc, 0.5);
@@ -140,10 +140,9 @@ void edgeLocalPointEval() {
 
   auto field0 = kokkosMeshField.makeField<0>();
 
-  MeshField::FieldElement f(numEdges,
-                             MeshField::LinearEdgeShape(),
-                             field0,
-                             LinearEdgeToVertexField());
+  MeshField::Element elm{MeshField::LinearEdgeShape(), LinearEdgeToVertexField()};
+
+  MeshField::FieldElement f(numEdges, field0, elm);
 
   Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
   Kokkos::deep_copy(lc, 0.5);
