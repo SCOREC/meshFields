@@ -8,13 +8,7 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 struct LinearTriangleToVertexField {
-  struct Map {
-    MeshField::LO node;
-    MeshField::LO component;
-    MeshField::LO entity;
-  };
-
-  KOKKOS_FUNCTION Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+  KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Triangle);
     //Need to find which mesh vertex is described by the triangle and one of its
     //node indices.
@@ -57,13 +51,7 @@ void triangleLocalPointEval() {
 
 
 struct LinearEdgeToVertexField {
-  struct Map {
-    MeshField::LO node;
-    MeshField::LO component;
-    MeshField::LO entity;
-  };
-
-  KOKKOS_FUNCTION Map operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge, MeshField::Mesh_Topology topo) const {
+  KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Edge);
     //Need to find which mesh vertex is described by the edge and one of its
     //node indices.  This would be implemented using mesh database adjacencies, etc.
@@ -104,15 +92,10 @@ void edgeLocalPointEval() {
 }
 
 struct QuadraticTriangleToField {
-  struct Map {
-    MeshField::LO node;
-    MeshField::LO component;
-    MeshField::LO entity;
-  };
   LinearEdgeToVertexField edge2vtx;
   LinearTriangleToVertexField tri2vtx;
 
-  KOKKOS_FUNCTION Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO ent, MeshField::Mesh_Topology topo) const {
+  KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO ent, MeshField::Mesh_Topology topo) const {
     if(topo == MeshField::Edge ) {
       return edge2vtx(triNodeIdx, triCompIdx, ent, MeshField::Edge);
     } else if (topo == MeshField::Triangle ) {
@@ -140,7 +123,7 @@ void quadraticTriangleLocalPointEval() {
   auto vtxField = kokkosMeshField.makeField<0>();
   auto edgeField = kokkosMeshField.makeField<1>();
 
-  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), TriangleToVertexField() };
+  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
 
 // FIXME - HERE
 //  MeshField::FieldElement f(numTri,

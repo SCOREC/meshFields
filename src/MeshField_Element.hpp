@@ -8,6 +8,12 @@
 
 namespace MeshField {
 
+struct Map {
+  LO node;
+  LO component;
+  LO entity;
+};
+
 template <typename Shape, typename ElementToDofHolderMap>
 struct Element {
   //TODO add static asserts for variables and functions provided by the templated types
@@ -44,7 +50,7 @@ struct FieldElement {
         //map the element indices to the underlying field storage
         //e.g., Element = Triangle and field storage is at mesh vertices
         //e.g., Element = Edge and field storage is at mesh vertices
-        auto map = elm.elm2dof(ni, ci, ent); //fixme, add topo arg
+        auto map = elm.elm2dof(ni, ci, ent, Vertex); //fixme, add topo arg
         c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni];
       }
     }
