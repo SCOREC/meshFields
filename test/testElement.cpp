@@ -8,6 +8,7 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 struct LinearTriangleToVertexField {
+  constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Triangle};
   KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Triangle);
     //Need to find which mesh vertex is described by the triangle and one of its
@@ -51,6 +52,7 @@ void triangleLocalPointEval() {
 
 
 struct LinearEdgeToVertexField {
+  constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Edge};
   KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Edge);
     //Need to find which mesh vertex is described by the edge and one of its
@@ -92,6 +94,7 @@ void edgeLocalPointEval() {
 }
 
 struct QuadraticTriangleToField {
+  constexpr static MeshField::Mesh_Topology Topology[2] = {MeshField::Edge, MeshField::Triangle};
   LinearEdgeToVertexField edge2vtx;
   LinearTriangleToVertexField tri2vtx;
 

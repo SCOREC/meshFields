@@ -25,7 +25,6 @@ struct Element {
     elm2dof(elm2dofIn) {}
 };
 
-// hardcoded as a linear triangular element 
 template <typename FieldAccessor, template<typename, typename> class ElementType, typename ShapeType, typename ElementToDofHolderMap>
 struct FieldElement {
   //TODO add static asserts for functions provided by the templated types
@@ -38,20 +37,24 @@ struct FieldElement {
     field(fieldIn),
     elm(elmIn) {}
 
+  //heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
   using ValArray = Kokkos::Array<typename FieldAccessor::BaseType, ShapeType::numNodes>;
   KOKKOS_INLINE_FUNCTION ValArray getValue(int ent, Kokkos::Array<Real, MeshEntDim+1> localCoord) const {
     ValArray c;
     const auto shapeValues = elm.shapeFn.getValues(localCoord);
     for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
-    //FIXME - loop over topology based on Element
-    for (int ni = 0; ni < elm.shapeFn.numNodes; ++ni) {
-      for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci) {
-        //map the element indices to the underlying field storage
-        //e.g., Element = Triangle and field storage is at mesh vertices
-        //e.g., Element = Edge and field storage is at mesh vertices
-        auto map = elm.elm2dof(ni, ci, ent, Vertex); //fixme, add topo arg
-        c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni];
+    for (auto topo : elm.elm2dof.Topology) {
+      for (int ni = 0; ni < elm.shapeFn.numNodes; ++ni) {
+        for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci) {
+          //map the element indices to the underlying field storage
+          //examples:
+          // Element = Triangle and field storage is at mesh vertices (linear shape fn)
+          // Element = Edge and field storage is at mesh vertices (linear shape fn)
+          // Element = Triangle and field storage is at mesh vertices and edges (quadratic shape fn)
+          auto map = elm.elm2dof(ni, ci, ent, topo);
+          c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni];
+        }
       }
     }
     return c;
