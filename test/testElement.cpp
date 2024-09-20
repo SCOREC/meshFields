@@ -123,10 +123,10 @@ void quadraticTriangleLocalPointEval() {
                  /*field 1*/ 1, 1, numEdges}); //1 dof with 1 component per edge
   MeshField::MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
 
-  auto vtxField = kokkosMeshField.makeField<0>();
-  auto edgeField = kokkosMeshField.makeField<1>();
-
-  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
+//  auto vtxField = kokkosMeshField.makeField<0>();
+//  auto edgeField = kokkosMeshField.makeField<1>();
+//
+//  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
 
 // FIXME - HERE
 //  MeshField::FieldElement f(numTri,
