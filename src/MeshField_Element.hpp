@@ -38,7 +38,7 @@ struct FieldElement {
     elm(elmIn) {}
 
   //heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
-  using ValArray = Kokkos::Array<typename FieldAccessor::BaseType, ShapeType::numNodes>;
+  using ValArray = Kokkos::Array<typename FieldAccessor::BaseType, ShapeType::numComponentsPerDof>;
   KOKKOS_INLINE_FUNCTION ValArray getValue(int ent, Kokkos::Array<Real, MeshEntDim+1> localCoord) const {
     ValArray c;
     const auto shapeValues = elm.shapeFn.getValues(localCoord);
@@ -64,18 +64,20 @@ struct FieldElement {
 // given an array of parametric coordinates 'localCoords', one per mesh element, evaluate the
 // fields value within each element
 template <typename Element>
-Kokkos::View<Real*> evaluate(Element& fes, Kokkos::View<Real**> localCoords) {
+auto evaluate(Element& fes, Kokkos::View<Real**> localCoords) {
   //TODO add static asserts for values and functions provided by the templated types
   assert(localCoords.extent(0) == fes.numMeshEnts);
   assert(localCoords.extent(1) == fes.MeshEntDim+1);
-  Kokkos::View<Real*> res("result", fes.numMeshEnts);
+  constexpr const auto numComponents = Element::ValArray::size();
+  Kokkos::View<Real*[numComponents]> res("result", fes.numMeshEnts);
   Kokkos::parallel_for(fes.numMeshEnts,
     KOKKOS_LAMBDA(const int ent) {
       Kokkos::Array<Real,Element::MeshEntDim+1> lc;
       for(int i=0; i<localCoords.extent(1); i++) //better way?
         lc[i] = localCoords(ent,i);
       auto val = fes.getValue(ent, lc);
-      res(ent) = val[0]; //hardcoded to be a scalar field 
+      for(int i=0; i<numComponents; i++)
+        res(ent,i) = val[i];
     }
   );
   return res;
