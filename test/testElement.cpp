@@ -115,11 +115,10 @@ struct QuadraticTriangleToField {
 //evaluate a field at the specified local coordinate for each triangle using
 //quadratic shape functions
 void quadraticTriangleLocalPointEval() {
-  const auto numTri = 3;   //provided by the mesh
-  const auto numEdges = 7; //provided by the mesh
-  const int numVerts = 5;  //provided by the mesh
-
   MeshField::MeshInfo meshInfo;
+  meshInfo.numVtx = 5;
+  meshInfo.numEdge = 7;
+  meshInfo.numTri = 3;
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, 2>(meshInfo);
   auto vtxField = field.meshField.makeField<0>();
   auto edgeField = field.meshField.makeField<1>();
