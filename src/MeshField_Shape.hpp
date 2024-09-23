@@ -16,7 +16,7 @@ struct LinearEdgeShape {
   static const size_t numNodes = 2;
   static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 1;
-  constexpr static MeshField::Mesh_Topology DofHolders[1] = {MeshField::Vertex};
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
 };
 
 struct LinearTriangleShape {
@@ -31,7 +31,7 @@ struct LinearTriangleShape {
   static const size_t numNodes = 3;
   static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 2;
-  constexpr static MeshField::Mesh_Topology DofHolders[1] = {MeshField::Vertex};
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
 };
 
 struct QuadraticTriangleShape { 
@@ -51,7 +51,7 @@ struct QuadraticTriangleShape {
   static const size_t numNodes = 6;
   static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 2;
-  constexpr static MeshField::Mesh_Topology DofHolders[2] = {MeshField::Vertex, MeshField::Edge};
+  constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};
   constexpr static size_t NumDofHolders[2] = {3,3};
   constexpr static size_t DofsPerHolder[2] = {1,1};
 };

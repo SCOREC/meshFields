@@ -1,5 +1,6 @@
 #include "MeshField.hpp"
 #include "MeshField_Element.hpp"
+#include "MeshField_ShapeField.hpp"
 #include "KokkosController.hpp"
 #include <iostream>
 #include <Kokkos_Core.hpp>
@@ -117,16 +118,13 @@ void quadraticTriangleLocalPointEval() {
   const auto numTri = 3;   //provided by the mesh
   const auto numEdges = 7; //provided by the mesh
   const int numVerts = 5;  //provided by the mesh
-  using Ctrlr =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, double ***, double ***>;
-  Ctrlr kk_ctrl({/*field 0*/ 1, 1, numVerts,   //1 dof with 1 component per vtx
-                 /*field 1*/ 1, 1, numEdges}); //1 dof with 1 component per edge
-  MeshField::MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
 
-//  auto vtxField = kokkosMeshField.makeField<0>();
-//  auto edgeField = kokkosMeshField.makeField<1>();
-//
-//  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
+  MeshField::MeshInfo meshInfo;
+  auto field = MeshField::CreateLagrangeField<ExecutionSpace, 2>(meshInfo);
+  auto vtxField = field.meshField.makeField<0>();
+  auto edgeField = field.meshField.makeField<1>();
+
+  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
 
 // FIXME - HERE
 //  MeshField::FieldElement f(numTri,
