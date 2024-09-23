@@ -29,7 +29,7 @@ template <typename FieldAccessor, template<typename, typename> class ElementType
 struct FieldElement {
   //TODO add static asserts for functions provided by the templated types
   const size_t numMeshEnts;
-  const FieldAccessor field;
+  const FieldAccessor field; //FIXME - need to support multiple fields associated with different mesh entity order/type
   ElementType<ShapeType, ElementToDofHolderMap> elm;
   static const size_t MeshEntDim = ShapeType::meshEntDim;
   FieldElement(size_t in_numMeshEnts, const FieldAccessor& fieldIn, const ElementType<ShapeType, ElementToDofHolderMap> elmIn) :
