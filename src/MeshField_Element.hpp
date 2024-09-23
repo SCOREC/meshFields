@@ -53,7 +53,7 @@ struct FieldElement {
           // Element = Edge and field storage is at mesh vertices (linear shape fn)
           // Element = Triangle and field storage is at mesh vertices and edges (quadratic shape fn)
           auto map = elm.elm2dof(ni, ci, ent, topo);
-          c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni];
+          c[ci] += field(map.node, map.component, map.entity) * shapeValues[ni]; //FIXME - only handles dofs associated with one mesh entity order/type
         }
       }
     }
