@@ -120,10 +120,8 @@ void quadraticTriangleLocalPointEval() {
   meshInfo.numEdge = 7;
   meshInfo.numTri = 3;
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, 2>(meshInfo);
-  auto vtxField = field.meshField.makeField<0>();
-  auto edgeField = field.meshField.makeField<1>();
 
-  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
+//  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
 
 // FIXME - HERE
 //  MeshField::FieldElement f(numTri,
