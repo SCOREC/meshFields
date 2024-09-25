@@ -35,20 +35,18 @@ struct LinearTriangleToVertexField {
 void triangleLocalPointEval() {
   const auto numElms = 3; //provided by the mesh
   const int numVerts = 5; //provided by the mesh
-  using Ctrlr =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, double ***>;
-  Ctrlr kk_ctrl({1, 1, numVerts}); //1 dof with 1 component per vtx
-  MeshField::MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
+  MeshField::MeshInfo meshInfo;
+  meshInfo.numVtx = 5;
+  meshInfo.numTri = 3;
+  auto field = MeshField::CreateLagrangeField<ExecutionSpace, 1>(meshInfo);
 
-  auto field0 = kokkosMeshField.makeField<0>();
-
-  MeshField::Element elm{ MeshField::LinearTriangleShape(), LinearTriangleToVertexField() };
-
-  MeshField::FieldElement f(numElms, field0, elm);
-
-  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
-  Kokkos::deep_copy(lc, 0.5);
-  auto x = MeshField::evaluate(f, lc);
+//  MeshField::Element elm{ MeshField::LinearTriangleShape(), LinearTriangleToVertexField() };
+//
+//  MeshField::FieldElement f(numElms, field0, elm);
+//
+//  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
+//  Kokkos::deep_copy(lc, 0.5);
+//  auto x = MeshField::evaluate(f, lc);
 }
 
 
@@ -76,22 +74,18 @@ struct LinearEdgeToVertexField {
 
 //evaluate a field at the specified local coordinate for each edge
 void edgeLocalPointEval() {
-  const auto numEdges = 7; //provided by the mesh
-  const int numVerts = 5; //provided by the mesh
-  using Ctrlr =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, double ***>;
-  Ctrlr kk_ctrl({1,1,numVerts}); //1 dof with 1 component per vtx
-  MeshField::MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
+  MeshField::MeshInfo meshInfo;
+  meshInfo.numVtx = 5;
+  meshInfo.numEdge = 7;
+  auto field = MeshField::CreateLagrangeField<ExecutionSpace, 1>(meshInfo);
 
-  auto field0 = kokkosMeshField.makeField<0>();
-
-  MeshField::Element elm{MeshField::LinearEdgeShape(), LinearEdgeToVertexField()};
-
-  MeshField::FieldElement f(numEdges, field0, elm);
-
-  Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
-  Kokkos::deep_copy(lc, 0.5);
-  auto x = MeshField::evaluate(f, lc);
+//  MeshField::Element elm{MeshField::LinearEdgeShape(), LinearEdgeToVertexField()};
+//
+//  MeshField::FieldElement f(numEdges, field0, elm);
+//
+//  Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
+//  Kokkos::deep_copy(lc, 0.5);
+//  auto x = MeshField::evaluate(f, lc);
 }
 
 struct QuadraticTriangleToField {
@@ -139,7 +133,7 @@ int main(int argc, char** argv) {
   Kokkos::initialize(argc, argv);
   triangleLocalPointEval();
   edgeLocalPointEval();
-  quadraticTriangleLocalPointEval();
+  //quadraticTriangleLocalPointEval();
   std::cerr << "done\n";
   Kokkos::finalize();
   return 0;

@@ -37,23 +37,36 @@ struct ShapeField : public Mixins... {
 
 template<typename VtxAccessor, typename EdgeAccessor>
 struct QuadraticAccessor {
-//  constexpr static const Topology topo[2] = {{Topology::is_Vertex, Vertex()},{Topology::is_Edge, Edge()}};
+  constexpr static const Mesh_Topology topo[2] = {Vertex, Edge};
   VtxAccessor vtxField;
   EdgeAccessor edgeField;
-//  auto operator()(int i, Topology t) {
-//    if(t.type == Topology::is_Vertex) {
-//      return vtxField(i);
-//    } else if(t.type == Topology::is_Edge) {
-//      return edgeField(i);
-//    } else {
-//      assert(false);
-//    }
-//  }
+  auto operator()(int node, int component, int entity, Mesh_Topology t) {
+    if(t == Vertex) {
+      return vtxField(node,component,entity);
+    } else if(t == Edge) {
+      return edgeField(node,component,entity);
+    } else {
+      assert(false);
+    }
+  }
+};
+
+template<typename VtxAccessor>
+struct LinearAccessor {
+  constexpr static const Mesh_Topology topo[1] = {Vertex};
+  VtxAccessor vtxField;
+  auto operator()(int node, int component, int entity, Mesh_Topology t) {
+    if(t == Vertex) {
+      return vtxField(node,component,entity);
+    } else {
+      assert(false);
+    }
+  }
 };
 
 
 template <typename ExecutionSpace, size_t order>
-auto CreateLagrangeField(MeshInfo& meshInfo) { //assumes 2d or 3d mesh, do we want to support 1d meshes?
+auto CreateLagrangeField(MeshInfo& meshInfo) { //FIXME assumes 2d, search for 'Triangle'
   static_assert((order == 1 || order == 2),
     "CreateLagrangeField only supports linear and quadratic fields\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
@@ -63,7 +76,11 @@ auto CreateLagrangeField(MeshInfo& meshInfo) { //assumes 2d or 3d mesh, do we wa
         Controller::KokkosController<MemorySpace, ExecutionSpace, double ***>;
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx}); //1 dof with 1 component per vtx
     MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
-    return ShapeField(kokkosMeshField, LinearTriangleShape(), meshInfo);
+    auto vtxField = kokkosMeshField.template makeField<0>();
+    using LA = LinearAccessor<decltype(vtxField)>;
+    using LinearLagrangeShapeField = ShapeField< MeshField<Ctrlr>, LinearTriangleShape, LA>;
+    LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
+    return llsf;
   } else if constexpr (order == 2) {
     assert(meshInfo.numVtx > 0);
     assert(meshInfo.numEdge > 0);
