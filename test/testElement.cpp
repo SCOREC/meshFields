@@ -38,7 +38,7 @@ void triangleLocalPointEval() {
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = 5;
   meshInfo.numTri = 3;
-  auto field = MeshField::CreateLagrangeField<ExecutionSpace, 1>(meshInfo);
+  auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1>(meshInfo);
 
 //  MeshField::Element elm{ MeshField::LinearTriangleShape(), LinearTriangleToVertexField() };
 //
@@ -77,15 +77,15 @@ void edgeLocalPointEval() {
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = 5;
   meshInfo.numEdge = 7;
-  auto field = MeshField::CreateLagrangeField<ExecutionSpace, 1>(meshInfo);
+  auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1>(meshInfo);
 
-//  MeshField::Element elm{MeshField::LinearEdgeShape(), LinearEdgeToVertexField()};
-//
-//  MeshField::FieldElement f(numEdges, field0, elm);
-//
-//  Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
-//  Kokkos::deep_copy(lc, 0.5);
-//  auto x = MeshField::evaluate(f, lc);
+  MeshField::Element elm{MeshField::LinearEdgeShape(), LinearEdgeToVertexField()};
+
+  MeshField::FieldElement f(meshInfo.numEdge, field, elm);
+
+  Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
+  Kokkos::deep_copy(lc, 0.5);
+  auto x = MeshField::evaluate(f, lc);
 }
 
 struct QuadraticTriangleToField {
@@ -113,7 +113,7 @@ void quadraticTriangleLocalPointEval() {
   meshInfo.numVtx = 5;
   meshInfo.numEdge = 7;
   meshInfo.numTri = 3;
-  auto field = MeshField::CreateLagrangeField<ExecutionSpace, 2>(meshInfo);
+  auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2>(meshInfo);
 
 //  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
 

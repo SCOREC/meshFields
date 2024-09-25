@@ -40,12 +40,14 @@ struct QuadraticAccessor {
   constexpr static const Mesh_Topology topo[2] = {Vertex, Edge};
   VtxAccessor vtxField;
   EdgeAccessor edgeField;
-  auto operator()(int node, int component, int entity, Mesh_Topology t) {
+  using BaseType = typename VtxAccessor::BaseType;
+  auto operator()(int node, int component, int entity, Mesh_Topology t) const {
     if(t == Vertex) {
       return vtxField(node,component,entity);
     } else if(t == Edge) {
       return edgeField(node,component,entity);
     } else {
+      Kokkos::printf("%d is not a support topology\n", t);
       assert(false);
     }
   }
@@ -55,25 +57,30 @@ template<typename VtxAccessor>
 struct LinearAccessor {
   constexpr static const Mesh_Topology topo[1] = {Vertex};
   VtxAccessor vtxField;
-  auto operator()(int node, int component, int entity, Mesh_Topology t) {
+  using BaseType = typename VtxAccessor::BaseType;
+  auto operator()(int node, int component, int entity, Mesh_Topology t) const {
     if(t == Vertex) {
       return vtxField(node,component,entity);
     } else {
-      assert(false);
+      Kokkos::printf("%d is not a support topology\n", t);
+      assert(false); //HERE - topology in LinearEdgeToVertexField in test/testElement.cc does not match
     }
   }
 };
 
 
-template <typename ExecutionSpace, size_t order>
+template <typename ExecutionSpace, typename DataType, size_t order>
 auto CreateLagrangeField(MeshInfo& meshInfo) { //FIXME assumes 2d, search for 'Triangle'
+  static_assert( (std::is_same_v<Real4, DataType> == true || 
+                  std::is_same_v<Real8, DataType> == true    ),
+    "CreateLagrangeField only supports single and double precision floating point fields\n");
   static_assert((order == 1 || order == 2),
     "CreateLagrangeField only supports linear and quadratic fields\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
   if constexpr (order == 1) {
     assert(meshInfo.numVtx > 0);
     using Ctrlr =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, double ***>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx}); //1 dof with 1 component per vtx
     MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
     auto vtxField = kokkosMeshField.template makeField<0>();
@@ -85,7 +92,7 @@ auto CreateLagrangeField(MeshInfo& meshInfo) { //FIXME assumes 2d, search for 'T
     assert(meshInfo.numVtx > 0);
     assert(meshInfo.numEdge > 0);
     using Ctrlr =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, double ***, double ***>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***, DataType ***>;
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx,   //1 dof with 1 component per vtx
                    /*field 1*/ 1, 1, meshInfo.numEdge}); //1 dof with 1 component per edge
     MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
