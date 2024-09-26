@@ -131,20 +131,15 @@ jobs:
 
     - name: MeshFields Configure CMake
       shell: bash
-      env:
-         kkInstall: ${{runner.workspace}}/build-kokkos/install
-         kkKernelsInstall: ${{runner.workspace}}/build-kokkos-kernels/install
-         cabInstall: ${{runner.workspace}}/build-cabana/install
-         ohInstall: ${{runner.workspace}}/build-omegah/install         
       run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
          -D meshFields_ENABLE_COVERAGE_BUILD=ON 
          -D CMAKE_BUILD_TYPE=${{matrix.build_type}}
-         -DKokkos_ROOT=$kkInstall
-         -DKokkosKernels_ROOT=$kkKernelsInstall
-         -DCabana_ROOT=$cabInstall
-         -DOmega_h_ROOT=$ohInstall
+         -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
+         -DKokkosKernels_ROOT=${{runner.workspace}}/build-kokkos-kernels/install
+         -DCabana_ROOT=${{runner.workspace}}/build-cabana/install
+         -DOmega_h_ROOT=${{runner.workspace}}/build-omegah/install
          -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
-         -DLCOV_SYSTEM_EXCLUDE_PATHS="/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/ompi/mpi/cxx/*\;/usr/include/*;$kkInstall;$kkKernelsInstall;$cabInstall;$ohInstall"
+         -DLCOV_SYSTEM_EXCLUDE_PATHS="/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/ompi/mpi/cxx/*\;/usr/include/*"
 
     - name: Run MeshFields for coverage
       working-directory: ${{runner.workspace}}/build-meshFields
