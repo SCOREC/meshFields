@@ -147,6 +147,7 @@ void quadraticTriangleLocalPointEval() {
   auto x = MeshField::evaluate(f, lc);
 }
 
+
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   triangleLocalPointEval();
