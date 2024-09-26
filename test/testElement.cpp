@@ -105,6 +105,7 @@ struct QuadraticTriangleToField {
              MeshField::LO ent, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Triangle);
     assert(ent == 0);
+    // clang-format off
     // hardcoded using the following numbering in MeshFields
     //         2
     //       /   \
@@ -112,7 +113,8 @@ struct QuadraticTriangleToField {
     //    /        \
     //   0 --  3 -- 1
     MeshField::LO triNode2DofHolder[6] = {/*vertices*/ 0, 1, 2,
-                                          /*edges*/ 0,    1, 2};
+                                          /*edges*/ 0, 1, 2};
+    // clang-format on
     MeshField::Mesh_Topology triNode2DofHolderTopo[6] = {
         /*vertices*/ MeshField::Vertex,
         MeshField::Vertex,
@@ -126,7 +128,7 @@ struct QuadraticTriangleToField {
   }
 };
 
-// evaluate a field at the specified local coordinate for each triangle using
+// evaluate a field at the specified local coordinate for one triangle using
 // quadratic shape functions
 void quadraticTriangleLocalPointEval() {
   MeshField::MeshInfo meshInfo;
@@ -143,6 +145,58 @@ void quadraticTriangleLocalPointEval() {
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
 
   Kokkos::View<MeshField::Real[1][3]> lc("localCoords");
+  Kokkos::deep_copy(lc, 0.5);
+  auto x = MeshField::evaluate(f, lc);
+}
+
+struct QuadraticTetrahedronToField {
+  constexpr static MeshField::Mesh_Topology Topology[1] = {
+      MeshField::Tetrahedron};
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
+             MeshField::LO ent, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Tetrahedron);
+    assert(ent == 0);
+    // clang-format off
+    MeshField::LO tetNode2DofHolder[10] = {
+        /*vertices*/ 0, 1, 2, 3,
+        /*edges*/ 0, 1, 2, 3, 4, 5};
+    // clang-format on
+    MeshField::Mesh_Topology tetNode2DofHolderTopo[10] = {
+        /*vertices*/ MeshField::Vertex,
+        MeshField::Vertex,
+        MeshField::Vertex,
+        /*edges*/ MeshField::Edge,
+        MeshField::Edge,
+        MeshField::Edge,
+        MeshField::Edge,
+        MeshField::Edge,
+        MeshField::Edge};
+    const auto dofHolder = tetNode2DofHolder[tetNodeIdx];
+    const auto dofHolderTopo = tetNode2DofHolderTopo[tetNodeIdx];
+    return {0, 0, dofHolder, dofHolderTopo};
+  }
+};
+
+// evaluate a field at the specified local coordinate for one tet using
+// linear shape functions
+void quadraticTetrahedronLocalPointEval() {
+  MeshField::MeshInfo meshInfo;
+  meshInfo.numVtx = 4;
+  meshInfo.numEdge = 6;
+  meshInfo.numTri = 4;
+  meshInfo.numTet = 1;
+  auto field =
+      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2, 3>(
+          meshInfo);
+
+  MeshField::Element elm{MeshField::QuadraticTetrahedronShape(),
+                         QuadraticTetrahedronToField()};
+
+  MeshField::FieldElement f(meshInfo.numTet, field, elm);
+
+  Kokkos::View<MeshField::Real[1][4]> lc("localCoords");
   Kokkos::deep_copy(lc, 0.5);
   auto x = MeshField::evaluate(f, lc);
 }

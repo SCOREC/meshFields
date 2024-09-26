@@ -74,8 +74,8 @@ auto CreateLagrangeField(MeshInfo &meshInfo) {
   static_assert(
       (order == 1 || order == 2),
       "CreateLagrangeField only supports linear and quadratic fields\n");
-  static_assert((dim == 1 || dim == 2),
-                "CreateLagrangeField only supports 1d and 2d meshes\n");
+  static_assert((dim == 1 || dim == 2 || dim == 3),
+                "CreateLagrangeField only supports 1d, 2d, and 3d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
   if constexpr (order == 1 && (dim == 1 || dim == 2)) {
     assert(meshInfo.numVtx > 0);
@@ -90,7 +90,7 @@ auto CreateLagrangeField(MeshInfo &meshInfo) {
         ShapeField<MeshField<Ctrlr>, LinearTriangleShape, LA>;
     LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
     return llsf;
-  } else if constexpr (order == 2 && dim == 2) {
+  } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
     assert(meshInfo.numVtx > 0);
     assert(meshInfo.numEdge > 0);
     using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace,
