@@ -10,7 +10,7 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 struct LinearTriangleToVertexField {
   constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Triangle};
-  KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO tri, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Triangle);
     //Need to find which mesh vertex is described by the triangle and one of its
     //node indices.
@@ -27,7 +27,7 @@ struct LinearTriangleToVertexField {
     //2   4 2 3
     MeshField::LO triNode2Vtx[3][3] = {{0,1,4},{4,1,2},{4,2,3}};
     const MeshField::LO vtx = triNode2Vtx[tri][triNodeIdx];
-    return {0, 0, vtx};
+    return {0, 0, vtx, MeshField::Vertex};
   }
 };
 
@@ -52,7 +52,7 @@ void triangleLocalPointEval() {
 
 struct LinearEdgeToVertexField {
   constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Edge};
-  KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge, MeshField::Mesh_Topology topo) const {
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx, MeshField::LO edge, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Edge);
     //Need to find which mesh vertex is described by the edge and one of its
     //node indices.  This would be implemented using mesh database adjacencies, etc.
@@ -68,7 +68,7 @@ struct LinearEdgeToVertexField {
     //6    4 2
     MeshField::LO edgeNode2Vtx[7][2] = {{0,1},{1,2},{2,3},{3,4},{4,0},{4,1},{4,2}};
     const MeshField::LO vtx = edgeNode2Vtx[edge][edgeNodeIdx];
-    return {0, 0, vtx};
+    return {0, 0, vtx, MeshField::Vertex};
   }
 };
 
@@ -89,20 +89,27 @@ void edgeLocalPointEval() {
 }
 
 struct QuadraticTriangleToField {
-  constexpr static MeshField::Mesh_Topology Topology[2] = {MeshField::Edge, MeshField::Triangle};
+  constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Triangle};
   LinearEdgeToVertexField edge2vtx;
   LinearTriangleToVertexField tri2vtx;
 
-  KOKKOS_FUNCTION MeshField::Map operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO ent, MeshField::Mesh_Topology topo) const {
-    if(topo == MeshField::Edge ) {
-      return edge2vtx(triNodeIdx, triCompIdx, ent, MeshField::Edge);
-    } else if (topo == MeshField::Triangle ) {
-      return tri2vtx(triNodeIdx, triCompIdx, ent, MeshField::Triangle);
-    } else {
-      std::cerr << "ERROR: Unsupported topology: " << __func__ << " supports MESH_VERTEX and MESH_TRIANGLE.\n";
-      assert(false);
-      return {};
-    }
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO ent, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Triangle);
+    assert(ent == 0);
+    //hardcoded using the following numbering in MeshFields
+    //       2
+    //     /   \
+    //    5     4
+    //  /        \
+    // 0 --  3 -- 1
+    MeshField::LO triNode2DofHolder[6] = {/*vertices*/0,1,2,
+                                          /*edges*/   0,1,2};
+    MeshField::Mesh_Topology triNode2DofHolderTopo[6] = {
+      /*vertices*/MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+      /*edges*/   MeshField::Edge, MeshField::Edge, MeshField::Edge};
+    const auto dofHolder = triNode2DofHolder[triNodeIdx];
+    const auto dofHolderTopo = triNode2DofHolderTopo[triNodeIdx];
+    return {0,0,dofHolder,dofHolderTopo};
   }
 };
 
@@ -110,9 +117,9 @@ struct QuadraticTriangleToField {
 //quadratic shape functions
 void quadraticTriangleLocalPointEval() {
   MeshField::MeshInfo meshInfo;
-  meshInfo.numVtx = 5;
-  meshInfo.numEdge = 7;
-  meshInfo.numTri = 3;
+  meshInfo.numVtx = 3;
+  meshInfo.numEdge = 3;
+  meshInfo.numTri = 1;
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2>(meshInfo);
 
 //  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };

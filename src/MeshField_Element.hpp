@@ -8,10 +8,11 @@
 
 namespace MeshField {
 
-struct Map {
+struct ElementToDofHolderMap {
   LO node;
   LO component;
   LO entity;
+  Mesh_Topology topo;
 };
 
 template <typename Shape, typename ElementToDofHolderMap>
@@ -44,7 +45,7 @@ struct FieldElement {
     const auto shapeValues = elm.shapeFn.getValues(localCoord);
     for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
-    for (auto topo : elm.elm2dof.Topology) {
+    for (auto topo : elm.elm2dof.Topology) { //element topology
       for (int ni = 0; ni < elm.shapeFn.numNodes; ++ni) {
         for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci) {
           //map the element indices to the underlying field storage
@@ -53,7 +54,7 @@ struct FieldElement {
           // Element = Edge and field storage is at mesh vertices (linear shape fn)
           // Element = Triangle and field storage is at mesh vertices and edges (quadratic shape fn)
           auto map = elm.elm2dof(ni, ci, ent, topo);
-          c[ci] += field(map.node, map.component, map.entity, topo) * shapeValues[ni]; //FIXME - only handles dofs associated with one mesh entity order/type
+          c[ci] += field(map.node, map.component, map.entity, map.topo) * shapeValues[ni];
         }
       }
     }

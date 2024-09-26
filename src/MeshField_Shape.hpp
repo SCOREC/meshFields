@@ -3,6 +3,10 @@
 #include <MeshField_Defines.hpp>
 
 // getValues(...) implementation copied from SCOREC/core apf/apfShape.cc @ 7cd76473
+//
+// TODO: define MeshField's canonical ordering using PUMI's, these shape function
+// implementations require it. A lookup table should be defined for each
+// (possibly following what omega_h does in Omega_h_element.hpp).
 
 namespace MeshField {
 struct LinearEdgeShape {
