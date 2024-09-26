@@ -40,13 +40,13 @@ void triangleLocalPointEval() {
   meshInfo.numTri = 3;
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1>(meshInfo);
 
-//  MeshField::Element elm{ MeshField::LinearTriangleShape(), LinearTriangleToVertexField() };
-//
-//  MeshField::FieldElement f(numElms, field0, elm);
-//
-//  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
-//  Kokkos::deep_copy(lc, 0.5);
-//  auto x = MeshField::evaluate(f, lc);
+  MeshField::Element elm{ MeshField::LinearTriangleShape(), LinearTriangleToVertexField() };
+
+  MeshField::FieldElement f(numElms, field, elm);
+
+  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
+  Kokkos::deep_copy(lc, 0.5);
+  auto x = MeshField::evaluate(f, lc);
 }
 
 
@@ -90,8 +90,6 @@ void edgeLocalPointEval() {
 
 struct QuadraticTriangleToField {
   constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Triangle};
-  LinearEdgeToVertexField edge2vtx;
-  LinearTriangleToVertexField tri2vtx;
 
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx, MeshField::LO ent, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Triangle);
@@ -122,25 +120,20 @@ void quadraticTriangleLocalPointEval() {
   meshInfo.numTri = 1;
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2>(meshInfo);
 
-//  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), LinearTriangleToVertexField() };
+  MeshField::Element elm{ MeshField::QuadraticTriangleShape(), QuadraticTriangleToField() };
 
-// FIXME - HERE
-//  MeshField::FieldElement f(numTri,
-//                             vtxField,
-//                             edgeField,
-//                             LinearTriangleToVertexField(),
-//                             LinearTriangleToEdgeField());
-//
-//  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
-//  Kokkos::deep_copy(lc, 0.5);
-//  auto x = MeshField::evaluate(f, lc);
+  MeshField::FieldElement f(meshInfo.numTri, field, elm);
+
+  Kokkos::View<MeshField::Real[1][3]> lc("localCoords");
+  Kokkos::deep_copy(lc, 0.5);
+  auto x = MeshField::evaluate(f, lc);
 }
 
 int main(int argc, char** argv) {
   Kokkos::initialize(argc, argv);
   triangleLocalPointEval();
   edgeLocalPointEval();
-  //quadraticTriangleLocalPointEval();
+  quadraticTriangleLocalPointEval();
   std::cerr << "done\n";
   Kokkos::finalize();
   return 0;
