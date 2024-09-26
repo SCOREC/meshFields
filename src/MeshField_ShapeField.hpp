@@ -74,11 +74,10 @@ auto CreateLagrangeField(MeshInfo &meshInfo) {
   static_assert(
       (order == 1 || order == 2),
       "CreateLagrangeField only supports linear and quadratic fields\n");
-  static_assert(
-      (dim == 1 || dim == 2),
-      "CreateLagrangeField only supports 1d and 2d meshes\n");
+  static_assert((dim == 1 || dim == 2),
+                "CreateLagrangeField only supports 1d and 2d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
-  if constexpr (order == 1 && (dim == 1 || dim == 2) ) {
+  if constexpr (order == 1 && (dim == 1 || dim == 2)) {
     assert(meshInfo.numVtx > 0);
     using Ctrlr =
         Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
