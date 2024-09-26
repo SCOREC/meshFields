@@ -152,7 +152,6 @@ int main(int argc, char **argv) {
   triangleLocalPointEval();
   edgeLocalPointEval();
   quadraticTriangleLocalPointEval();
-  std::cerr << "done\n";
   Kokkos::finalize();
   return 0;
 }
