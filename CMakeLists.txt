@@ -146,10 +146,10 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
       "${CMAKE_CURRENT_LIST_DIR}/.github/*"
       "${CMAKE_CURRENT_BINARY_DIR}/nvcc_internal_extended_lambda_implementation"
       "/tmp/*"
-      "${Cabana_DIR}"
-      "${Kokkos_DIR}"
-      "${KokkosKernels_DIR}"
-      "${Omega_h_DIR}"
+      "${Cabana_DIR}/*"
+      "${Kokkos_DIR}/*"
+      "${KokkosKernels_DIR}/*"
+      "${Omega_h_DIR}/*"
       "${LCOV_SYSTEM_EXCLUDE_PATHS}"  
   )
 
