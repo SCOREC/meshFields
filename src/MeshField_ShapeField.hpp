@@ -4,7 +4,6 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_Shape.hpp"
-#include "MeshField_logging.hpp"
 #include <type_traits> //decltype
 
 namespace MeshField {
