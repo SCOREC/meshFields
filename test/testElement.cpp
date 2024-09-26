@@ -40,7 +40,7 @@ void triangleLocalPointEval() {
   meshInfo.numVtx = 5;
   meshInfo.numTri = 3;
   auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1>(
+      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1, 2>(
           meshInfo);
 
   MeshField::Element elm{MeshField::LinearTriangleShape(),
@@ -84,7 +84,7 @@ void edgeLocalPointEval() {
   meshInfo.numVtx = 5;
   meshInfo.numEdge = 7;
   auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1>(
+      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1, 1>(
           meshInfo);
 
   MeshField::Element elm{MeshField::LinearEdgeShape(),
@@ -134,7 +134,7 @@ void quadraticTriangleLocalPointEval() {
   meshInfo.numEdge = 3;
   meshInfo.numTri = 1;
   auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2>(
+      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2, 2>(
           meshInfo);
 
   MeshField::Element elm{MeshField::QuadraticTriangleShape(),

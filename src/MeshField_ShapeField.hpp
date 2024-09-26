@@ -65,9 +65,8 @@ template <typename VtxAccessor> struct LinearAccessor {
   }
 };
 
-template <typename ExecutionSpace, typename DataType, size_t order>
-auto CreateLagrangeField(
-    MeshInfo &meshInfo) { // FIXME assumes 2d, search for 'Triangle'
+template <typename ExecutionSpace, typename DataType, size_t order, size_t dim>
+auto CreateLagrangeField(MeshInfo &meshInfo) {
   static_assert((std::is_same_v<Real4, DataType> == true ||
                  std::is_same_v<Real8, DataType> == true),
                 "CreateLagrangeField only supports single and double precision "
@@ -75,8 +74,11 @@ auto CreateLagrangeField(
   static_assert(
       (order == 1 || order == 2),
       "CreateLagrangeField only supports linear and quadratic fields\n");
+  static_assert(
+      (dim == 1 || dim == 2),
+      "CreateLagrangeField only supports 1d and 2d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
-  if constexpr (order == 1) {
+  if constexpr (order == 1 && (dim == 1 || dim == 2) ) {
     assert(meshInfo.numVtx > 0);
     using Ctrlr =
         Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
@@ -89,7 +91,7 @@ auto CreateLagrangeField(
         ShapeField<MeshField<Ctrlr>, LinearTriangleShape, LA>;
     LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
     return llsf;
-  } else if constexpr (order == 2) {
+  } else if constexpr (order == 2 && dim == 2) {
     assert(meshInfo.numVtx > 0);
     assert(meshInfo.numEdge > 0);
     using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace,
