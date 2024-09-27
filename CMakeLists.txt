@@ -20,6 +20,8 @@ set(MESHFIELD_HEADERS
   src/KokkosController.hpp
   src/CabanaController.hpp
   src/MeshField.hpp
+  src/MeshField_Element.hpp
+  src/MeshField_Shape.hpp
 )
 
 #create header only library
@@ -81,22 +83,18 @@ function(will_fail_valgrind_test_func TEST_NAME)
   endif()
 endfunction()
 
+function(meshfields_add_exe EXE_NAME EXE_SRC)
+  add_executable(${EXE_NAME} ${EXE_SRC})
+  target_link_libraries(${EXE_NAME} PRIVATE meshFields)
+endfunction()
 
 # Creating minimal reproduction of error
-add_executable(Main test/testMain.cpp)
-target_link_libraries(Main PRIVATE meshFields)
-
-add_executable(KokkosTests test/testKokkos.cpp)
-target_link_libraries(KokkosTests PRIVATE meshFields)
-
-add_executable(CabanaTests test/testCabana.cpp)
-target_link_libraries(CabanaTests PRIVATE meshFields)
-
-add_executable(SerializationTests test/testSerialize.cpp)
-target_link_libraries(SerializationTests PRIVATE meshFields)
-
-add_executable(QRTests test/testQR.cpp)
-target_link_libraries(QRTests PRIVATE meshFields)
+meshfields_add_exe(Main test/testMain.cpp)
+meshfields_add_exe(KokkosTests test/testKokkos.cpp)
+meshfields_add_exe(CabanaTests test/testCabana.cpp)
+meshfields_add_exe(SerializationTests test/testSerialize.cpp)
+meshfields_add_exe(QRTests test/testQR.cpp)
+meshfields_add_exe(ElementTests test/testElement.cpp)
 
 test_func(MainTests ./Main)
 test_func(KokkosTests ./KokkosTests)
@@ -109,6 +107,7 @@ else()
   #see https://github.com/kokkos/kokkos-kernels/issues/2328
   will_fail_valgrind_test_func(QRTestsSerialValgrind ./QRTests)
 endif()
+test_func(ElementTests ./ElementTests)
 
 #Code Coverage set up -------------------------------------------------------
 
