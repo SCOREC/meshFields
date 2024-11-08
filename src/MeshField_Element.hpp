@@ -41,6 +41,7 @@ struct FieldElement {
   // heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
   using ValArray = Kokkos::Array<typename FieldAccessor::BaseType,
                                  ShapeType::numComponentsPerDof>;
+  static const size_t NumComponents = ShapeType::numComponentsPerDof;
   KOKKOS_INLINE_FUNCTION ValArray
   getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
     ValArray c;
@@ -71,7 +72,8 @@ struct FieldElement {
 // given an array of parametric coordinates 'localCoords', one per mesh element,
 // evaluate the fields value within each element
 template <typename Element>
-auto evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
+Kokkos::View<Real* [Element::NumComponents]>
+evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
   // TODO add static asserts for values and functions provided by the templated
   // types
   assert(localCoords.extent(0) == fes.numMeshEnts);
