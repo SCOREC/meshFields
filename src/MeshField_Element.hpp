@@ -72,7 +72,7 @@ struct FieldElement {
 // given an array of parametric coordinates 'localCoords', one per mesh element,
 // evaluate the fields value within each element
 template <typename Element>
-Kokkos::View<Real* [Element::NumComponents]>
+Kokkos::View<Real *[Element::NumComponents]>
 evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
   // TODO add static asserts for values and functions provided by the templated
   // types
