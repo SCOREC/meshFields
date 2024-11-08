@@ -9,7 +9,11 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 struct LinearTriangleToVertexField {
-  constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Triangle};
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Triangle};
+  }
+
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
              MeshField::LO tri, MeshField::Mesh_Topology topo) const {
@@ -53,7 +57,11 @@ void triangleLocalPointEval() {
 }
 
 struct LinearEdgeToVertexField {
-  constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Edge};
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Edge};
+  }
+
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO edgeNodeIdx, MeshField::LO edgeCompIdx,
              MeshField::LO edge, MeshField::Mesh_Topology topo) const {
@@ -97,7 +105,10 @@ void edgeLocalPointEval() {
 }
 
 struct QuadraticTriangleToField {
-  constexpr static MeshField::Mesh_Topology Topology[1] = {MeshField::Triangle};
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Triangle};
+  }
 
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
@@ -149,8 +160,10 @@ void quadraticTriangleLocalPointEval() {
 }
 
 struct QuadraticTetrahedronToField {
-  constexpr static MeshField::Mesh_Topology Topology[1] = {
-      MeshField::Tetrahedron};
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Tetrahedron};
+  }
 
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,

@@ -38,6 +38,8 @@ struct QuadraticAccessor {
   VtxAccessor vtxField;
   EdgeAccessor edgeField;
   using BaseType = typename VtxAccessor::BaseType;
+
+  KOKKOS_FUNCTION
   auto operator()(int node, int component, int entity, Mesh_Topology t) const {
     if (t == Vertex) {
       return vtxField(node, component, entity);
@@ -54,6 +56,8 @@ template <typename VtxAccessor> struct LinearAccessor {
   constexpr static const Mesh_Topology topo[1] = {Vertex};
   VtxAccessor vtxField;
   using BaseType = typename VtxAccessor::BaseType;
+
+  KOKKOS_FUNCTION
   auto operator()(int node, int component, int entity, Mesh_Topology t) const {
     if (t == Vertex) {
       return vtxField(node, component, entity);
