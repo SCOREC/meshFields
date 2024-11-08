@@ -35,7 +35,6 @@ struct LinearTriangleToVertexField {
 // evaluate a field at the specified local coordinate for each triangle
 void triangleLocalPointEval() {
   const auto numElms = 3; // provided by the mesh
-  const int numVerts = 5; // provided by the mesh
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = 5;
   meshInfo.numTri = 3;
