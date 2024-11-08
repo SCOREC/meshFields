@@ -2,7 +2,6 @@
 #define MESHFIELD_SHAPEFIELD_HPP
 
 #include "KokkosController.hpp"
-#include "CabanaController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_Shape.hpp"
 #include <type_traits> //decltype
@@ -66,7 +65,7 @@ template <typename VtxAccessor> struct LinearAccessor {
   }
 };
 
-template <typename ExecutionSpace, class CtrlrType, typename DataType, size_t order, size_t dim>
+template <typename ExecutionSpace, typename DataType, size_t order, size_t dim>
 auto CreateLagrangeField(MeshInfo &meshInfo) {
   static_assert((std::is_same_v<Real4, DataType> == true ||
                  std::is_same_v<Real8, DataType> == true),
@@ -75,18 +74,13 @@ auto CreateLagrangeField(MeshInfo &meshInfo) {
   static_assert(
       (order == 1 || order == 2),
       "CreateLagrangeField only supports linear and quadratic fields\n");
-  // https://godbolt.org/z/b8TEG8M8E - static_assert for templated type
-  static_assert(
-      ( std::is_same_v<CtrlrType,Controller::KokkosController> ||
-        std::is_same_v<CtrlrType,Controller::CabanaController>   ),
-      "CreateLagrangeField only supports field storage using Kokkos or Cabana\n");
   static_assert((dim == 1 || dim == 2 || dim == 3),
                 "CreateLagrangeField only supports 1d, 2d, and 3d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
   if constexpr (order == 1 && (dim == 1 || dim == 2)) {
     assert(meshInfo.numVtx > 0);
     using Ctrlr =
-        CtrlrType<MemorySpace, ExecutionSpace, DataType ***>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
     // 1 dof with 1 component per vtx
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx});
     MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
