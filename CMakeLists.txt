@@ -35,6 +35,9 @@ target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
 target_link_libraries(meshFields INTERFACE Cabana::Core)
 target_link_libraries(meshFields INTERFACE Kokkos::kokkoskernels)
 target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
+if(Kokkos_ENABLE_CUDA)
+  target_compile_options(meshFields INTERFACE "--expt-relaxed-constexpr")
+endif()
 
 #Settings options for testing
 enable_testing()
