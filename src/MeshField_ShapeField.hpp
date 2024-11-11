@@ -93,7 +93,7 @@ auto CreateLagrangeField(MeshInfo &meshInfo) {
     using LinearLagrangeShapeField =
         ShapeField<MeshField<Ctrlr>, LinearTriangleShape, LA>;
     LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
-    return llsf; //Is this invoking the copy constructor of KokkosController???
+    return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
     assert(meshInfo.numVtx > 0);
     assert(meshInfo.numEdge > 0);
