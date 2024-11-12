@@ -39,6 +39,19 @@ if(Kokkos_ENABLE_CUDA)
   target_compile_options(meshFields INTERFACE "--expt-relaxed-constexpr")
 endif()
 
+#support ctags
+option(MeshFields_USE_CTAGS "Generate Ctags" OFF)
+if(MeshFields_USE_CTAGS)
+  #from: https://stackoverflow.com/a/9842046
+  set_source_files_properties(tags PROPERTIES GENERATED true)
+  add_custom_target(tags
+    COMMAND ctags -R --c++-kinds=+p --fields=+iaS --extra=+q
+            --exclude=docs --exclude=cmake --exclude=.git
+            --exclude=.github .
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_dependencies(meshFields tags)
+endif()
+
 #Settings options for testing
 enable_testing()
 include(CTest)
@@ -124,27 +137,22 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
 
   append_coverage_compiler_flags()
 
-  set(CABANA_INSTALL_DIR "" CACHE PATH "Set the path to the cabana install directory so it isn't processed by lcov")
-  set(KOKKOS_INSTALL_DIR "" CACHE PATH "Set the path to the kokkos install directory so it isn't processed by lcov")
-  set(KOKKOSKERNELS_INSTALL_DIR "" CACHE PATH "Set the path to the kokkos kernels install directory so it isn't processed by lcov")
-  set(OMEGAH_INSTALL_DIR "" CACHE PATH "Set the path to the omegah install directory so it isn't processed by lcov")
   set(LCOV_SYSTEM_EXCLUDE_PATHS "" CACHE PATH "Set path to system libraries, c++ compiler and cuda-11.4 by default, to be excluded from lcov analysis")
-
   
-  if (NOT DEFINED CACHE{CABANA_INSTALL_DIR})
-    message(ERROR " CABANA_INSTALL_DIR was not set or the path does not exist")
+  if (NOT EXISTS ${Cabana_DIR})
+    message(FATAL_ERROR " Cabana_DIR was not set or the path does not exist")
   endif()
 
-  if (NOT DEFINED CACHE{KOKKOS_INSTALL_DIR})
-    message(ERROR " KOKKOS_INSTALL_DIR was not set or the path does not exist")
+  if (NOT EXISTS ${Kokkos_DIR})
+    message(FATAL_ERROR " Kokkos_DIR was not set or the path does not exist")
   endif()
 
-  if (NOT DEFINED CACHE{KOKKOSKERNELS_INSTALL_DIR})
-    message(ERROR " KOKKOSKERNELS_INSTALL_DIR was not set or the path does not exist")
+  if (NOT EXISTS ${KokkosKernels_DIR})
+    message(FATAL_ERROR " KokkosKernels_DIR was not set or the path does not exist")
   endif()
 
-  if (NOT DEFINED CACHE{OMEGAH_INSTALL_DIR})
-    message(ERROR " OMEGAH_INSTALL_DIR was not set or the path does not exist")
+  if (NOT EXISTS ${Omega_h_DIR})
+    message(FATAL_ERROR " Omega_h_DIR was not set or the path does not exist")
   endif()
 
   setup_target_for_coverage_lcov(
@@ -155,10 +163,10 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
       "${CMAKE_CURRENT_LIST_DIR}/.github/*"
       "${CMAKE_CURRENT_BINARY_DIR}/nvcc_internal_extended_lambda_implementation"
       "/tmp/*"
-      "${CABANA_INSTALL_DIR}"
-      "${KOKKOS_INSTALL_DIR}"
-      "${KOKKOSKERNELS_INSTALL_DIR}"
-      "${OMEGAH_INSTALL_DIR}"
+      "${Cabana_DIR}/*"
+      "${Kokkos_DIR}/*"
+      "${KokkosKernels_DIR}/*"
+      "${Omega_h_DIR}/*"
       "${LCOV_SYSTEM_EXCLUDE_PATHS}"  
   )
 
