@@ -40,7 +40,9 @@ if(MeshFields_USE_CTAGS)
   #from: https://stackoverflow.com/a/9842046
   set_source_files_properties(tags PROPERTIES GENERATED true)
   add_custom_target(tags
-    COMMAND ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .
+    COMMAND ctags -R --c++-kinds=+p --fields=+iaS --extra=+q
+            --exclude=docs --exclude=cmake --exclude=.git
+            --exclude=.github .
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_dependencies(meshFields tags)
 endif()
