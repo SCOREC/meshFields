@@ -1,5 +1,6 @@
 #include "Omega_h_build.hpp"
 #include "Omega_h_file.hpp"
+#include "Omega_h_simplex.hpp"
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_Element.hpp"
@@ -11,6 +12,9 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 struct LinearTriangleToVertexField {
+  Omega_h::LOs triVerts;
+  LinearTriangleToVertexField(Omega_h::Mesh mesh) : triVerts(mesh.ask_elem_verts()) {}
+
   KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
   getTopology() const {
     return {MeshField::Triangle};
@@ -25,16 +29,14 @@ struct LinearTriangleToVertexField {
     // adjacencies, canonical ordering provided by the mesh database, which
     // would provide the index to the vertex in the dof holder array (assuming
     // the dof holder array is in the same order as vertex local numbering in
-    // the mesh). For the simplicity of the test case, it is hard coded here
-    // using local dof holder numbering:
-    //      node
-    // tri 0 1 2
-    // 0   0 1 4
-    // 1   4 1 2
-    // 2   4 2 3
-    MeshField::LO triNode2Vtx[3][3] = {{0, 1, 4}, {4, 1, 2}, {4, 2, 3}};
-    const MeshField::LO vtx = triNode2Vtx[tri][triNodeIdx];
-    return {0, 0, vtx, MeshField::Vertex};
+    // the mesh).
+    const auto triDim = 2;
+    const auto vtxDim = 0;
+    const auto ignored = -1;
+    const auto localVtxIdx = Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
+    const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+    const MeshField::LO vtx = triVerts[ (tri * triToVtxDegree) + localVtxIdx ];
+    return {0, 0, vtx, MeshField::Vertex}; //node, comp, ent, topo
   }
 };
 
@@ -53,11 +55,11 @@ void triangleLocalPointEval(Omega_h::Library& ohLib) {
           meshInfo);
 
   MeshField::Element elm{MeshField::LinearTriangleShape(),
-                         LinearTriangleToVertexField()};
+                         LinearTriangleToVertexField(mesh)};
 
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
 
-  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
+  Kokkos::View<MeshField::Real*[3] > lc("localCoords", meshInfo.numTri);
   Kokkos::deep_copy(lc, 0.5);
   auto x = MeshField::evaluate(f, lc);
 }
