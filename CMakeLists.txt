@@ -98,6 +98,7 @@ meshfields_add_exe(CabanaTests test/testCabana.cpp)
 meshfields_add_exe(SerializationTests test/testSerialize.cpp)
 meshfields_add_exe(QRTests test/testQR.cpp)
 meshfields_add_exe(ElementTests test/testElement.cpp)
+meshfields_add_exe(OmegahElementTests test/testOmegahElement.cpp)
 
 test_func(MainTests ./Main)
 test_func(KokkosTests ./KokkosTests)
@@ -111,6 +112,7 @@ else()
   will_fail_valgrind_test_func(QRTestsSerialValgrind ./QRTests)
 endif()
 test_func(ElementTests ./ElementTests)
+test_func(OmegahElementTests ./OmegahElementTests)
 
 #Code Coverage set up -------------------------------------------------------
 
