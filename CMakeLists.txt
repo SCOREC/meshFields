@@ -34,6 +34,17 @@ target_link_libraries(meshFields INTERFACE Cabana::Core)
 target_link_libraries(meshFields INTERFACE Kokkos::kokkoskernels)
 target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 
+#support ctags
+option(MeshFields_USE_CTAGS "Generate Ctags" OFF)
+if(MeshFields_USE_CTAGS)
+  #from: https://stackoverflow.com/a/9842046
+  set_source_files_properties(tags PROPERTIES GENERATED true)
+  add_custom_target(tags
+    COMMAND ctags -R --c++-kinds=+p --fields=+iaS --extra=+q .
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_dependencies(meshFields tags)
+endif()
+
 #Settings options for testing
 enable_testing()
 include(CTest)
