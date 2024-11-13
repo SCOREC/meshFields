@@ -46,7 +46,8 @@ void triangleLocalPointEval(Omega_h::Library& ohLib) {
   const auto family = OMEGA_H_SIMPLEX;
   auto len = 1.0;
   auto mesh = Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
-  Omega_h::vtk::write_parallel("square.vtk", &mesh, 2);
+  const auto meshDim = 2;
+  Omega_h::vtk::write_parallel("square.vtk", &mesh, meshDim);
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = mesh.nverts();
   meshInfo.numTri = mesh.nfaces();
@@ -54,14 +55,36 @@ void triangleLocalPointEval(Omega_h::Library& ohLib) {
       MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1, 2>(
           meshInfo);
 
+  //set field f based on analytic function
+  auto coords = mesh.coords();
+  auto setField = KOKKOS_LAMBDA(const int &i) {
+    const auto xpos = coords[i*meshDim];
+    field(0,0,i,MeshField::Vertex) = xpos*xpos;
+  };
+  field.meshField.parallel_for({0}, {meshInfo.numVtx}, setField, "setField");
+
   MeshField::Element elm{MeshField::LinearTriangleShape(),
                          LinearTriangleToVertexField(mesh)};
 
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
 
   Kokkos::View<MeshField::Real*[3] > lc("localCoords", meshInfo.numTri);
-  Kokkos::deep_copy(lc, 0.5);
-  auto x = MeshField::evaluate(f, lc);
+  Kokkos::deep_copy(lc, 0.5); //the mid point
+  auto eval = MeshField::evaluate(f, lc);
+
+  //check the result
+  auto elmCentroids = Omega_h::average_field(&mesh, meshDim, Omega_h::LOs(mesh.nents(meshDim),0,1), meshDim, coords);
+  const auto tol = 1e-6;
+  auto checkResult = KOKKOS_LAMBDA(const int &i) {
+    const auto xpos = elmCentroids[i*meshDim];
+    const auto expected = xpos*xpos;
+    const auto computed = eval(i,0);
+    if( Kokkos::fabs(computed - expected) > tol ) {
+      Kokkos::printf("result for elm %d does not match: expected %f computed %f\n",
+          i, expected, computed);
+    }
+  };
+  field.meshField.parallel_for({0}, {meshInfo.numTri}, checkResult, "checkResult");
 }
 
 int main(int argc, char **argv) {
