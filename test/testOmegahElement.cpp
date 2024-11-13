@@ -42,6 +42,11 @@ struct LinearTriangleToVertexField {
   }
 };
 
+KOKKOS_INLINE_FUNCTION
+MeshField::Real linearFunction(MeshField::Real x, MeshField::Real y) {
+  return 2.0 * x + y;
+}
+
 // evaluate a field at the specified local coordinate for each triangle
 void triangleLocalPointEval(Omega_h::Library &ohLib) {
   auto world = ohLib.world();
@@ -60,8 +65,9 @@ void triangleLocalPointEval(Omega_h::Library &ohLib) {
   // set field f based on analytic function
   auto coords = mesh.coords();
   auto setField = KOKKOS_LAMBDA(const int &i) {
-    const auto xpos = coords[i * meshDim];
-    field(0, 0, i, MeshField::Vertex) = xpos * xpos;
+    const auto x = coords[i * meshDim];
+    const auto y = coords[i * meshDim + 1];
+    field(0, 0, i, MeshField::Vertex) = linearFunction(x, y);
   };
   field.meshField.parallel_for({0}, {meshInfo.numVtx}, setField, "setField");
 
@@ -71,7 +77,7 @@ void triangleLocalPointEval(Omega_h::Library &ohLib) {
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
 
   Kokkos::View<MeshField::Real *[3]> lc("localCoords", meshInfo.numTri);
-  Kokkos::deep_copy(lc, 0.5); // the mid point
+  Kokkos::deep_copy(lc, 1 / 3.0); // the centroid of the triangle
   auto eval = MeshField::evaluate(f, lc);
 
   // check the result
@@ -79,8 +85,9 @@ void triangleLocalPointEval(Omega_h::Library &ohLib) {
       &mesh, meshDim, Omega_h::LOs(mesh.nents(meshDim), 0, 1), meshDim, coords);
   const auto tol = 1e-6;
   auto checkResult = KOKKOS_LAMBDA(const int &i) {
-    const auto xpos = elmCentroids[i * meshDim];
-    const auto expected = xpos * xpos;
+    const auto x = elmCentroids[i * meshDim];
+    const auto y = elmCentroids[i * meshDim + 1];
+    const auto expected = linearFunction(x, y);
     const auto computed = eval(i, 0);
     if (Kokkos::fabs(computed - expected) > tol) {
       Kokkos::printf(
