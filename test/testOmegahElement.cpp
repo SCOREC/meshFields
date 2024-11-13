@@ -83,8 +83,7 @@ bool triangleLocalPointEval(Omega_h::Library &ohLib) {
   // check the result
   auto elmCentroids = Omega_h::average_field(
       &mesh, meshDim, Omega_h::LOs(mesh.nents(meshDim), 0, 1), meshDim, coords);
-  const auto tol = 1e-6;
-
+  const auto tol = 1e-9; // not sure what the upper bound is on compute errors
   MeshField::LO numErrors = 0;
   Kokkos::parallel_reduce(
       "checkResult", meshInfo.numTri,
