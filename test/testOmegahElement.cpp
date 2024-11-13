@@ -86,8 +86,9 @@ bool triangleLocalPointEval(Omega_h::Library &ohLib) {
   const auto tol = 1e-6;
 
   MeshField::LO numErrors = 0;
-  Kokkos::parallel_reduce("checkResult", meshInfo.numTri, 
-      KOKKOS_LAMBDA (const int& i, MeshField::LO& lerrors) {
+  Kokkos::parallel_reduce(
+      "checkResult", meshInfo.numTri,
+      KOKKOS_LAMBDA(const int &i, MeshField::LO &lerrors) {
         const auto x = elmCentroids[i * meshDim];
         const auto y = elmCentroids[i * meshDim + 1];
         const auto expected = linearFunction(x, y);
@@ -96,11 +97,12 @@ bool triangleLocalPointEval(Omega_h::Library &ohLib) {
         if (Kokkos::fabs(computed - expected) > tol) {
           isError = 1;
           Kokkos::printf(
-              "result for elm %d does not match: expected %f computed %f\n",
-              i, expected, computed);
+              "result for elm %d does not match: expected %f computed %f\n", i,
+              expected, computed);
         }
         lerrors += isError;
-      }, numErrors);
+      },
+      numErrors);
   return (numErrors > 0);
 }
 
@@ -108,7 +110,7 @@ int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
   auto failed = triangleLocalPointEval(lib);
-  if(failed) {
+  if (failed) {
     printf("triangleLocalPointEval(...) failed...\n");
     exit(EXIT_FAILURE);
   }
