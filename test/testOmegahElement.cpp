@@ -48,7 +48,7 @@ MeshField::Real linearFunction(MeshField::Real x, MeshField::Real y) {
 }
 
 // evaluate a field at the specified local coordinate for each triangle
-void triangleLocalPointEval(Omega_h::Library &ohLib) {
+bool triangleLocalPointEval(Omega_h::Library &ohLib) {
   auto world = ohLib.world();
   const auto family = OMEGA_H_SIMPLEX;
   auto len = 1.0;
@@ -84,25 +84,34 @@ void triangleLocalPointEval(Omega_h::Library &ohLib) {
   auto elmCentroids = Omega_h::average_field(
       &mesh, meshDim, Omega_h::LOs(mesh.nents(meshDim), 0, 1), meshDim, coords);
   const auto tol = 1e-6;
-  auto checkResult = KOKKOS_LAMBDA(const int &i) {
-    const auto x = elmCentroids[i * meshDim];
-    const auto y = elmCentroids[i * meshDim + 1];
-    const auto expected = linearFunction(x, y);
-    const auto computed = eval(i, 0);
-    if (Kokkos::fabs(computed - expected) > tol) {
-      Kokkos::printf(
-          "result for elm %d does not match: expected %f computed %f\n", i,
-          expected, computed);
-    }
-  };
-  field.meshField.parallel_for({0}, {meshInfo.numTri}, checkResult,
-                               "checkResult");
+
+  MeshField::LO numErrors = 0;
+  Kokkos::parallel_reduce("checkResult", meshInfo.numTri, 
+      KOKKOS_LAMBDA (const int& i, MeshField::LO& lerrors) {
+        const auto x = elmCentroids[i * meshDim];
+        const auto y = elmCentroids[i * meshDim + 1];
+        const auto expected = linearFunction(x, y);
+        const auto computed = eval(i, 0);
+        MeshField::LO isError = 0;
+        if (Kokkos::fabs(computed - expected) > tol) {
+          isError = 1;
+          Kokkos::printf(
+              "result for elm %d does not match: expected %f computed %f\n",
+              i, expected, computed);
+        }
+        lerrors += isError;
+      }, numErrors);
+  return (numErrors > 0);
 }
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
-  triangleLocalPointEval(lib);
+  auto failed = triangleLocalPointEval(lib);
+  if(failed) {
+    printf("triangleLocalPointEval(...) failed...\n");
+    exit(EXIT_FAILURE);
+  }
   Kokkos::finalize();
   return 0;
 }
