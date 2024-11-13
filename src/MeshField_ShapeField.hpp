@@ -40,7 +40,7 @@ struct QuadraticAccessor {
   using BaseType = typename VtxAccessor::BaseType;
 
   KOKKOS_FUNCTION
-  auto operator()(int node, int component, int entity, Mesh_Topology t) const {
+  auto& operator()(int node, int component, int entity, Mesh_Topology t) const {
     if (t == Vertex) {
       return vtxField(node, component, entity);
     } else if (t == Edge) {
@@ -58,13 +58,12 @@ template <typename VtxAccessor> struct LinearAccessor {
   using BaseType = typename VtxAccessor::BaseType;
 
   KOKKOS_FUNCTION
-  auto operator()(int node, int component, int entity, Mesh_Topology t) const {
+  auto& operator()(int node, int component, int entity, Mesh_Topology t) const {
     if (t == Vertex) {
       return vtxField(node, component, entity);
     } else {
       Kokkos::printf("%d is not a support topology\n", t);
-      assert(false); // HERE - topology in LinearEdgeToVertexField in
-                     // test/testElement.cc does not match
+      assert(false);
     }
   }
 };
