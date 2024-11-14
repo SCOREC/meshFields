@@ -69,7 +69,7 @@ template <typename VtxAccessor> struct LinearAccessor {
 };
 
 template <typename ExecutionSpace, typename DataType, size_t order, size_t dim>
-auto CreateLagrangeField(MeshInfo &meshInfo) {
+auto CreateLagrangeField(const MeshInfo &meshInfo) {
   static_assert((std::is_same_v<Real4, DataType> == true ||
                  std::is_same_v<Real8, DataType> == true),
                 "CreateLagrangeField only supports single and double precision "

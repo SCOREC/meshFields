@@ -47,17 +47,38 @@ MeshField::Real linearFunction(MeshField::Real x, MeshField::Real y) {
   return 2.0 * x + y;
 }
 
-// evaluate a field at the specified local coordinate for each triangle
-bool triangleLocalPointEval(Omega_h::Library &ohLib) {
-  auto world = ohLib.world();
+Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
+  auto world = lib.world();
   const auto family = OMEGA_H_SIMPLEX;
   auto len = 1.0;
-  auto mesh = Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
-  const auto meshDim = 2;
-  Omega_h::vtk::write_parallel("square.vtk", &mesh, meshDim);
+  return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
+}
+
+MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = mesh.nverts();
-  meshInfo.numTri = mesh.nfaces();
+  if(mesh.dim() > 1)
+    meshInfo.numEdge = mesh.nedges();
+  if( mesh.family() == OMEGA_H_SIMPLEX ) {
+    if(mesh.dim() > 1)
+      meshInfo.numTri = mesh.nfaces();
+    if(mesh.dim() == 3)
+      meshInfo.numTet = mesh.nregions();
+  } else { //hypercube
+    if(mesh.dim() > 1)
+      meshInfo.numQuad = mesh.nfaces();
+    if(mesh.dim() == 3)
+      meshInfo.numHex = mesh.nregions();
+  }
+  return meshInfo;
+}
+
+// evaluate a field at the specified local coordinate for each triangle
+bool triangleLocalPointEval(Omega_h::Library &lib) {
+  auto mesh = createMeshTri18(lib);
+  const auto meshDim = mesh.dim();
+
+  const auto meshInfo = getMeshInfo(mesh);
   auto field =
       MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1, 2>(
           meshInfo);
