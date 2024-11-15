@@ -54,6 +54,7 @@ Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
   return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
 }
 
+// TODO - move this into a specialized Omegah interface
 MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = mesh.nverts();
