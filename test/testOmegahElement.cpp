@@ -57,17 +57,17 @@ Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
 MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = mesh.nverts();
-  if(mesh.dim() > 1)
+  if (mesh.dim() > 1)
     meshInfo.numEdge = mesh.nedges();
-  if( mesh.family() == OMEGA_H_SIMPLEX ) {
-    if(mesh.dim() > 1)
+  if (mesh.family() == OMEGA_H_SIMPLEX) {
+    if (mesh.dim() > 1)
       meshInfo.numTri = mesh.nfaces();
-    if(mesh.dim() == 3)
+    if (mesh.dim() == 3)
       meshInfo.numTet = mesh.nregions();
-  } else { //hypercube
-    if(mesh.dim() > 1)
+  } else { // hypercube
+    if (mesh.dim() > 1)
       meshInfo.numQuad = mesh.nfaces();
-    if(mesh.dim() == 3)
+    if (mesh.dim() == 3)
       meshInfo.numHex = mesh.nregions();
   }
   return meshInfo;
