@@ -76,6 +76,30 @@ Kokkos::View<Real *[Element::NumComponents]>
 evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
   // TODO add static asserts for values and functions provided by the templated
   // types
+  if (Debug) {
+    // check input parametric coords are positive and sum to one
+    LO numErrors = 0;
+    Kokkos::parallel_reduce(
+        "checkCoords", fes.numMeshEnts,
+        KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
+          Real sum = 0;
+          LO isError = 0;
+          for (int i = 0; i < localCoords.extent(1); i++) {
+            if (localCoords(ent, i) < 0)
+              isError++;
+            sum += localCoords(ent, i);
+          }
+          if (Kokkos::fabs(sum - 1) > MachinePrecision)
+            isError++;
+          lerrors += isError;
+        },
+        numErrors);
+    if (numErrors) {
+      fprintf(stderr, "ERROR: One or more of the parametric coordinates passed "
+                      "to evaluate(...) were invalid... exiting\n");
+      exit(EXIT_FAILURE);
+    }
+  }
   assert(localCoords.extent(0) == fes.numMeshEnts);
   assert(localCoords.extent(1) == fes.MeshEntDim + 1);
   constexpr const auto numComponents = Element::ValArray::size();

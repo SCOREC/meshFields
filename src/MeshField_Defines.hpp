@@ -15,5 +15,7 @@ enum Mesh_Topology {
   Prism,
   Pyramid
 };
+static bool Debug = false;
+const Real MachinePrecision = 1e-15;
 } // namespace MeshField
 #endif

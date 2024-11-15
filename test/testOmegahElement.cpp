@@ -129,6 +129,7 @@ bool triangleLocalPointEval(Omega_h::Library &lib) {
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
+  MeshField::Debug = true;
   auto failed = triangleLocalPointEval(lib);
   if (failed) {
     printf("triangleLocalPointEval(...) failed...\n");
