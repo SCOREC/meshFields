@@ -2,6 +2,7 @@
 #include "MeshField.hpp"
 #include "MeshField_Element.hpp"
 #include "MeshField_ShapeField.hpp"
+#include "MeshField_Fail.hpp"
 #include "Omega_h_build.hpp"
 #include "Omega_h_file.hpp"
 #include "Omega_h_simplex.hpp"
@@ -133,8 +134,7 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
   auto failed = triangleLocalPointEval(lib);
   if (failed) {
-    printf("triangleLocalPointEval(...) failed...\n");
-    exit(EXIT_FAILURE);
+    MeshField::fail("ERROR: triangleLocalPointEval(...)\n");
   }
   Kokkos::finalize();
   return 0;

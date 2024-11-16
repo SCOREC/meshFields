@@ -22,10 +22,14 @@ set(MESHFIELD_HEADERS
   src/MeshField.hpp
   src/MeshField_Element.hpp
   src/MeshField_Shape.hpp
+  src/MeshField_Fail.hpp
 )
 
-#create header only library
-add_library(meshFields INTERFACE)
+set(MESHFIELD_SOURCES
+  src/MeshField_Fail.cpp
+)
+
+add_library(meshFields ${MESHFIELD_SOURCES})
 target_compile_features(meshFields INTERFACE cxx_std_17)
 target_include_directories(meshFields
   INTERFACE

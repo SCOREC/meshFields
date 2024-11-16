@@ -3,6 +3,7 @@
 
 #include <Kokkos_Core.hpp>
 #include <MeshField_Defines.hpp>
+#include <MeshField_Fail.hpp>
 #include <MeshField_Shape.hpp>
 #include <iostream>
 
@@ -95,9 +96,8 @@ evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
         },
         numErrors);
     if (numErrors) {
-      fprintf(stderr, "ERROR: One or more of the parametric coordinates passed "
-                      "to evaluate(...) were invalid... exiting\n");
-      exit(EXIT_FAILURE);
+      fail("ERROR: One or more of the parametric coordinates passed "
+           "to evaluate(...) were invalid... exiting\n");
     }
   }
   assert(localCoords.extent(0) == fes.numMeshEnts);
