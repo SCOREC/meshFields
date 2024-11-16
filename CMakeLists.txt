@@ -23,6 +23,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Element.hpp
   src/MeshField_Shape.hpp
   src/MeshField_Fail.hpp
+  "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
 
 set(MESHFIELD_SOURCES
@@ -32,7 +33,8 @@ set(MESHFIELD_SOURCES
 add_library(meshFields ${MESHFIELD_SOURCES})
 target_compile_features(meshFields INTERFACE cxx_std_17)
 target_include_directories(meshFields
-  INTERFACE
+  PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>" # for MeshField_Config.hpp
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
@@ -42,6 +44,15 @@ target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 if(Kokkos_ENABLE_CUDA)
   target_compile_options(meshFields INTERFACE "--expt-relaxed-constexpr")
 endif()
+
+#enable/disable exceptions
+option(MeshFields_USE_EXCEPTIONS "Enable throwing exceptions" ON)
+message(STATUS "Exceptions: ${MeshFields_USE_EXCEPTIONS}")
+
+#pass cmake options to the source
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/MeshField_Config.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp")
 
 #support ctags
 option(MeshFields_USE_CTAGS "Generate Ctags" OFF)
@@ -116,6 +127,7 @@ meshfields_add_exe(SerializationTests test/testSerialize.cpp)
 meshfields_add_exe(QRTests test/testQR.cpp)
 meshfields_add_exe(ElementTests test/testElement.cpp)
 meshfields_add_exe(OmegahElementTests test/testOmegahElement.cpp)
+meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 
 test_func(MainTests ./Main)
 test_func(KokkosTests ./KokkosTests)
@@ -130,6 +142,12 @@ else()
 endif()
 test_func(ElementTests ./ElementTests)
 test_func(OmegahElementTests ./OmegahElementTests)
+if(MeshFields_USE_EXCEPTIONS)
+  # exception caught - no error
+  test_func(ExceptionTest ./ExceptionTest)
+else()
+  will_fail_test_func(ExceptionTest ./ExceptionTest)
+endif()
 
 #Code Coverage set up -------------------------------------------------------
 

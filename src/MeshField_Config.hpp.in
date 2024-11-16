@@ -1,0 +1,1 @@
+#cmakedefine MeshFields_USE_EXCEPTIONS
