@@ -96,12 +96,20 @@ evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
         },
         numErrors);
     if (numErrors) {
-      fail("ERROR: One or more of the parametric coordinates passed "
-           "to evaluate(...) were invalid... exiting\n");
+      fail("One or more of the parametric coordinates passed "
+           "to evaluate(...) were invalid\n");
     }
   }
-  assert(localCoords.extent(0) == fes.numMeshEnts);
-  assert(localCoords.extent(1) == fes.MeshEntDim + 1);
+  if (localCoords.extent(0) != fes.numMeshEnts) {
+    fail("Dimension 0 of the input array of local coordinates "
+         "must have size = %d\n",
+         fes.numMeshEnts);
+  }
+  if (localCoords.extent(1) != fes.MeshEntDim + 1) {
+    fail("Dimension 1 of the input array of local coordinates "
+         "must have size = %d\n",
+         fes.MeshEntDim + 1);
+  }
   constexpr const auto numComponents = Element::ValArray::size();
   Kokkos::View<Real *[numComponents]> res("result", fes.numMeshEnts);
   Kokkos::parallel_for(

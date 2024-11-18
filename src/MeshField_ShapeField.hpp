@@ -81,7 +81,9 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                 "CreateLagrangeField only supports 1d, 2d, and 3d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
   if constexpr (order == 1 && (dim == 1 || dim == 2)) {
-    assert(meshInfo.numVtx > 0);
+    if (meshInfo.numVtx <= 0) {
+      fail("mesh has no vertices\n");
+    }
     using Ctrlr =
         Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
     // 1 dof with 1 component per vtx
@@ -94,8 +96,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
-    assert(meshInfo.numVtx > 0);
-    assert(meshInfo.numEdge > 0);
+    if (meshInfo.numVtx <= 0) {
+      fail("mesh has no vertices\n");
+    }
+    if (meshInfo.numEdge <= 0) {
+      fail("mesh has no edges\n");
+    }
     using Ctrlr = Controller::KokkosController<MemorySpace, ExecutionSpace,
                                                DataType ***, DataType ***>;
     // 1 dof with 1 comp per vtx/edge
@@ -111,7 +117,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                                      {vtxField, edgeField});
     return qlsf;
   } else {
-    fail("ERROR: CreateLagrangeField does not support the specified "
+    fail("CreateLagrangeField does not support the specified "
          "combination of order %d and dimension %d.\n",
          order, dim);
     return nullptr; // silence compiler warning
