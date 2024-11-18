@@ -26,12 +26,6 @@ struct LinearTriangleToVertexField {
   operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
              MeshField::LO tri, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Triangle);
-    // Need to find which mesh vertex is described by the triangle and one of
-    // its node indices. This could be implemented using element-to-dof holder
-    // adjacencies, canonical ordering provided by the mesh database, which
-    // would provide the index to the vertex in the dof holder array (assuming
-    // the dof holder array is in the same order as vertex local numbering in
-    // the mesh).
     const auto triDim = 2;
     const auto vtxDim = 0;
     const auto ignored = -1;
@@ -43,10 +37,12 @@ struct LinearTriangleToVertexField {
   }
 };
 
-KOKKOS_INLINE_FUNCTION
-MeshField::Real linearFunction(MeshField::Real x, MeshField::Real y) {
-  return 2.0 * x + y;
-}
+struct LinearFunction {
+  KOKKOS_INLINE_FUNCTION
+  MeshField::Real operator()(MeshField::Real x, MeshField::Real y) const {
+    return 2.0 * x + y;
+  }
+};
 
 Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
   auto world = lib.world();
@@ -76,21 +72,24 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
 }
 
 // evaluate a field at the specified local coordinate for each triangle
-bool triangleLocalPointEval(Omega_h::Library &lib) {
-  auto mesh = createMeshTri18(lib);
+template <typename AnalyticFunction, int ShapeOrder>
+bool triangleLocalPointEval(Omega_h::Mesh mesh,
+                            Kokkos::View<MeshField::Real *[3]> localCoords,
+                            AnalyticFunction func) {
+  if (mesh.dim() != 2) {
+    MeshField::fail("ERROR: input mesh must be 2d\n");
+  }
   const auto meshDim = mesh.dim();
-
   const auto meshInfo = getMeshInfo(mesh);
-  auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1, 2>(
-          meshInfo);
+  auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real,
+                                              ShapeOrder, 2>(meshInfo);
 
   // set field f based on analytic function
   auto coords = mesh.coords();
   auto setField = KOKKOS_LAMBDA(const int &i) {
     const auto x = coords[i * meshDim];
     const auto y = coords[i * meshDim + 1];
-    field(0, 0, i, MeshField::Vertex) = linearFunction(x, y);
+    field(0, 0, i, MeshField::Vertex) = func(x, y);
   };
   field.meshField.parallel_for({0}, {meshInfo.numVtx}, setField, "setField");
 
@@ -99,9 +98,7 @@ bool triangleLocalPointEval(Omega_h::Library &lib) {
 
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
 
-  Kokkos::View<MeshField::Real *[3]> lc("localCoords", meshInfo.numTri);
-  Kokkos::deep_copy(lc, 1 / 3.0); // the centroid of the triangle
-  auto eval = MeshField::evaluate(f, lc);
+  auto eval = MeshField::evaluate(f, localCoords);
 
   // check the result
   auto elmCentroids = Omega_h::average_field(
@@ -113,7 +110,7 @@ bool triangleLocalPointEval(Omega_h::Library &lib) {
       KOKKOS_LAMBDA(const int &i, MeshField::LO &lerrors) {
         const auto x = elmCentroids[i * meshDim];
         const auto y = elmCentroids[i * meshDim + 1];
-        const auto expected = linearFunction(x, y);
+        const auto expected = func(x, y);
         const auto computed = eval(i, 0);
         MeshField::LO isError = 0;
         if (Kokkos::fabs(computed - expected) > tol) {
@@ -132,9 +129,15 @@ int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
   MeshField::Debug = true;
-  auto failed = triangleLocalPointEval(lib);
-  if (failed) {
-    MeshField::fail("ERROR: triangleLocalPointEval(...)\n");
+  {
+    auto mesh = createMeshTri18(lib);
+    Kokkos::View<MeshField::Real *[3]> lc("localCoords", mesh.nfaces());
+    Kokkos::deep_copy(lc, 1 / 3.0); // the centroid of the triangle
+    auto failed =
+        triangleLocalPointEval<LinearFunction, 1>(mesh, lc, LinearFunction{});
+    if (failed) {
+      MeshField::fail("ERROR: triangleLocalPointEval(...)\n");
+    }
   }
   Kokkos::finalize();
   return 0;
