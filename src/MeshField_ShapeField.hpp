@@ -111,6 +111,9 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                                      {vtxField, edgeField});
     return qlsf;
   } else {
+    fail("ERROR: CreateLagrangeField does not support the specified "
+         "combination of order %d and dimension %d.\n",
+         order, dim);
     return nullptr; // silence compiler warning
   }
 };
