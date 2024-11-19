@@ -39,6 +39,21 @@ struct LinearTriangleShape {
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
 };
 
+struct LinearTriangleCoordinateShape {
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, 3> getValues(Kokkos::Array<Real, 3> const &xi) const {
+    // clang-format off
+    return {1 - xi[0] - xi[1],
+            xi[0],
+            xi[1]};
+    // clang-format on
+  }
+  static const size_t numNodes = 3;
+  static const size_t numComponentsPerDof = 2;
+  static const size_t meshEntDim = 2;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+};
+
 struct QuadraticTriangleShape {
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, 6> getValues(Kokkos::Array<Real, 3> const &xi) const {

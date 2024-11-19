@@ -96,8 +96,8 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
 
   auto coordField = MeshField::CreateCoordinateField<ExecutionSpace>(meshInfo);
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
-    field(0, 0, 0, MeshField::Vertex) = coords[i * MeshDim];
-    field(0, 0, 1, MeshField::Vertex) = coords[i * MeshDim + 1];
+    coordField(0, 0, i, MeshField::Vertex) = coords[i * MeshDim];
+    coordField(0, 1, i, MeshField::Vertex) = coords[i * MeshDim + 1];
   };
   coordField.meshField.parallel_for({0}, {meshInfo.numVtx}, setCoordField,
                                     "setCoordField");

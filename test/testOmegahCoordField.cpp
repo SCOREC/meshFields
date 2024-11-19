@@ -33,7 +33,7 @@ struct LinearTriangleToVertexField {
         Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
     const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
     const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
-    return {0, 0, vtx, MeshField::Vertex}; // node, comp, ent, topo
+    return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
 
@@ -65,7 +65,6 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
   return meshInfo;
 }
 
-// evaluate a field at the specified local coordinate for each triangle
 bool triangleLocalToGlobal(Omega_h::Mesh mesh) {
   const auto MeshDim = 2;
   if (mesh.dim() != MeshDim) {
@@ -77,13 +76,13 @@ bool triangleLocalToGlobal(Omega_h::Mesh mesh) {
   auto coords = mesh.coords();
   auto coordField = MeshField::CreateCoordinateField<ExecutionSpace>(meshInfo);
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
-    coordField(0, 0, 0, MeshField::Vertex) = coords[i * MeshDim];
-    coordField(0, 0, 1, MeshField::Vertex) = coords[i * MeshDim + 1];
+    coordField(0, 0, i, MeshField::Vertex) = coords[i * MeshDim];
+    coordField(0, 1, i, MeshField::Vertex) = coords[i * MeshDim + 1];
   };
   coordField.meshField.parallel_for({0}, {meshInfo.numVtx}, setCoordField,
                                     "setCoordField");
 
-  MeshField::Element elm{MeshField::LinearTriangleShape(),
+  MeshField::Element elm{MeshField::LinearTriangleCoordinateShape(),
                          LinearTriangleToVertexField(mesh)};
 
   MeshField::FieldElement fcoords(meshInfo.numTri, coordField, elm);
@@ -123,6 +122,7 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
   {
     auto mesh = createMeshTri18(lib);
+    Omega_h::vtk::write_parallel("square14.vtk", &mesh, 2);
     auto failed = triangleLocalToGlobal(mesh);
     if (failed) {
       MeshField::fail("triangleLocalToGlobal(...) failed\n");
