@@ -17,6 +17,7 @@ struct MeshInfo {
   int numHex;     // entDim = 3
   int numPrism;   // entDim = 3
   int numPyramid; // entDim = 3
+  int dim;
 };
 
 template <typename MeshFieldType, typename Shape, typename... Mixins>
@@ -122,6 +123,26 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
          order, dim);
     return nullptr; // silence compiler warning
   }
+};
+
+template <typename ExecutionSpace>
+auto CreateCoordinateField(const MeshInfo &meshInfo) {
+  if (meshInfo.numVtx <= 0) {
+    fail("mesh has no vertices\n");
+  }
+  using DataType = Real;
+  using MemorySpace = typename ExecutionSpace::memory_space;
+  using Ctrlr =
+      Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
+  const int numComp = meshInfo.dim;
+  Ctrlr kk_ctrl({/*field 0*/ 1, numComp, meshInfo.numVtx});
+  MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
+  auto vtxField = kokkosMeshField.template makeField<0>();
+  using LA = LinearAccessor<decltype(vtxField)>;
+  using LinearLagrangeShapeField =
+      ShapeField<MeshField<Ctrlr>, LinearTriangleShape, LA>;
+  LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
+  return llsf;
 };
 
 } // namespace MeshField
