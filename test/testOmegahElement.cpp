@@ -33,7 +33,7 @@ struct LinearTriangleToVertexField {
         Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
     const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
     const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
-    return {0, 0, vtx, MeshField::Vertex}; // node, comp, ent, topo
+    return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
 
@@ -108,7 +108,9 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
   auto eval = MeshField::evaluate(f, localCoords);
 
-  MeshField::FieldElement fcoords(meshInfo.numTri, coordField, elm);
+  MeshField::Element coordElm{MeshField::LinearTriangleCoordinateShape(),
+                              LinearTriangleToVertexField(mesh)};
+  MeshField::FieldElement fcoords(meshInfo.numTri, coordField, coordElm);
   auto globalCoords = MeshField::evaluate(fcoords, localCoords);
 
   // check the result
