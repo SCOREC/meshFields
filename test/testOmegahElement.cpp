@@ -165,7 +165,7 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   if (mesh.dim() != MeshDim) {
     MeshField::fail("input mesh must be 2d\n");
   }
-  if (ShapeOrder != 1 || ShapeOrder != 2) {
+  if (ShapeOrder != 1 && ShapeOrder != 2) {
     MeshField::fail("field order must be 1 or 2\n");
   }
   const auto meshInfo = getMeshInfo(mesh);
