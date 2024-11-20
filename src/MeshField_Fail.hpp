@@ -1,7 +1,8 @@
 #ifndef MESHFIELDS_FAIL_H
 #define MESHFIELDS_FAIL_H
 
-#include <stdexcept> // std::runtime_error
+#include <stdexcept>   // std::runtime_error
+#include <string_view> // std::string_view
 
 namespace MeshField {
 
@@ -17,5 +18,10 @@ struct exception : public std::runtime_error {
  * the format string
  */
 void fail(char const *format, ...);
+
+/** see fail(char const* format, ...)
+ * \param msg (in) string to print
+ */
+void fail(std::string msg);
 } // namespace MeshField
 #endif // MESHFIELDS_FAIL_H
