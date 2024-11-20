@@ -102,12 +102,12 @@ evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
   }
   if (localCoords.extent(0) != fes.numMeshEnts) {
     fail("Dimension 0 of the input array of local coordinates "
-         "must have size = %lu\n",
+         "must have size = %zu\n",
          fes.numMeshEnts);
   }
   if (localCoords.extent(1) != fes.MeshEntDim + 1) {
     fail("Dimension 1 of the input array of local coordinates "
-         "must have size = %d\n",
+         "must have size = %zu\n",
          fes.MeshEntDim + 1);
   }
   constexpr const auto numComponents = Element::ValArray::size();
