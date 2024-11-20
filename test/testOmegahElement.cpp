@@ -8,6 +8,7 @@
 #include "Omega_h_simplex.hpp"
 #include <Kokkos_Core.hpp>
 #include <iostream>
+#include <sstream>
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
@@ -256,6 +257,15 @@ createElmAreaCoords(size_t numElements,
   return lc;
 }
 
+void doFail(std::string_view order, std::string_view function,
+            std::string_view location) {
+  std::stringstream ss;
+  ss << order << " field evaluation with " << function
+     << " analytic function at " << location << " points failed\n";
+  std::string msg = ss.str();
+  MeshField::fail(msg);
+}
+
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
@@ -266,23 +276,24 @@ int main(int argc, char **argv) {
         createElmAreaCoords(mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
     auto interior = createElmAreaCoords(mesh.nfaces(), {0.1, 0.4, 0.5});
     auto vertex = createElmAreaCoords(mesh.nfaces(), {0.0, 0.0, 1.0});
-    for (auto testCase :
-         {TestCoords{centroids, "centroids"}, TestCoords{interior, "interior"},
-          TestCoords{vertex, "vertex"}}) {
+    // clang-format off
+    const auto cases = {TestCoords{centroids, "centroids"},
+                        TestCoords{interior,  "interior"},
+                        TestCoords{vertex,    "vertex"}};
+    // clang-format on
+    for (auto testCase : cases) {
       auto failed = triangleLocalPointEval<LinearFunction, 1>(
           mesh, testCase.coords, LinearFunction{});
-      if (failed) {
-        MeshField::fail(
-            "triangleLocalPointEval(...) test using %s coords failed\n",
-            testCase.name.c_str());
-      }
+      if (failed)
+        doFail("linear", "linear", testCase.name);
       failed = triangleLocalPointEval<QuadraticFunction, 2>(
           mesh, testCase.coords, QuadraticFunction{});
-      if (failed) {
-        MeshField::fail(
-            "triangleLocalPointEval(...) test using %s coords failed\n",
-            testCase.name.c_str());
-      }
+      if (failed)
+        doFail("quadratic", "quadratic", testCase.name);
+      failed = triangleLocalPointEval<LinearFunction, 2>(mesh, testCase.coords,
+                                                         LinearFunction{});
+      if (failed)
+        doFail("quadratic", "linear", testCase.name);
     }
   }
   Kokkos::finalize();
