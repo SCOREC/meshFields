@@ -161,7 +161,22 @@ int main(int argc, char **argv) {
     auto failed =
         triangleLocalPointEval<LinearFunction, 1>(mesh, lc, LinearFunction{});
     if (failed) {
-      MeshField::fail("ERROR: triangleLocalPointEval(...)\n");
+      MeshField::fail("ERROR: triangleLocalPointEval(...) @ interior\n");
+    }
+  }
+  {
+    auto mesh = createMeshTri18(lib);
+    Kokkos::View<MeshField::Real *[3]> lc("localCoords", mesh.nfaces());
+    Kokkos::parallel_for(
+        "setLocalCoords", mesh.nfaces(), KOKKOS_LAMBDA(const int &i) {
+          lc(i, 0) = 0.0;
+          lc(i, 1) = 0.0;
+          lc(i, 2) = 1.0;
+        });
+    auto failed =
+        triangleLocalPointEval<LinearFunction, 1>(mesh, lc, LinearFunction{});
+    if (failed) {
+      MeshField::fail("ERROR: triangleLocalPointEval(...) @ vertex\n");
     }
   }
   Kokkos::finalize();
