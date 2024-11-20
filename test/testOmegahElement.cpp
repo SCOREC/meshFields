@@ -135,48 +135,44 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   return (numErrors > 0);
 }
 
+struct TestCoords {
+  Kokkos::View<MeshField::Real *[3]> coords;
+  std::string name;
+};
+
+Kokkos::View<MeshField::Real *[3]>
+createElmAreaCoords(size_t numElements,
+                    Kokkos::Array<MeshField::Real, 3> coord) {
+  Kokkos::View<MeshField::Real *[3]> lc("localCoords", numElements);
+  Kokkos::parallel_for(
+      "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &i) {
+        lc(i, 0) = coord[0];
+        lc(i, 1) = coord[1];
+        lc(i, 2) = coord[2];
+      });
+  return lc;
+}
+
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
   MeshField::Debug = true;
   {
     auto mesh = createMeshTri18(lib);
-    Kokkos::View<MeshField::Real *[3]> lc("localCoords", mesh.nfaces());
-    Kokkos::deep_copy(lc, 1 / 3.0); // the centroid of the triangle
-    auto failed =
-        triangleLocalPointEval<LinearFunction, 1>(mesh, lc, LinearFunction{});
-    if (failed) {
-      MeshField::fail("ERROR: triangleLocalPointEval(...) @ centroid\n");
-    }
-  }
-  {
-    auto mesh = createMeshTri18(lib);
-    Kokkos::View<MeshField::Real *[3]> lc("localCoords", mesh.nfaces());
-    Kokkos::parallel_for(
-        "setLocalCoords", mesh.nfaces(), KOKKOS_LAMBDA(const int &i) {
-          lc(i, 0) = 0.1;
-          lc(i, 1) = 0.4;
-          lc(i, 2) = 1.0 - lc(i, 0) - lc(i, 1);
-        });
-    auto failed =
-        triangleLocalPointEval<LinearFunction, 1>(mesh, lc, LinearFunction{});
-    if (failed) {
-      MeshField::fail("ERROR: triangleLocalPointEval(...) @ interior\n");
-    }
-  }
-  {
-    auto mesh = createMeshTri18(lib);
-    Kokkos::View<MeshField::Real *[3]> lc("localCoords", mesh.nfaces());
-    Kokkos::parallel_for(
-        "setLocalCoords", mesh.nfaces(), KOKKOS_LAMBDA(const int &i) {
-          lc(i, 0) = 0.0;
-          lc(i, 1) = 0.0;
-          lc(i, 2) = 1.0;
-        });
-    auto failed =
-        triangleLocalPointEval<LinearFunction, 1>(mesh, lc, LinearFunction{});
-    if (failed) {
-      MeshField::fail("ERROR: triangleLocalPointEval(...) @ vertex\n");
+    auto centroids =
+        createElmAreaCoords(mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
+    auto interior = createElmAreaCoords(mesh.nfaces(), {0.1, 0.4, 0.5});
+    auto vertex = createElmAreaCoords(mesh.nfaces(), {0.0, 0.0, 1.0});
+    for (auto testCase :
+         {TestCoords{centroids, "centroids"}, TestCoords{interior, "interior"},
+          TestCoords{vertex, "vertex"}}) {
+      auto failed = triangleLocalPointEval<LinearFunction, 1>(
+          mesh, testCase.coords, LinearFunction{});
+      if (failed) {
+        MeshField::fail(
+            "triangleLocalPointEval(...) test using %s coords failed\n",
+            testCase.name.c_str());
+      }
     }
   }
   Kokkos::finalize();
