@@ -15,7 +15,13 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 struct LinearTriangleToVertexField {
   Omega_h::LOs triVerts;
   LinearTriangleToVertexField(Omega_h::Mesh mesh)
-      : triVerts(mesh.ask_elem_verts()) {}
+      : triVerts(mesh.ask_elem_verts()) {
+    if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
+  }
 
   KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
   getTopology() const {
@@ -41,6 +47,73 @@ struct LinearFunction {
   KOKKOS_INLINE_FUNCTION
   MeshField::Real operator()(MeshField::Real x, MeshField::Real y) const {
     return 2.0 * x + y;
+  }
+};
+
+struct QuadraticTriangleToField {
+  Omega_h::LOs triVerts;
+  Omega_h::LOs triEdges;
+  QuadraticTriangleToField(Omega_h::Mesh mesh)
+      : triVerts(mesh.ask_elem_verts()),
+        triEdges(mesh.ask_down(mesh.dim(), 1).ab2b) {
+    if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
+  }
+
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Triangle};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
+             MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Triangle);
+    // Omega_h has no concept of nodes so we can define the map from
+    // triNodeIdx to the dof holder index
+    const MeshField::LO triNode2DofHolder[6] = {
+        /*vertices*/ 0, 1, 2,
+        /*edges*/ 0,    1, 2};
+    const MeshField::Mesh_Topology triNode2DofHolderTopo[6] = {
+        /*vertices*/
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        /*edges*/
+        MeshField::Edge, MeshField::Edge, MeshField::Edge};
+    const auto dofHolderIdx = triNode2DofHolder[triNodeIdx];
+    const auto dofHolderTopo = triNode2DofHolderTopo[triNodeIdx];
+    // Given the topo index and type find the Omega_h vertex or edge index that
+    // bounds the triangle
+    Omega_h::LO osh_ent;
+    if (dofHolderTopo == MeshField::Vertex) {
+      const auto triDim = 2;
+      const auto vtxDim = 0;
+      const auto ignored = -1;
+      const auto localVtxIdx =
+          Omega_h::simplex_down_template(triDim, vtxDim, dofHolderIdx, ignored);
+      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+      osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+    } else if (dofHolderTopo == MeshField::Edge) {
+      const auto triDim = 2;
+      const auto edgeDim = 1;
+      const auto triToEdgeDegree = Omega_h::simplex_degree(triDim, edgeDim);
+      // passing dofHolderIdx as Omega_h_simplex.hpp does not provide
+      // a function that maps a triangle and edge index to a 'canonical' edge
+      // index. This may need to be revisited...
+      osh_ent = triEdges[(tri * triToEdgeDegree) + dofHolderIdx];
+    } else {
+      assert(false);
+    }
+    return {0, triCompIdx, osh_ent, dofHolderTopo};
+  }
+};
+
+struct QuadraticFunction {
+  KOKKOS_INLINE_FUNCTION
+  MeshField::Real operator()(MeshField::Real x, MeshField::Real y) const {
+    return (x * x) + (2.0 * y);
   }
 };
 
@@ -72,6 +145,17 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
   return meshInfo;
 }
 
+template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh mesh) {
+  static_assert(ShapeOrder == 1 || ShapeOrder == 2);
+  if constexpr (ShapeOrder == 1) {
+    return MeshField::Element{MeshField::LinearTriangleShape(),
+                              LinearTriangleToVertexField(mesh)};
+  } else if constexpr (ShapeOrder == 2) {
+    return MeshField::Element{MeshField::QuadraticTriangleShape(),
+                              QuadraticTriangleToField(mesh)};
+  }
+}
+
 // evaluate a field at the specified local coordinate for each triangle
 template <typename AnalyticFunction, int ShapeOrder>
 bool triangleLocalPointEval(Omega_h::Mesh mesh,
@@ -79,7 +163,10 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
                             AnalyticFunction func) {
   const auto MeshDim = 2;
   if (mesh.dim() != MeshDim) {
-    MeshField::fail("ERROR: input mesh must be 2d\n");
+    MeshField::fail("input mesh must be 2d\n");
+  }
+  if (ShapeOrder != 1 || ShapeOrder != 2) {
+    MeshField::fail("field order must be 1 or 2\n");
   }
   const auto meshInfo = getMeshInfo(mesh);
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real,
@@ -93,6 +180,23 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
     field(0, 0, i, MeshField::Vertex) = func(x, y);
   };
   field.meshField.parallel_for({0}, {meshInfo.numVtx}, setField, "setField");
+  if (ShapeOrder == 2) {
+    const auto edgeDim = 1;
+    const auto vtxDim = 0;
+    const auto edge2vtx = mesh.ask_down(edgeDim, vtxDim).ab2b;
+    auto setFieldAtEdges = KOKKOS_LAMBDA(const int &edge) {
+      // get dofholder position at the midpoint of edge
+      // - TODO should be encoded in the field?
+      const auto left = edge2vtx[edge * 2];
+      const auto right = edge2vtx[edge * 2 + 1];
+      const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
+      const auto y =
+          (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
+      field(0, 0, edge, MeshField::Edge) = func(x, y);
+    };
+    field.meshField.parallel_for({0}, {meshInfo.numEdge}, setFieldAtEdges,
+                                 "setFieldAtEdges");
+  }
 
   auto coordField = MeshField::CreateCoordinateField<ExecutionSpace>(meshInfo);
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
@@ -102,8 +206,7 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   coordField.meshField.parallel_for({0}, {meshInfo.numVtx}, setCoordField,
                                     "setCoordField");
 
-  MeshField::Element elm{MeshField::LinearTriangleShape(),
-                         LinearTriangleToVertexField(mesh)};
+  const auto elm = getTriangleElement<ShapeOrder>(mesh);
 
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
   auto eval = MeshField::evaluate(f, localCoords);
@@ -168,6 +271,13 @@ int main(int argc, char **argv) {
           TestCoords{vertex, "vertex"}}) {
       auto failed = triangleLocalPointEval<LinearFunction, 1>(
           mesh, testCase.coords, LinearFunction{});
+      if (failed) {
+        MeshField::fail(
+            "triangleLocalPointEval(...) test using %s coords failed\n",
+            testCase.name.c_str());
+      }
+      failed = triangleLocalPointEval<QuadraticFunction, 2>(
+          mesh, testCase.coords, QuadraticFunction{});
       if (failed) {
         MeshField::fail(
             "triangleLocalPointEval(...) test using %s coords failed\n",
