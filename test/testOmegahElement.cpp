@@ -157,6 +157,15 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh mesh) {
   }
 }
 
+template <typename Field> void writeVtk(Omega_h::Mesh mesh, Field &field) {
+  // HACK assumes there is a vertex field.. in the Field Mixin object
+  auto field_view = field.vtxField.serialize();
+  // HACK use decltype on field_view to get the field type
+  Omega_h::Write<Omega_h::Real> field_write(field_view);
+  mesh.add_tag(0, "field", 1, Omega_h::read(field_write));
+  Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
+}
+
 // evaluate a field at the specified local coordinate for each triangle
 template <typename AnalyticFunction, int ShapeOrder>
 bool triangleLocalPointEval(Omega_h::Mesh mesh,
@@ -171,9 +180,9 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   }
   const auto meshInfo = getMeshInfo(mesh);
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real,
-                                              ShapeOrder, 2>(meshInfo);
+                                              ShapeOrder, MeshDim>(meshInfo);
 
-  // set field f based on analytic function
+  // set field based on analytic function
   auto coords = mesh.coords();
   auto setField = KOKKOS_LAMBDA(const int &i) {
     const auto x = coords[i * MeshDim];
@@ -197,6 +206,10 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
     };
     field.meshField.parallel_for({0}, {meshInfo.numEdge}, setFieldAtEdges,
                                  "setFieldAtEdges");
+  }
+
+  if (ShapeOrder == 1) {
+    writeVtk(mesh, field);
   }
 
   auto coordField = MeshField::CreateCoordinateField<ExecutionSpace>(meshInfo);
