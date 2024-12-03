@@ -20,6 +20,20 @@ struct MeshInfo {
   int dim;
 };
 
+/**
+ * The field definition (e.g., linear triangle, quadratic tet, etc.) dictates
+ * what combination of interfaces need to be exposed.
+ * For example, the functions that provide the coefficients (name?) (e.g.,
+ * QuadraticTriangleShape) needs to return the values for each dof holder and
+ * associated meta data to define their association with mesh entities, the
+ * mesh entity topology, and how many components exist per dof.
+ * Likewise, the interface that allows getting and setting field values needs to
+ * be customized to accomodate the field interface.
+ *
+ * To avoid inheritance, virtual functions, and to allow RAII, the 'mixin'
+ * technique enables definition of a class that inherites from multiple
+ * parent classes.
+ */
 template <typename MeshFieldType, typename Shape, typename... Mixins>
 struct ShapeField : public Mixins... {
   MeshFieldType meshField;
@@ -28,10 +42,6 @@ struct ShapeField : public Mixins... {
   ShapeField(MeshFieldType &meshFieldIn, MeshInfo meshInfoIn, Mixins... mixins)
       : meshField(meshFieldIn), meshInfo(meshInfoIn), Mixins(mixins)... {};
 };
-// prototype that provides access operator to underlying fields
-// v1: https://godbolt.org/z/3c8bzrPca
-// v2: https://godbolt.org/z/7xK9cEsx7
-// v3: https://godbolt.org/z/qYbr91dzf
 
 template <typename VtxAccessor, typename EdgeAccessor>
 struct QuadraticAccessor {
