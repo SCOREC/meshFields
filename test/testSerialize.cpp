@@ -14,9 +14,16 @@
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
-int main(int argc, char *argv[]) {
-  Kokkos::ScopeGuard scope_guard(argc, argv);
+void test_1_1_16() {
+  using kCon =
+      Controller::KokkosController<MemorySpace, ExecutionSpace, int ***>;
+  kCon c1({1, 1, 16});
+  MeshField::MeshField mf(c1);
+  MeshField::Field field = mf.makeField<0>();
+  auto field_serialized = field.serialize();
+}
 
+void test_multi() {
   const int N = 10;
   using kok1 =
       Controller::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
@@ -79,5 +86,11 @@ int main(int argc, char *argv[]) {
         assert(view4(i, j, k, l) == field4(i, j, k, l));
         assert(view5(i, j, k, l, m) == field5(i, j, k, l, m));
       });
+}
+
+int main(int argc, char *argv[]) {
+  Kokkos::ScopeGuard scope_guard(argc, argv);
+  test_1_1_16();
+  test_multi();
   return 0;
 }
