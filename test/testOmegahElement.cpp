@@ -161,7 +161,7 @@ template <typename Field> void writeVtk(Omega_h::Mesh mesh, Field &field) {
   using FieldDataType = typename decltype(field.vtxField)::BaseType;
   // HACK assumes there is a vertex field.. in the Field Mixin object
   auto field_view = field.vtxField.serialize();
-  Omega_h::Write< FieldDataType > field_write(field_view);
+  Omega_h::Write<FieldDataType> field_write(field_view);
   mesh.add_tag(0, "field", 1, Omega_h::read(field_write));
   Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
 }
