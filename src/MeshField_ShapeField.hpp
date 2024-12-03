@@ -21,6 +21,9 @@ struct MeshInfo {
 };
 
 /**
+ * @brief
+ * Enable definition of field classes with multiple inheritance.
+ * @detail
  * The field definition (e.g., linear triangle, quadratic tet, etc.) dictates
  * what combination of interfaces need to be exposed.
  * For example, the functions that provide the coefficients (name?) (e.g.,
@@ -33,6 +36,17 @@ struct MeshInfo {
  * To avoid inheritance, virtual functions, and to allow RAII, the 'mixin'
  * technique enables definition of a class that inherites from multiple
  * parent classes.
+ *
+ * @tparam MeshFieldType MeshField type templated on a Controller (i.e.,
+ * KokkosController or CabanaController)
+ * @tparam Shape Defines the shape function order and mesh topology (i.e.,
+ * QuadraticTriangleShape, QuadraticTetrahedronShape, ...)
+ * @tparam Mixins Accessor type that provides paren operator to underlying slice
+ * (i.e., LinearAccessor, QuadraticAccessor)
+ *
+ * @param meshFieldIn see MeshFieldType
+ * @param meshInfoIn defines on-process mesh metadata
+ * @param mixins object(s) needed to construct the Accessor
  */
 template <typename MeshFieldType, typename Shape, typename... Mixins>
 struct ShapeField : public Mixins... {
