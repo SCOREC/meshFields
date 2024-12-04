@@ -9,6 +9,11 @@
 
 namespace MeshField {
 
+/**
+ * @brief
+ * Return type used by structs/classes that implement the
+ * ElementDofHolderAccessor parenthesis operator
+ */
 struct ElementToDofHolderMap {
   LO node;
   LO component;
@@ -16,35 +21,98 @@ struct ElementToDofHolderMap {
   Mesh_Topology topo;
 };
 
-template <typename Shape, typename ElementToDofHolderMap> struct Element {
+/**
+ * @brief
+ * Combines the shape function definition and the type that provides the mapping
+ * from the element indices to the underlying field storage
+ * @detail
+ * Examples:
+ *  Element = Triangle and field storage is at mesh vertices (linear
+ *   shape fn)
+ *  Element = Edge and field storage is at mesh vertices
+ *   (linear shape fn)
+ *  Element = Triangle and field storage is at mesh vertices and
+ *   edges (quadratic shape fn)
+ *
+ * @todo
+ * consider removing this, the extra object/type isn't needed outside the
+ * FieldElement
+ *
+ * @tparam Shape Defines the shape function order and mesh topology (i.e.,
+ * QuadraticTriangleShape, QuadraticTetrahedronShape, ...)
+ * @tparam ElementDofHolderAccessor provides the mapping from
+ * the element indices to the underlying field storage
+ *
+ * @param shapeFnIn see Shape
+ * @param elm2dofIn see ElementDofHolderAccessor
+ */
+template <typename Shape, typename ElementDofHolderAccessor> struct Element {
   // TODO add static asserts for variables and functions provided by the
   // templated types
   Shape shapeFn;
   static const size_t MeshEntDim = Shape::meshEntDim; // better way?
-  ElementToDofHolderMap elm2dof;
-  Element(const Shape shapeFnIn, const ElementToDofHolderMap elm2dofIn)
+  ElementDofHolderAccessor elm2dof;
+  Element(const Shape shapeFnIn, const ElementDofHolderAccessor elm2dofIn)
       : shapeFn(shapeFnIn), elm2dof(elm2dofIn) {}
 };
 
+/**
+ * @brief
+ * Supports the evaluation of a field, and other per-element
+ * operations, given the definition of the element ((the topological type of
+ * mesh entity to operate over (i.e., edge, tri, quad, tet,
+ * etc.)) and shape functions used by the field.
+ * Operations are expected to be executed concurrently across all (or a subset
+ * of) elements in the on-process mesh (e.g., within a parallel for loop).
+ *
+ * @tparam FieldAccessor provides parenthesis operator to access the field (see
+ * CreateLagrangeField and CreateCoordinateField)
+ * @tparam ElementType provides the definition of an element in terms of its
+ * shape function (ShapeType) and the mapping from mapping from
+ * the element indices to the underlying field storage (ElementDofHolderAccesor)
+ * @tparam ShapeType see ElementType
+ * @tparam ElementDofHolderAccesor see ElementType
+ *
+ * @param in_numMeshEnts number of mesh entities that are associated with the
+ * ElementType
+ * @param fieldIn see FieldAccessor
+ * @param elmIn see ElementType
+ */
 template <typename FieldAccessor,
           template <typename, typename> class ElementType, typename ShapeType,
-          typename ElementToDofHolderMap>
+          typename ElementDofHolderAccessor>
 struct FieldElement {
   // TODO add static asserts for functions provided by the templated types
   const size_t numMeshEnts;
   const FieldAccessor field;
-  ElementType<ShapeType, ElementToDofHolderMap> elm;
+  ElementType<ShapeType, ElementDofHolderAccessor> elm;
   static const size_t MeshEntDim = ShapeType::meshEntDim;
   FieldElement(size_t in_numMeshEnts, const FieldAccessor &fieldIn,
-               const ElementType<ShapeType, ElementToDofHolderMap> elmIn)
+               const ElementType<ShapeType, ElementDofHolderAccessor> elmIn)
       : numMeshEnts(in_numMeshEnts), field(fieldIn), elm(elmIn) {}
 
-  // heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
   using ValArray = Kokkos::Array<typename FieldAccessor::BaseType,
                                  ShapeType::numComponentsPerDof>;
   static const size_t NumComponents = ShapeType::numComponentsPerDof;
+
+  /**
+   * @brief
+   * evaluate the field in the specified element at the specified
+   * parametric/local/area coordinate
+   *
+   * @todo add expression in documetation for summation of shape function *
+   * field values
+   *
+   * @detail
+   * heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
+   *
+   * @param ent the mesh entity index
+   * @param localCoord the parametric coordinate
+   * @return the result of evaluation
+   */
   KOKKOS_INLINE_FUNCTION ValArray
   getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
+    assert(ent < numMeshEnts);
     ValArray c;
     const auto shapeValues = elm.shapeFn.getValues(localCoord);
     for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci)
@@ -52,14 +120,6 @@ struct FieldElement {
     for (auto topo : elm.elm2dof.getTopology()) { // element topology
       for (int ni = 0; ni < elm.shapeFn.numNodes; ++ni) {
         for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci) {
-          // map the element indices to the underlying field storage
-          // examples:
-          //  Element = Triangle and field storage is at mesh vertices (linear
-          //   shape fn)
-          //  Element = Edge and field storage is at mesh vertices
-          //   (linear shape fn)
-          //  Element = Triangle and field storage is at mesh vertices and
-          //   edges (quadratic shape fn)
           auto map = elm.elm2dof(ni, ci, ent, topo);
           c[ci] += field(map.node, map.component, map.entity, map.topo) *
                    shapeValues[ni];
@@ -70,11 +130,23 @@ struct FieldElement {
   }
 };
 
-// given an array of parametric coordinates 'localCoords', one per mesh element,
-// evaluate the fields value within each element
-template <typename Element>
-Kokkos::View<Real *[Element::NumComponents]>
-evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
+/**
+ * @brief
+ * Given an array of parametric coordinates 'localCoords', one per mesh element,
+ * evaluate the fields value within each element.
+ *
+ * @todo consider making this a member function of FieldElement
+ *
+ * @tparam FieldElement see FieldElement struct
+ *
+ * @param fes see FieldElement
+ * @param localCoords 2D Kokkos::View containing the local/parametric/area
+ * coordinates for each element
+ * @return Kokkos::View of evaluation results for all the mesh elements
+ */
+template <typename FieldElement>
+Kokkos::View<Real *[FieldElement::NumComponents]>
+evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords) {
   // TODO add static asserts for values and functions provided by the templated
   // types
   if (Debug) {
@@ -110,11 +182,11 @@ evaluate(Element &fes, Kokkos::View<Real **> localCoords) {
          "must have size = %zu\n",
          fes.MeshEntDim + 1);
   }
-  constexpr const auto numComponents = Element::ValArray::size();
+  constexpr const auto numComponents = FieldElement::ValArray::size();
   Kokkos::View<Real *[numComponents]> res("result", fes.numMeshEnts);
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-        Kokkos::Array<Real, Element::MeshEntDim + 1> lc;
+        Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
         for (int i = 0; i < localCoords.extent(1); i++) // better way?
           lc[i] = localCoords(ent, i);
         auto val = fes.getValue(ent, lc);
