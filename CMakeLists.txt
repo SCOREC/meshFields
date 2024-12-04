@@ -67,6 +67,29 @@ if(MeshFields_USE_CTAGS)
   add_dependencies(meshFields tags)
 endif()
 
+# Set options for doxygen documentation
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in
+  ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY
+)
+add_custom_target(doc
+  ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Generating API documentation with Doxygen" VERBATIM
+)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile_internal.in
+  ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_internal @ONLY
+)
+add_custom_target(docInternal
+  ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_internal
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Generating Internal API documentation with Doxygen" VERBATIM
+)
+endif()
+
 #Settings options for testing
 enable_testing()
 include(CTest)
