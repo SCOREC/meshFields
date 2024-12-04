@@ -8,6 +8,10 @@
 
 namespace MeshField {
 
+/**
+ * @brief
+ * On-process mesh metadata
+ */
 struct MeshInfo {
   int numVtx;     // entDim = 0
   int numEdge;    // entDim = 1
@@ -28,7 +32,7 @@ struct MeshInfo {
  * what combination of interfaces need to be exposed.
  * For example, the functions that provide the coefficients (name?) (e.g.,
  * QuadraticTriangleShape) needs to return the values for each dof holder and
- * associated meta data to define their association with mesh entities, the
+ * associated metadata to define their association with mesh entities, the
  * mesh entity topology, and how many components exist per dof.
  * Likewise, the interface that allows getting and setting field values needs to
  * be customized to accomodate the field interface.
@@ -57,6 +61,25 @@ struct ShapeField : public Mixins... {
       : meshField(meshFieldIn), meshInfo(meshInfoIn), Mixins(mixins)... {};
 };
 
+/**
+ * @brief
+ * Defines a parenthesis operator to provide dof component read/write access
+ * for fields on simplex (i.e., tri and tet) and hypercube (i.e., quad and hex)
+ * meshes using quadratic shape functions
+ * @detail
+ * The dof holders for fields using quadratic shape functions are associated
+ * with mesh edges and mesh vertices.
+ * Values associated with each topological mesh order (edge, vtx, etc.) are
+ * stored in their own structure (a MeshField slice).
+ * As such, the QuadraticAccessor is a composition of a VtxAccessor and
+ * EdgeAccessor that respectively define the parenthesis operators for vertices
+ * and edges.
+ *
+ * @tparam VtxAccessor defines parenthesis operator for dofs associated with
+ * mesh vertices
+ * @tparam EdgeAccessor defines parenthesis operator for dofs associated with
+ * mesh edges
+ */
 template <typename VtxAccessor, typename EdgeAccessor>
 struct QuadraticAccessor {
   constexpr static const Mesh_Topology topo[2] = {Vertex, Edge};
@@ -77,6 +100,20 @@ struct QuadraticAccessor {
   }
 };
 
+/**
+ * @brief
+ * Defines a parenthesis operator to provide dof component read/write access
+ * for fields on simplex (i.e., tri and tet) and hypercube (i.e., quad and hex)
+ * meshes using linear shape functions
+ * @detail
+ * The dof holders for fields using linear shape functions are associated
+ * with mesh vertices.
+ * As such, the LinearAccessor has a VtxAccessor that defines the parenthesis
+ * operators for vertices.
+ *
+ * @tparam VtxAccessor defines parenthesis operator for dofs associated with
+ * mesh vertices
+ */
 template <typename VtxAccessor> struct LinearAccessor {
   constexpr static const Mesh_Topology topo[1] = {Vertex};
   VtxAccessor vtxField;
@@ -93,6 +130,24 @@ template <typename VtxAccessor> struct LinearAccessor {
   }
 };
 
+/**
+ * @brief
+ * Create a field using linear or quadratic Lagrange shape functions
+ * @detail
+ * The key to this function is creation of a ShapeField instance from
+ * the MeshField, the fields it provides, and the required accessors to those
+ * fields.
+ *
+ * @tparam ExecutionSpace a Kokkos ExecutionSpace (i.e., Cuda, Serial, etc.)
+ * @tparam DataType the primative datatype for storing field entries; 32b or 64b
+ * floats are supported
+ * @tparam order the order of the shape functions; linear(1) and quadratic(2)
+ * are supported
+ * @tparam dim the dimension of the mesh
+ *
+ * @param meshInfo defines on-process mesh metadata
+ * @return a linear or quadratic ShapeField
+ */
 template <typename ExecutionSpace, typename DataType, size_t order, size_t dim>
 auto CreateLagrangeField(const MeshInfo &meshInfo) {
   static_assert((std::is_same_v<Real4, DataType> == true ||
@@ -149,6 +204,20 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
   }
 };
 
+/**
+ * @brief
+ * Create a coordinate field using linear Lagrange shape functions
+ * @detail
+ * The key to this function is creation of a ShapeField instance from
+ * the MeshField, a vertex field it provides, and a LinearAccessor to it.
+ * The field's primative datatype is hardcoded to use 64b floats.
+ * Note, the user must set the field entries with coordinates from the mesh.
+ *
+ * @tparam ExecutionSpace a Kokkos ExecutionSpace (i.e., Cuda, Serial, etc.)
+ *
+ * @param meshInfo defines on-process mesh metadata
+ * @return a linear ShapeField
+ */
 template <typename ExecutionSpace>
 auto CreateCoordinateField(const MeshInfo &meshInfo) {
   if (meshInfo.numVtx <= 0) {
