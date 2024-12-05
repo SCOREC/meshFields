@@ -66,18 +66,18 @@ jobs:
           cmake --build $kkbdir --target install -j 4
 
           #kokkos kernels
-          git clone git@github.com:kokkos/kokkos-kernels.git
+          git clone git@github.com:kokkos/kokkos-kernels.git ${workDir}/kokkos-kernels
           kernbdir=${workDir}/buildKokkosKernelsCuda
-          cmake -S kokkos-kernels -B $kernbdir \
+          cmake -S ${workDir}/kokkos-kernels -B $kernbdir \
             -DCMAKE_CXX_COMPILER=g++ \
             -DKokkos_ROOT=$kkbdir/install \
             -DCMAKE_INSTALL_PREFIX=$kernbdir/install
           cmake --build $kernbdir -j 4 --target install
 
           ##cabana
-          git clone git@github.com:ECP-copa/Cabana.git cabana
+          git clone git@github.com:ECP-copa/Cabana.git ${workDir}/cabana
           cabbdir=${workDir}/build-cab
-          cmake -S cabana -B $cabbdir \
+          cmake -S ${workDir}/cabana -B $cabbdir \
             -DCMAKE_BUILD_TYPE="Release" \
             -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
             -DKokkos_ROOT=$kkbdir/install \
@@ -90,9 +90,9 @@ jobs:
           cmake --build $cabbdir -j 4 --target install
 
           # omegah
-          git clone git@github.com:SCOREC/omega_h.git omegah
+          git clone git@github.com:SCOREC/omega_h.git ${workDir}/omegah
           ohbdir=${workDir}/build-omegah
-          cmake -S omegah -B $ohbdir \
+          cmake -S ${workDir}/omegah -B $ohbdir \
             -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=on \
