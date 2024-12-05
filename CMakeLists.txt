@@ -5,20 +5,27 @@ project(meshFields VERSION 0.1.0 LANGUAGES CXX)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
+
 find_package(Omega_h REQUIRED)
 #Clear the omegah compilation flags that it passes to cuda.  Using the
 # kokkos target, and nvcc_wrapper, provide sufficient flags.
 set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
-find_package(Cabana 0.7.0 REQUIRED)
+if(MeshFields_USE_Cabana)
+  find_package(Cabana 0.7.0 REQUIRED)
+endif()
 
 set(MESHFIELD_HEADERS
   src/MeshField_Utility.hpp
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
-  src/CabanaController.hpp
   src/MeshField.hpp
 )
+
+if(MeshFields_USE_Cabana)
+  list(APPEND MESHFIELD_HEADERS src/CabanaController.hpp)
+endif()
 
 #create header only library
 add_library(meshFields INTERFACE)
@@ -28,8 +35,11 @@ target_include_directories(meshFields
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
-target_link_libraries(meshFields INTERFACE Cabana::Core)
-target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
+if(MeshFields_USE_Cabana)
+  message(STATUS "Cabana found")
+  target_link_libraries(meshFields INTERFACE Cabana::Core)
+  target_compile_definitions(meshFields INTERFACE MESHFIELDS_ENABLE_CABANA)
+endif()
 
 #support ctags
 option(MeshFields_USE_CTAGS "Generate Ctags" OFF)
@@ -93,21 +103,19 @@ endfunction()
 
 
 # Creating minimal reproduction of error
-add_executable(Main test/testMain.cpp)
-target_link_libraries(Main PRIVATE meshFields)
-
 add_executable(KokkosTests test/testKokkos.cpp)
 target_link_libraries(KokkosTests PRIVATE meshFields)
 
-add_executable(CabanaTests test/testCabana.cpp)
-target_link_libraries(CabanaTests PRIVATE meshFields)
+if(MeshFields_USE_Cabana)
+  add_executable(CabanaTests test/testCabana.cpp)
+  target_link_libraries(CabanaTests PRIVATE meshFields)
+  test_func(CabanaTests ./CabanaTests)
+endif()
 
 add_executable(SerializationTests test/testSerialize.cpp)
 target_link_libraries(SerializationTests PRIVATE meshFields)
 
-test_func(MainTests ./Main)
 test_func(KokkosTests ./KokkosTests)
-test_func(CabanaTests ./CabanaTests)
 test_func(SerializationTests ./SerializationTests)
 
 #Code Coverage set up -------------------------------------------------------
@@ -122,7 +130,7 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
 
   set(LCOV_SYSTEM_EXCLUDE_PATHS "" CACHE PATH "Set path to system libraries, c++ compiler and cuda-11.4 by default, to be excluded from lcov analysis")
   
-  if (NOT EXISTS ${Cabana_DIR})
+  if (MeshFields_USE_Cabana AND NOT EXISTS ${Cabana_DIR})
     message(FATAL_ERROR " Cabana_DIR was not set or the path does not exist")
   endif()
 
