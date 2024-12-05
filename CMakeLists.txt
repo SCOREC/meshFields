@@ -184,10 +184,6 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
   append_coverage_compiler_flags()
 
   set(LCOV_SYSTEM_EXCLUDE_PATHS "" CACHE PATH "Set path to system libraries, c++ compiler and cuda-11.4 by default, to be excluded from lcov analysis")
-  
-  if (MeshFields_USE_Cabana AND NOT EXISTS ${Cabana_DIR})
-    message(FATAL_ERROR " Cabana_DIR was not set or the path does not exist")
-  endif()
 
   if (NOT EXISTS ${Kokkos_DIR})
     message(FATAL_ERROR " Kokkos_DIR was not set or the path does not exist")
@@ -197,18 +193,28 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
     message(FATAL_ERROR " Omega_h_DIR was not set or the path does not exist")
   endif()
 
-  setup_target_for_coverage_lcov(
-    NAME coverage                    
-    EXECUTABLE ctest -C ${ROOT_DIR}/CTestTestfile.cmake
-    EXCLUDE 
+  set(LCOV_SRC_EXCLUDE_PATHS
       "${CMAKE_CURRENT_LIST_DIR}/docs/*"
       "${CMAKE_CURRENT_LIST_DIR}/.github/*"
       "${CMAKE_CURRENT_BINARY_DIR}/nvcc_internal_extended_lambda_implementation"
       "/tmp/*"
-      "${Cabana_DIR}/*"
       "${Kokkos_DIR}/*"
       "${Omega_h_DIR}/*"
-      "${LCOV_SYSTEM_EXCLUDE_PATHS}"  
+      "${LCOV_SYSTEM_EXCLUDE_PATHS}"
+  )
+
+  if (MeshFields_USE_Cabana AND NOT EXISTS ${Cabana_DIR})
+    message(FATAL_ERROR " Cabana_DIR was not set or the path does not exist")
+  endif()
+
+  if (MeshFields_USE_Cabana)
+    list(APPEND LCOV_SRC_EXCLUDE_PATHS "${Cabana_DIR}")
+  endif()
+
+  setup_target_for_coverage_lcov(
+    NAME coverage
+    EXECUTABLE ctest -C ${ROOT_DIR}/CTestTestfile.cmake
+    EXCLUDE ${LCOV_SRC_EXCLUDE_PATHS}
   )
 
 endif()
