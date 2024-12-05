@@ -65,15 +65,6 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$kkbdir/install
           cmake --build $kkbdir --target install -j 4
 
-          #kokkos kernels
-          git clone git@github.com:kokkos/kokkos-kernels.git ${workDir}/kokkos-kernels
-          kernbdir=${workDir}/buildKokkosKernelsCuda
-          cmake -S ${workDir}/kokkos-kernels -B $kernbdir \
-            -DCMAKE_CXX_COMPILER=g++ \
-            -DKokkos_ROOT=$kkbdir/install \
-            -DCMAKE_INSTALL_PREFIX=$kernbdir/install
-          cmake --build $kernbdir -j 4 --target install
-
           ##cabana
           git clone git@github.com:ECP-copa/Cabana.git ${workDir}/cabana
           cabbdir=${workDir}/build-cab
@@ -108,7 +99,6 @@ jobs:
           cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
-            -DKokkosKernels_ROOT=$kernbdir/install \
             -DCabana_ROOT=$cabbdir/install
           cmake --build $mfbdir -j4
           ctest --test-dir $mfbdir

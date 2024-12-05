@@ -12,8 +12,6 @@ set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
 find_package(Cabana 0.7.0 REQUIRED)
 
-find_package(KokkosKernels REQUIRED)
-
 set(MESHFIELD_HEADERS
   src/MeshField_Utility.hpp
   src/MeshField_Macros.hpp
@@ -31,7 +29,6 @@ target_include_directories(meshFields
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
 target_link_libraries(meshFields INTERFACE Cabana::Core)
-target_link_libraries(meshFields INTERFACE Kokkos::kokkoskernels)
 target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 
 #support ctags
@@ -108,20 +105,10 @@ target_link_libraries(CabanaTests PRIVATE meshFields)
 add_executable(SerializationTests test/testSerialize.cpp)
 target_link_libraries(SerializationTests PRIVATE meshFields)
 
-add_executable(QRTests test/testQR.cpp)
-target_link_libraries(QRTests PRIVATE meshFields)
-
 test_func(MainTests ./Main)
 test_func(KokkosTests ./KokkosTests)
 test_func(CabanaTests ./CabanaTests)
 test_func(SerializationTests ./SerializationTests)
-if(Kokkos_ENABLE_CUDA) #haven't tested with HIP or SYCL
-  test_func(QRTestsCUDA ./QRTests)
-else()
-  #with the serial backend the QR tests fail when run under valgrind
-  #see https://github.com/kokkos/kokkos-kernels/issues/2328
-  will_fail_valgrind_test_func(QRTestsSerialValgrind ./QRTests)
-endif()
 
 #Code Coverage set up -------------------------------------------------------
 
@@ -143,10 +130,6 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
     message(FATAL_ERROR " Kokkos_DIR was not set or the path does not exist")
   endif()
 
-  if (NOT EXISTS ${KokkosKernels_DIR})
-    message(FATAL_ERROR " KokkosKernels_DIR was not set or the path does not exist")
-  endif()
-
   if (NOT EXISTS ${Omega_h_DIR})
     message(FATAL_ERROR " Omega_h_DIR was not set or the path does not exist")
   endif()
@@ -161,7 +144,6 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
       "/tmp/*"
       "${Cabana_DIR}/*"
       "${Kokkos_DIR}/*"
-      "${KokkosKernels_DIR}/*"
       "${Omega_h_DIR}/*"
       "${LCOV_SYSTEM_EXCLUDE_PATHS}"  
   )
