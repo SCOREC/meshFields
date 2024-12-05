@@ -1,10 +1,8 @@
-#include "CabanaController.hpp"
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_Macros.hpp"
 #include "MeshField_Utility.hpp"
 
-#include <Cabana_Core.hpp>
 #include <Kokkos_Core.hpp>
 
 #include <initializer_list>

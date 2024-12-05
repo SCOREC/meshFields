@@ -5,20 +5,21 @@ project(meshFields VERSION 0.1.0 LANGUAGES CXX)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
+
 find_package(Omega_h REQUIRED)
 #Clear the omegah compilation flags that it passes to cuda.  Using the
 # kokkos target, and nvcc_wrapper, provide sufficient flags.
 set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
-find_package(Cabana 0.7.0 REQUIRED)
-
-find_package(KokkosKernels REQUIRED)
+if(MeshFields_USE_Cabana)
+  find_package(Cabana 0.7.0 REQUIRED)
+endif()
 
 set(MESHFIELD_HEADERS
   src/MeshField_Utility.hpp
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
-  src/CabanaController.hpp
   src/MeshField.hpp
   src/MeshField_Element.hpp
   src/MeshField_Shape.hpp
@@ -31,6 +32,8 @@ set(MESHFIELD_SOURCES
 )
 
 add_library(meshFields ${MESHFIELD_SOURCES})
+
+#create header only library
 target_compile_features(meshFields INTERFACE cxx_std_17)
 target_include_directories(meshFields
   PUBLIC
@@ -38,8 +41,6 @@ target_include_directories(meshFields
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
-target_link_libraries(meshFields INTERFACE Cabana::Core)
-target_link_libraries(meshFields INTERFACE Kokkos::kokkoskernels)
 target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 if(Kokkos_ENABLE_CUDA)
   target_compile_options(meshFields INTERFACE "--expt-relaxed-constexpr")
@@ -53,6 +54,11 @@ message(STATUS "Exceptions: ${MeshFields_USE_EXCEPTIONS}")
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/src/MeshField_Config.hpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp")
+
+if(MeshFields_USE_Cabana)
+  target_link_libraries(meshFields INTERFACE Cabana::Core)
+  target_compile_definitions(meshFields INTERFACE MESHFIELDS_ENABLE_CABANA)
+endif()
 
 #support ctags
 option(MeshFields_USE_CTAGS "Generate Ctags" OFF)
@@ -143,27 +149,20 @@ function(meshfields_add_exe EXE_NAME EXE_SRC)
 endfunction()
 
 # Creating minimal reproduction of error
-meshfields_add_exe(Main test/testMain.cpp)
 meshfields_add_exe(KokkosTests test/testKokkos.cpp)
-meshfields_add_exe(CabanaTests test/testCabana.cpp)
 meshfields_add_exe(SerializationTests test/testSerialize.cpp)
-meshfields_add_exe(QRTests test/testQR.cpp)
 meshfields_add_exe(ElementTests test/testElement.cpp)
 meshfields_add_exe(OmegahElementTests test/testOmegahElement.cpp)
 meshfields_add_exe(OmegahCoordFieldTest test/testOmegahCoordField.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 
-test_func(MainTests ./Main)
-test_func(KokkosTests ./KokkosTests)
-test_func(CabanaTests ./CabanaTests)
-test_func(SerializationTests ./SerializationTests)
-if(Kokkos_ENABLE_CUDA) #haven't tested with HIP or SYCL
-  test_func(QRTestsCUDA ./QRTests)
-else()
-  #with the serial backend the QR tests fail when run under valgrind
-  #see https://github.com/kokkos/kokkos-kernels/issues/2328
-  will_fail_valgrind_test_func(QRTestsSerialValgrind ./QRTests)
+if(MeshFields_USE_Cabana)
+  meshfields_add_exe(CabanaTests test/testCabana.cpp)
+  test_func(CabanaTests ./CabanaTests)
 endif()
+
+test_func(KokkosTests ./KokkosTests)
+test_func(SerializationTests ./SerializationTests)
 test_func(ElementTests ./ElementTests)
 test_func(OmegahElementTests ./OmegahElementTests)
 test_func(OmegahCoordFieldTest ./OmegahCoordFieldTest)
@@ -186,16 +185,12 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
 
   set(LCOV_SYSTEM_EXCLUDE_PATHS "" CACHE PATH "Set path to system libraries, c++ compiler and cuda-11.4 by default, to be excluded from lcov analysis")
   
-  if (NOT EXISTS ${Cabana_DIR})
+  if (MeshFields_USE_Cabana AND NOT EXISTS ${Cabana_DIR})
     message(FATAL_ERROR " Cabana_DIR was not set or the path does not exist")
   endif()
 
   if (NOT EXISTS ${Kokkos_DIR})
     message(FATAL_ERROR " Kokkos_DIR was not set or the path does not exist")
-  endif()
-
-  if (NOT EXISTS ${KokkosKernels_DIR})
-    message(FATAL_ERROR " KokkosKernels_DIR was not set or the path does not exist")
   endif()
 
   if (NOT EXISTS ${Omega_h_DIR})
@@ -212,7 +207,6 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
       "/tmp/*"
       "${Cabana_DIR}/*"
       "${Kokkos_DIR}/*"
-      "${KokkosKernels_DIR}/*"
       "${Omega_h_DIR}/*"
       "${LCOV_SYSTEM_EXCLUDE_PATHS}"  
   )

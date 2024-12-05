@@ -1,0 +1,125 @@
+name: pr_comment_trigger_self_hosted
+
+# Controls when the workflow will run
+on:
+  issue_comment:                                     
+    types: [created]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    permissions:
+      contents: read
+    # The type of runner that the job will run on
+    runs-on: self-hosted
+
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '/runtests') &&
+      ((github.event.comment.user.login == 'cwsmith') ||
+       (github.event.comment.user.login == 'jacobmerson'))
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
+          submodules: recursive
+          path: 'meshfields_${{ github.event.issue.number }}' #under $GITHUB_WORKSPACE
+          
+      - name: build
+        id: build
+        shell: bash
+        run: |
+          set +e #avoid exiting when lua modules return non-zero on 'warning' messages
+          source /etc/profile #provides module command
+          module use /opt/scorec/spack/rhel9/v0201_4/lmod/linux-rhel9-x86_64/Core/
+          module load gcc/12.3.0-iil3lno 
+          module load mpich/4.1.1-xpoyz4t
+          module load cmake/3.26.3-2duxfcd
+          module load cuda/12.1.1-zxa4msk
+          set -e
+
+          echo "github.workspace ${{github.workspace}}"
+          
+          date=`date +%F-%H-%M`
+          workDir=${{github.workspace}}/meshfieldsCI_${date}
+          mkdir -p $workDir
+          echo "MESHFIELDS_WORK_DIR=$(echo $workDir)" >> $GITHUB_ENV
+          echo "workDir $workDir"
+
+          # kokkos
+          git clone -b develop git@github.com:kokkos/kokkos.git ${workDir}/kokkos
+          kkbdir=${workDir}/build-kokkos
+          cmake -S ${workDir}/kokkos -B $kkbdir \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
+            -DKokkos_ARCH_AMPERE80=ON \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_OPENMP=off \
+            -DKokkos_ENABLE_CUDA=on \
+            -DKokkos_ENABLE_CUDA_LAMBDA=on \
+            -DKokkos_ENABLE_DEBUG=off \
+            -DCMAKE_INSTALL_PREFIX=$kkbdir/install
+          cmake --build $kkbdir --target install -j 4
+
+          ##cabana
+          git clone git@github.com:ECP-copa/Cabana.git ${workDir}/cabana
+          cabbdir=${workDir}/build-cab
+          cmake -S ${workDir}/cabana -B $cabbdir \
+            -DCMAKE_BUILD_TYPE="Release" \
+            -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
+            -DKokkos_ROOT=$kkbdir/install \
+            -DCabana_ENABLE_MPI=OFF \
+            -DCabana_ENABLE_CAJITA=OFF \
+            -DCabana_ENABLE_TESTING=OFF \
+            -DCabana_ENABLE_EXAMPLES=OFF \
+            -DCabana_ENABLE_Cuda=ON \
+            -DCMAKE_INSTALL_PREFIX=$cabbdir/install
+          cmake --build $cabbdir -j 4 --target install
+
+          # omegah
+          git clone git@github.com:SCOREC/omega_h.git ${workDir}/omegah
+          ohbdir=${workDir}/build-omegah
+          cmake -S ${workDir}/omegah -B $ohbdir \
+            -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=on \
+            -DOmega_h_USE_Kokkos=on \
+            -DOmega_h_CUDA_ARCH="80" \
+            -DCMAKE_CUDA_ARCHITECTURES="80" \
+            -DKokkos_PREFIX=$kkbdir/install \
+            -DBUILD_SHARED_LIBS=on
+          cmake --build $ohbdir -j 4 --target install
+
+          #meshfields
+          mfbdir=${workDir}/build-meshfields
+          cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
+            -DOmega_h_ROOT=$ohbdir/install \
+            -DKokkos_ROOT=$kkbdir/install \
+            -DCabana_ROOT=$cabbdir/install
+          cmake --build $mfbdir -j4
+          ctest --test-dir $mfbdir
+
+      - name: Save Result Link
+        if: ${{ !cancelled() }} #prepare report unless the job was cancelled
+        run: |
+          mkdir -p ./pr
+          echo "${{ github.event.issue.number }}"  > ./pr/issueNumber
+          echo -n "Test Result: ${{ steps.build.outcome }} "  > ./pr/message
+          echo "[(details)](https://github.com/${{github.repository}}/actions/runs/${{ github.run_id }})" >> ./pr/message
+
+      - name: Upload Result
+        if: ${{ !cancelled() }} #upload unless the job was cancelled
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr
+          path: pr/
+
+      - name: Cleanup
+        if: ${{ !cancelled() }}
+        run: |
+          echo "MESHFIELDS_WORK_DIR $MESHFIELDS_WORK_DIR"
+          rm -rf $MESHFIELDS_WORK_DIR
