@@ -918,8 +918,18 @@ WARN_LOGFILE           =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = \
-@CMAKE_CURRENT_SOURCE_DIR@/src/*.hpp \
-@CMAKE_CURRENT_SOURCE_DIR@/src/*.cpp
+@CMAKE_CURRENT_SOURCE_DIR@/src/CabanaController.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/KokkosController.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Defines.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Element.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Fail.cpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Fail.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_logging.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Macros.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_ShapeField.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Shape.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Utility.hpp
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
