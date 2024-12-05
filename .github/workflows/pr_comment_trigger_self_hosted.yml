@@ -72,7 +72,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=g++ \
             -DKokkos_ROOT=$kkbdir/install \
             -DCMAKE_INSTALL_PREFIX=$kernbdir/install
-          cmake --build $kernbdir -j 24 --target install
+          cmake --build $kernbdir -j 4 --target install
 
           ##cabana
           git clone git@github.com:ECP-copa/Cabana.git cabana
@@ -87,12 +87,12 @@ jobs:
             -DCabana_ENABLE_EXAMPLES=OFF \
             -DCabana_ENABLE_Cuda=ON \
             -DCMAKE_INSTALL_PREFIX=$cabbdir/install
-          cmake --build $cabbdir -j 24 --target install
+          cmake --build $cabbdir -j 4 --target install
 
           # omegah
           git clone git@github.com:SCOREC/omega_h.git omegah
           ohbdir=${workDir}/build-omegah
-          cmake -S omegah -B $bdir \
+          cmake -S omegah -B $ohbdir \
             -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=on \
@@ -109,10 +109,8 @@ jobs:
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
             -DKokkosKernels_ROOT=$kernbdir/install \
-            -DCabana_ROOT=$cabbdir/install \
-            -DMeshFields_USE_EXCEPTIONS=OFF \
-            -DMeshFields_USE_CTAGS=ON
-          cmake --build $mfbdir -j24
+            -DCabana_ROOT=$cabbdir/install
+          cmake --build $mfbdir -j4
           ctest --test-dir $mfbdir
 
       - name: Save Result Link
