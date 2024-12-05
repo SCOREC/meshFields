@@ -105,7 +105,7 @@ jobs:
 
           #meshfields
           mfbdir=${workDir}/build-meshfields
-          cmake -S meshFields_${{ github.event.issue.number }} -B $mfbdir \
+          cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
             -DKokkosKernels_ROOT=$kernbdir/install \
