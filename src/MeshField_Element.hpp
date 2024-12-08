@@ -136,17 +136,21 @@ struct FieldElement {
  * evaluate the fields value within each element.
  *
  * @todo consider making this a member function of FieldElement
+ * @todo support passing a CSR for more than one point eval per element - SPR
+ * needs this? - at least need uniform number of points for each element
  *
  * @tparam FieldElement see FieldElement struct
  *
  * @param fes see FieldElement
  * @param localCoords 2D Kokkos::View containing the local/parametric/area
  * coordinates for each element
+ * @param offsets 1D Kokkos::View containing the offsets into localCoords,
+ *                size = localCoords.extent(0)+1
  * @return Kokkos::View of evaluation results for all the mesh elements
  */
 template <typename FieldElement>
 Kokkos::View<Real *[FieldElement::NumComponents]>
-evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords) {
+evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords, Kokkos::View<LO*> offsets) {
   // TODO add static asserts for values and functions provided by the templated
   // types
   if (Debug) {
@@ -182,18 +186,45 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords) {
          "must have size = %zu\n",
          fes.MeshEntDim + 1);
   }
+  if (offsets.size() != fes.numMeshEnts + 1) {
+    fail("The input array of offsets must have size = %zu\n",
+         fes.numMeshEnts + 1);
+  }
   constexpr const auto numComponents = FieldElement::ValArray::size();
-  Kokkos::View<Real *[numComponents]> res("result", fes.numMeshEnts);
+  const auto numPts = getLastValue(offsets); //TODO implement this with subview - see pumipic
+  Kokkos::View<Real *[numComponents]> res("result", numPts);
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
         Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
-        for (int i = 0; i < localCoords.extent(1); i++) // better way?
-          lc[i] = localCoords(ent, i);
-        auto val = fes.getValue(ent, lc);
-        for (int i = 0; i < numComponents; i++)
-          res(ent, i) = val[i];
+        //TODO use nested parallel for?
+        for(auto pt = offsets(ent); pt < offsets(ent+1); pt++) {
+          for (int i = 0; i < localCoords.extent(1); i++) // better way?
+            lc[i] = localCoords(pt, i);
+          const auto val = fes.getValue(ent, lc);
+          for (int i = 0; i < numComponents; i++)
+            res(ent, i) = val[i];
+        }
       });
   return res;
+}
+
+/**
+ * @brief
+ * Given an array of parametric coordinates 'localCoords', one per mesh element,
+ * evaluate the fields value within each element.
+ *
+ * @detail
+ * see evaluate function accepting offsets
+ */
+template <typename FieldElement>
+Kokkos::View<Real *[FieldElement::NumComponents]>
+evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords) {
+  Kokkos::View<LO*> offsets("offsets", fes.numMeshEnts + 1);
+  Kokkos::parallel_for(fes.numMeshEnts+1,
+      KOKKOS_LAMBDA(const int ent) {
+        offsets(ent) = ent;
+      });
+  return evaluate(fes, localCoords, offsets);
 }
 
 } // namespace MeshField

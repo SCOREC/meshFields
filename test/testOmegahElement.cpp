@@ -13,6 +13,7 @@
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
+// TODO - move this into a specialized Omegah interface
 struct LinearTriangleToVertexField {
   Omega_h::LOs triVerts;
   LinearTriangleToVertexField(Omega_h::Mesh mesh)
@@ -51,6 +52,7 @@ struct LinearFunction {
   }
 };
 
+// TODO - move this into a specialized Omegah interface
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
@@ -182,6 +184,10 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   auto field = MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real,
                                               ShapeOrder, MeshDim>(meshInfo);
 
+  // TODO - define interface that takes function of cartesian coords / real
+  //  space and gets the cartesian position of 'nodes' and sets the field
+  //  at the node using the result of the function
+  //  - mfem calls this 'project'
   // set field based on analytic function
   auto coords = mesh.coords();
   auto setField = KOKKOS_LAMBDA(const int &i) {
