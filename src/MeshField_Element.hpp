@@ -5,6 +5,7 @@
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
 #include <MeshField_Shape.hpp>
+#include <MeshField_Utility.hpp> // getLastValue
 #include <iostream>
 
 namespace MeshField {
@@ -191,7 +192,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords, Kokkos::View<LO*>
          fes.numMeshEnts + 1);
   }
   constexpr const auto numComponents = FieldElement::ValArray::size();
-  const auto numPts = getLastValue(offsets); //TODO implement this with subview - see pumipic
+  const auto numPts = MeshFieldUtil::getLastValue(offsets);
   Kokkos::View<Real *[numComponents]> res("result", numPts);
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {

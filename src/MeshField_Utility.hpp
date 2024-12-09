@@ -5,6 +5,7 @@
 #include <initializer_list>
 #include <tuple>
 #include <type_traits>
+#include "MeshField_Fail.hpp"
 /*
 stackoverflow.com/questions/7943525/is-it-possible-to-figure-out-the-parameter-type-and-return-type-of-a-lambda
 */
@@ -46,6 +47,17 @@ struct remove_all_pointers
     : std::conditional_t<std::is_pointer_v<T>,
                          remove_all_pointers<std::remove_pointer_t<T>>,
                          identity<T>> {};
+
+//borrowed from SCOREC/pumi-pic/support/SupportKK.h
+template <typename ViewT>
+typename ViewT::value_type getLastValue(ViewT view) {
+  const int size = view.size();
+  if (size == 0)
+    MeshField::fail("getLastValue called on an empty View\n");
+  typename ViewT::non_const_value_type lastVal;
+  Kokkos::deep_copy(lastVal,Kokkos::subview(view,size-1));
+  return lastVal;
+}
 
 } // END NAMESPACE MeshFieldUtil
 
