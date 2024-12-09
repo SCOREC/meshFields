@@ -151,7 +151,8 @@ struct FieldElement {
  */
 template <typename FieldElement>
 Kokkos::View<Real *[FieldElement::NumComponents]>
-evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords, Kokkos::View<LO*> offsets) {
+evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
+         Kokkos::View<LO *> offsets) {
   // TODO add static asserts for values and functions provided by the templated
   // types
   if (Debug) {
@@ -197,8 +198,8 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords, Kokkos::View<LO*>
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
         Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
-        //TODO use nested parallel for?
-        for(auto pt = offsets(ent); pt < offsets(ent+1); pt++) {
+        // TODO use nested parallel for?
+        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
           for (int i = 0; i < localCoords.extent(1); i++) // better way?
             lc[i] = localCoords(pt, i);
           const auto val = fes.getValue(ent, lc);
@@ -218,13 +219,12 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords, Kokkos::View<LO*>
  * see evaluate function accepting offsets
  */
 template <typename FieldElement>
-Kokkos::View<Real *[FieldElement::NumComponents]>
-evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords) {
-  Kokkos::View<LO*> offsets("offsets", fes.numMeshEnts + 1);
-  Kokkos::parallel_for(fes.numMeshEnts+1,
-      KOKKOS_LAMBDA(const int ent) {
-        offsets(ent) = ent;
-      });
+Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
+    FieldElement &fes, Kokkos::View<Real **> localCoords) {
+  Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
+  Kokkos::parallel_for(
+      fes.numMeshEnts + 1,
+      KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent; });
   return evaluate(fes, localCoords, offsets);
 }
 

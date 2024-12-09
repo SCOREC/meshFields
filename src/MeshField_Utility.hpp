@@ -1,11 +1,11 @@
 #ifndef MESHFIELD_UTILITY_HPP
 #define MESHFIELD_UTILITY_HPP
 
+#include "MeshField_Fail.hpp"
 #include <Kokkos_Core.hpp>
 #include <initializer_list>
 #include <tuple>
 #include <type_traits>
-#include "MeshField_Fail.hpp"
 /*
 stackoverflow.com/questions/7943525/is-it-possible-to-figure-out-the-parameter-type-and-return-type-of-a-lambda
 */
@@ -48,14 +48,13 @@ struct remove_all_pointers
                          remove_all_pointers<std::remove_pointer_t<T>>,
                          identity<T>> {};
 
-//borrowed from SCOREC/pumi-pic/support/SupportKK.h
-template <typename ViewT>
-typename ViewT::value_type getLastValue(ViewT view) {
+// borrowed from SCOREC/pumi-pic/support/SupportKK.h
+template <typename ViewT> typename ViewT::value_type getLastValue(ViewT view) {
   const int size = view.size();
   if (size == 0)
     MeshField::fail("getLastValue called on an empty View\n");
   typename ViewT::non_const_value_type lastVal;
-  Kokkos::deep_copy(lastVal,Kokkos::subview(view,size-1));
+  Kokkos::deep_copy(lastVal, Kokkos::subview(view, size - 1));
   return lastVal;
 }
 
