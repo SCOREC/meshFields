@@ -169,7 +169,7 @@ template <typename Field> void writeVtk(Omega_h::Mesh mesh, Field &field) {
 }
 
 // evaluate a field at the specified local coordinate for each triangle
-template <typename AnalyticFunction, int ShapeOrder>
+template <typename AnalyticFunction, int ShapeOrder, size_t NumPtsPerElem>
 bool triangleLocalPointEval(Omega_h::Mesh mesh,
                             Kokkos::View<MeshField::Real *[3]> localCoords,
                             AnalyticFunction func) {
@@ -229,12 +229,18 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   const auto elm = getTriangleElement<ShapeOrder>(mesh);
 
   MeshField::FieldElement f(meshInfo.numTri, field, elm);
-  auto eval = MeshField::evaluate(f, localCoords);
+  Kokkos::View<MeshField::LO *> offsets("offsets", meshInfo.numTri + 1);
+  Kokkos::parallel_for(
+      "setOffsets", meshInfo.numTri,
+      KOKKOS_LAMBDA(int i) { offsets(i) = i * NumPtsPerElem; });
+  Kokkos::deep_copy(Kokkos::subview(offsets, offsets.size() - 1),
+                    meshInfo.numTri * NumPtsPerElem);
+  auto eval = MeshField::evaluate(f, localCoords, offsets);
 
   MeshField::Element coordElm{MeshField::LinearTriangleCoordinateShape(),
                               LinearTriangleToVertexField(mesh)};
   MeshField::FieldElement fcoords(meshInfo.numTri, coordField, coordElm);
-  auto globalCoords = MeshField::evaluate(fcoords, localCoords);
+  auto globalCoords = MeshField::evaluate(fcoords, localCoords, offsets);
 
   // check the result
   MeshField::LO numErrors = 0;
@@ -263,15 +269,19 @@ struct TestCoords {
   std::string name;
 };
 
+template <size_t NumPtsPerElem>
 Kokkos::View<MeshField::Real *[3]>
 createElmAreaCoords(size_t numElements,
-                    Kokkos::Array<MeshField::Real, 3> coord) {
-  Kokkos::View<MeshField::Real *[3]> lc("localCoords", numElements);
+                    Kokkos::Array<MeshField::Real, 3 * NumPtsPerElem> coords) {
+  Kokkos::View<MeshField::Real *[3]> lc("localCoords",
+                                        numElements * NumPtsPerElem);
   Kokkos::parallel_for(
-      "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &i) {
-        lc(i, 0) = coord[0];
-        lc(i, 1) = coord[1];
-        lc(i, 2) = coord[2];
+      "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &elm) {
+        for (int pt = 0; pt < NumPtsPerElem; pt++) {
+          lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 3 + 0];
+          lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 3 + 1];
+          lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 3 + 2];
+        }
       });
   return lc;
 }
@@ -292,25 +302,29 @@ int main(int argc, char **argv) {
   {
     auto mesh = createMeshTri18(lib);
     auto centroids =
-        createElmAreaCoords(mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
-    auto interior = createElmAreaCoords(mesh.nfaces(), {0.1, 0.4, 0.5});
-    auto vertex = createElmAreaCoords(mesh.nfaces(), {0.0, 0.0, 1.0});
+        createElmAreaCoords<1>(mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
+    auto interior = createElmAreaCoords<1>(mesh.nfaces(), {0.1, 0.4, 0.5});
+    auto vertex = createElmAreaCoords<1>(mesh.nfaces(), {0.0, 0.0, 1.0});
+    auto allVerts = createElmAreaCoords<3>(
+        mesh.nfaces(), {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
     // clang-format off
     const auto cases = {TestCoords{centroids, "centroids"},
                         TestCoords{interior,  "interior"},
                         TestCoords{vertex,    "vertex"}};
     // clang-format on
+    static const size_t OnePtPerElem = 1;
+    static const size_t ThreePtsPerElem = 3;
     for (auto testCase : cases) {
-      auto failed = triangleLocalPointEval<LinearFunction, 1>(
+      auto failed = triangleLocalPointEval<LinearFunction, 1, OnePtPerElem>(
           mesh, testCase.coords, LinearFunction{});
       if (failed)
         doFail("linear", "linear", testCase.name);
-      failed = triangleLocalPointEval<QuadraticFunction, 2>(
+      failed = triangleLocalPointEval<QuadraticFunction, 2, OnePtPerElem>(
           mesh, testCase.coords, QuadraticFunction{});
       if (failed)
         doFail("quadratic", "quadratic", testCase.name);
-      failed = triangleLocalPointEval<LinearFunction, 2>(mesh, testCase.coords,
-                                                         LinearFunction{});
+      failed = triangleLocalPointEval<LinearFunction, 2, OnePtPerElem>(
+          mesh, testCase.coords, LinearFunction{});
       if (failed)
         doFail("quadratic", "linear", testCase.name);
     }
