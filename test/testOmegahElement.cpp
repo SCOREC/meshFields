@@ -169,10 +169,10 @@ template <typename Field> void writeVtk(Omega_h::Mesh mesh, Field &field) {
 }
 
 // evaluate a field at the specified local coordinate for each triangle
-template <typename AnalyticFunction, int ShapeOrder, size_t NumPtsPerElem>
+template <typename AnalyticFunction, int ShapeOrder>
 bool triangleLocalPointEval(Omega_h::Mesh mesh,
                             Kokkos::View<MeshField::Real *[3]> localCoords,
-                            AnalyticFunction func) {
+                            size_t NumPtsPerElem, AnalyticFunction func) {
   const auto MeshDim = 2;
   if (mesh.dim() != MeshDim) {
     MeshField::fail("input mesh must be 2d\n");
@@ -268,6 +268,7 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
 
 struct TestCoords {
   Kokkos::View<MeshField::Real *[3]> coords;
+  size_t NumPtsPerElem;
   std::string name;
 };
 
@@ -303,41 +304,44 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
   {
     auto mesh = createMeshTri18(lib);
-    auto centroids =
-        createElmAreaCoords<1>(mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
-    auto interior = createElmAreaCoords<1>(mesh.nfaces(), {0.1, 0.4, 0.5});
-    auto vertex = createElmAreaCoords<1>(mesh.nfaces(), {0.0, 0.0, 1.0});
-    // clang-format off
-    const auto cases = {TestCoords{centroids, "centroids"},
-                        TestCoords{interior,  "interior"},
-                        TestCoords{vertex,    "vertex"}};
-    // clang-format on
     static const size_t OnePtPerElem = 1;
-    for (auto testCase : cases) {
-      auto failed = triangleLocalPointEval<LinearFunction, 1, OnePtPerElem>(
-          mesh, testCase.coords, LinearFunction{});
-      if (failed)
-        doFail("linear", "linear", testCase.name);
-      failed = triangleLocalPointEval<QuadraticFunction, 2, OnePtPerElem>(
-          mesh, testCase.coords, QuadraticFunction{});
-      if (failed)
-        doFail("quadratic", "quadratic", testCase.name);
-      failed = triangleLocalPointEval<LinearFunction, 2, OnePtPerElem>(
-          mesh, testCase.coords, LinearFunction{});
-      if (failed)
-        doFail("quadratic", "linear", testCase.name);
-    }
     static const size_t ThreePtsPerElem = 3;
+    auto centroids = createElmAreaCoords<OnePtPerElem>(
+        mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
+    auto interior =
+        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.1, 0.4, 0.5});
+    auto vertex =
+        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.0, 0.0, 1.0});
     // clang-format off
     auto allVertices = createElmAreaCoords<ThreePtsPerElem>(mesh.nfaces(),
         {1.0, 0.0, 0.0,
          0.0, 1.0, 0.0,
          0.0, 0.0, 1.0});
     // clang-format on
-    auto failed = triangleLocalPointEval<LinearFunction, 1, ThreePtsPerElem>(
-        mesh, allVertices, LinearFunction{});
-    if (failed)
-      doFail("linear", "linear", "allVertices");
+
+    // clang-format off
+    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
+                        TestCoords{interior, OnePtPerElem, "interior"},
+                        TestCoords{vertex, OnePtPerElem, "vertex"},
+                        TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
+    // clang-format on
+
+    static const size_t LinearField = 1;
+    static const size_t QuadraticField = 2;
+    for (auto testCase : cases) {
+      auto failed = triangleLocalPointEval<LinearFunction, LinearField>(
+          mesh, testCase.coords, testCase.NumPtsPerElem, LinearFunction{});
+      if (failed)
+        doFail("linear", "linear", testCase.name);
+      failed = triangleLocalPointEval<QuadraticFunction, QuadraticField>(
+          mesh, testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{});
+      if (failed)
+        doFail("quadratic", "quadratic", testCase.name);
+      failed = triangleLocalPointEval<LinearFunction, QuadraticField>(
+          mesh, testCase.coords, testCase.NumPtsPerElem, LinearFunction{});
+      if (failed)
+        doFail("quadratic", "linear", testCase.name);
+    }
   }
   Kokkos::finalize();
   return 0;
