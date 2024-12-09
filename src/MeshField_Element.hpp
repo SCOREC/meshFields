@@ -178,14 +178,14 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
            "to evaluate(...) were invalid\n");
     }
   }
-  if (localCoords.extent(0) != fes.numMeshEnts) {
-    fail("Dimension 0 of the input array of local coordinates "
-         "must have size = %zu\n",
+  if (localCoords.extent(0) < fes.numMeshEnts) {
+    fail("The size of dimension 0 of the local coordinates input array "
+         "must be at least %zu.\n",
          fes.numMeshEnts);
   }
   if (localCoords.extent(1) != fes.MeshEntDim + 1) {
     fail("Dimension 1 of the input array of local coordinates "
-         "must have size = %zu\n",
+         "must have size = %zu.\n",
          fes.MeshEntDim + 1);
   }
   if (offsets.size() != fes.numMeshEnts + 1) {

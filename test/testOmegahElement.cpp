@@ -246,19 +246,21 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   MeshField::LO numErrors = 0;
   Kokkos::parallel_reduce(
       "checkResult", meshInfo.numTri,
-      KOKKOS_LAMBDA(const int &i, MeshField::LO &lerrors) {
-        const auto x = globalCoords(i, 0);
-        const auto y = globalCoords(i, 1);
-        const auto expected = func(x, y);
-        const auto computed = eval(i, 0);
-        MeshField::LO isError = 0;
-        if (Kokkos::fabs(computed - expected) > MeshField::MachinePrecision) {
-          isError = 1;
-          Kokkos::printf(
-              "result for elm %d does not match: expected %f computed %f\n", i,
-              expected, computed);
+      KOKKOS_LAMBDA(const int &ent, MeshField::LO &lerrors) {
+        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+          const auto x = globalCoords(pt, 0);
+          const auto y = globalCoords(pt, 1);
+          const auto expected = func(x, y);
+          const auto computed = eval(pt, 0);
+          MeshField::LO isError = 0;
+          if (Kokkos::fabs(computed - expected) > MeshField::MachinePrecision) {
+            isError = 1;
+            Kokkos::printf("result for elm %d, pt %d, does not match: expected "
+                           "%f computed %f\n",
+                           ent, pt, expected, computed);
+          }
+          lerrors += isError;
         }
-        lerrors += isError;
       },
       numErrors);
   return (numErrors > 0);
@@ -305,15 +307,12 @@ int main(int argc, char **argv) {
         createElmAreaCoords<1>(mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
     auto interior = createElmAreaCoords<1>(mesh.nfaces(), {0.1, 0.4, 0.5});
     auto vertex = createElmAreaCoords<1>(mesh.nfaces(), {0.0, 0.0, 1.0});
-    auto allVerts = createElmAreaCoords<3>(
-        mesh.nfaces(), {1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
     // clang-format off
     const auto cases = {TestCoords{centroids, "centroids"},
                         TestCoords{interior,  "interior"},
                         TestCoords{vertex,    "vertex"}};
     // clang-format on
     static const size_t OnePtPerElem = 1;
-    static const size_t ThreePtsPerElem = 3;
     for (auto testCase : cases) {
       auto failed = triangleLocalPointEval<LinearFunction, 1, OnePtPerElem>(
           mesh, testCase.coords, LinearFunction{});
@@ -328,6 +327,17 @@ int main(int argc, char **argv) {
       if (failed)
         doFail("quadratic", "linear", testCase.name);
     }
+    static const size_t ThreePtsPerElem = 3;
+    // clang-format off
+    auto allVertices = createElmAreaCoords<ThreePtsPerElem>(mesh.nfaces(),
+        {1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0});
+    // clang-format on
+    auto failed = triangleLocalPointEval<LinearFunction, 1, ThreePtsPerElem>(
+        mesh, allVertices, LinearFunction{});
+    if (failed)
+      doFail("linear", "linear", "allVertices");
   }
   Kokkos::finalize();
   return 0;
