@@ -12,6 +12,22 @@
 #include <Kokkos_StdAlgorithms.hpp>
 
 namespace MeshField {
+
+/**
+ * @brief
+ * Provides access to individual entries of a single Field provided by
+ * MeshField::makeField and helper functions that operate on the entire Field.
+ *
+ * @details
+ * Each Field stores DOFs associated with exactly one topological mesh entity
+ * type.  For example, a quadratic field over triangles will have one Field for
+ * DOFs at the vertices and another for the DOFs at edges.
+ *
+ * @tparam Slice is the underlying storage object provided by the
+ * KokkosController or CabanaController
+ *
+ * @param Slice see Slice template parameter
+ */
 template <class Slice> class Field {
 
   Slice slice;
