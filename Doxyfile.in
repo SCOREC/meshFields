@@ -918,6 +918,7 @@ WARN_LOGFILE           =
 # Note: If this tag is empty the current directory is searched.
 
 INPUT                  = \
+@CMAKE_CURRENT_SOURCE_DIR@/docs/MeshFields.dox \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Shape.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_ShapeField.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Element.hpp
@@ -2424,7 +2425,7 @@ HIDE_UNDOC_RELATIONS   = YES
 # set to NO
 # The default value is: NO.
 
-HAVE_DOT               = NO
+HAVE_DOT               = YES
 
 # The DOT_NUM_THREADS specifies the number of dot invocations doxygen is allowed
 # to run in parallel. When set to 0 doxygen will base this on the number of
@@ -2549,7 +2550,7 @@ DOT_WRAP_THRESHOLD     = 17
 # The default value is: NO.
 # This tag requires that the tag HAVE_DOT is set to YES.
 
-TEMPLATE_RELATIONS     = NO
+TEMPLATE_RELATIONS     = YES
 
 # If the INCLUDE_GRAPH, ENABLE_PREPROCESSING and SEARCH_INCLUDES tags are set to
 # YES then doxygen will generate a graph for each documented file showing the

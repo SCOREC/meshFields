@@ -10,46 +10,6 @@
 
 namespace MeshField {
 
-// clang-format off
-  /**
-   * @mainpage
-   * ## Nomenclature
-   *
-   * - Mesh - conforming discretization of a domain using simplices (triangles
-   *   and tetrahedrons), hypercubes (quads and hexahedrons), pyramids and prisms
-   * - Field - "describe the distribution of input and solution tensors over the
-   *   mesh entities" [Beall 1999; Simmetrix Web 2015]
-   * - Field Element - localization of the field values on the closure of a
-   *   mesh entity (e.g., the vertices and edges bounding a mesh face) to
-   *   support operations that require those values. For example,
-   *   integration, evaluation of the field at a location within the entity.
-   * - DOF - degree of freedom, exists at a dof holder, can be scalar, vector, matrix, etc.
-   * - DOF holder
-   *   - can contain a DOF
-   *   - possible holders: mesh entities, quadrature points, element centroids, etc.
-   * - Node - a location on a mesh entitiy that is a dof holder. Multiple nodes can
-   *   exist per mesh entity.  For example, a mesh edge could have multiple
-   *   nodes for a high order shape function.
-   *
-   * ## References
-   *
-   * - PUMI users guide: https://www.scorec.rpi.edu/pumi/PUMI.pdf
-   * - PUMI TOMS paper: https://www.scorec.rpi.edu/REPORTS/2015-4.pdf
-   * - PUMI apf source code
-   * - PUMI doxygen: https://www.scorec.rpi.edu/pumi/doxygen/
-   *   - with internal headers: https://www.scorec.rpi.edu/~cwsmith/SCOREC/pumiDocs/html/
-   * - PUMI APF library documentation:
-   *   - The APF Library: https://github.com/SCOREC/core/blob/bcfbd128b65a629241b629c90e3665b539e2e9ae/apf/apf.tex
-   *   - The Cavity Operator: https://github.com/SCOREC/core/blob/8959c599cc05e21d0fb470f941d9f892da62aa02/apf/cavity.tex
-   *   - Interface For Field Access: https://github.com/SCOREC/core/blob/8959c599cc05e21d0fb470f941d9f892da62aa02/apf/attach.tex
-   *   - Hierarchic Shape Functions: https://github.com/SCOREC/core/blob/8959c599cc05e21d0fb470f941d9f892da62aa02/apf/hierarchic.tex
-   * - Mark Beall's thesis, Chapter 8: https://scorec.rpi.edu/REPORTS/1999-6.pdf
-   *   - An object-oriented field API used within the framework ('Trellis') of
-   *     other objects described in the thesis (mesh, model, solution, etc.).
-   *   - Designed to support p-adaptivity (i.e., non-uniform field order)
-   */
-// clang-format on
-
 /**
  * @brief
  * Return type used by structs/classes that implement the
@@ -66,7 +26,7 @@ struct ElementToDofHolderMap {
  * @brief
  * Combines the shape function definition and the type that provides the mapping
  * from the element indices to the underlying field storage
- * @detail
+ * @details
  * Examples:
  *  Element = Triangle and field storage is at mesh vertices (linear
  *   shape fn)
@@ -144,7 +104,7 @@ struct FieldElement {
    * @todo add expression in documetation for summation of shape function *
    * field values
    *
-   * @detail
+   * @details
    * heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
    *
    * @param ent the mesh entity index
@@ -255,7 +215,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
  * Given an array of parametric coordinates 'localCoords', one per mesh element,
  * evaluate the fields value within each element.
  *
- * @detail
+ * @details
  * see evaluate function accepting offsets
  */
 template <typename FieldElement>

@@ -27,7 +27,7 @@ struct MeshInfo {
 /**
  * @brief
  * Enable definition of field classes with multiple inheritance.
- * @detail
+ * @details
  * The field definition (e.g., linear triangle, quadratic tet, etc.) dictates
  * what combination of interfaces need to be exposed.
  * For example, the functions that provide the coefficients (name?) (e.g.,
@@ -66,7 +66,7 @@ struct ShapeField : public Mixins... {
  * Defines a parenthesis operator to provide dof component read/write access
  * for fields on simplex (i.e., tri and tet) and hypercube (i.e., quad and hex)
  * meshes using quadratic shape functions
- * @detail
+ * @details
  * The dof holders for fields using quadratic shape functions are associated
  * with mesh edges and mesh vertices.
  * Values associated with each topological mesh order (edge, vtx, etc.) are
@@ -105,7 +105,7 @@ struct QuadraticAccessor {
  * Defines a parenthesis operator to provide dof component read/write access
  * for fields on simplex (i.e., tri and tet) and hypercube (i.e., quad and hex)
  * meshes using linear shape functions
- * @detail
+ * @details
  * The dof holders for fields using linear shape functions are associated
  * with mesh vertices.
  * As such, the LinearAccessor has a VtxAccessor that defines the parenthesis
@@ -133,7 +133,7 @@ template <typename VtxAccessor> struct LinearAccessor {
 /**
  * @brief
  * Create a field using linear or quadratic Lagrange shape functions
- * @detail
+ * @details
  * The key to this function is creation of a ShapeField instance from
  * the MeshField, the fields it provides, and the required accessors to those
  * fields.
@@ -207,7 +207,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
 /**
  * @brief
  * Create a coordinate field using linear Lagrange shape functions
- * @detail
+ * @details
  * The key to this function is creation of a ShapeField instance from
  * the MeshField, a vertex field it provides, and a LinearAccessor to it.
  * The field's primative datatype is hardcoded to use 64b floats.
