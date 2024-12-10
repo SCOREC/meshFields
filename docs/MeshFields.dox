@@ -19,7 +19,7 @@
    *   exist per mesh entity.  For example, a mesh edge could have multiple
    *   nodes for a high order shape function.
    *
-   * ## References
+   * ## References and Related Work
    *
    * - PUMI users guide: https://www.scorec.rpi.edu/pumi/PUMI.pdf
    * - PUMI TOMS paper: https://www.scorec.rpi.edu/REPORTS/2015-4.pdf
