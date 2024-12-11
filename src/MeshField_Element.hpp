@@ -39,10 +39,6 @@ struct ElementToDofHolderMap {
  * consider removing this, the extra object/type isn't needed outside the
  * FieldElement
  *
- * @tparam Shape Defines the shape function order and mesh topology (i.e.,
- * QuadraticTriangleShape, QuadraticTetrahedronShape, ...)
- * @tparam ElementDofHolderAccessor provides the mapping from
- * the element indices to the underlying field storage
  *
  * @param shapeFnIn see Shape
  * @param elm2dofIn see ElementDofHolderAccessor
@@ -68,29 +64,29 @@ template <typename Shape, typename ElementDofHolderAccessor> struct Element {
  *
  * @tparam FieldAccessor provides parenthesis operator to access the field (see
  * CreateLagrangeField and CreateCoordinateField)
- * @tparam ElementType provides the definition of an element in terms of its
- * shape function (ShapeType) and the mapping from mapping from
- * the element indices to the underlying field storage (ElementDofHolderAccesor)
- * @tparam ShapeType see ElementType
- * @tparam ElementDofHolderAccesor see ElementType
+ * @tparam ShapeType Defines the shape function order and mesh topology (i.e.,
+ * QuadraticTriangleShape, QuadraticTetrahedronShape, ...)
+ * @tparam ElementDofHolderAccessor provides the mapping from
+ * the element indices to the underlying field storage
+ *
+ * @todo add static asserts for functions provided by the templated types
  *
  * @param in_numMeshEnts number of mesh entities that are associated with the
  * ElementType
  * @param fieldIn see FieldAccessor
  * @param elmIn see ElementType
  */
-template <typename FieldAccessor,
-          template <typename, typename> class ElementType, typename ShapeType,
-          typename ElementDofHolderAccessor>
+template <typename FieldAccessor, typename ShapeType, typename ElementDofHolderAccessor>
 struct FieldElement {
-  // TODO add static asserts for functions provided by the templated types
   const size_t numMeshEnts;
   const FieldAccessor field;
-  ElementType<ShapeType, ElementDofHolderAccessor> elm;
+  ShapeType shapeFn;
+  ElementDofHolderAccessor elm2dof;
+
   static const size_t MeshEntDim = ShapeType::meshEntDim;
-  FieldElement(size_t in_numMeshEnts, const FieldAccessor &fieldIn,
-               const ElementType<ShapeType, ElementDofHolderAccessor> elmIn)
-      : numMeshEnts(in_numMeshEnts), field(fieldIn), elm(elmIn) {}
+  FieldElement(size_t numMeshEntsIn, const FieldAccessor &fieldIn,
+      const ShapeType shapeFnIn, const ElementDofHolderAccessor elm2dofIn)
+      : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn), elm2dof(elm2dofIn) {}
 
   using ValArray = Kokkos::Array<typename FieldAccessor::BaseType,
                                  ShapeType::numComponentsPerDof>;
@@ -115,13 +111,13 @@ struct FieldElement {
   getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
     assert(ent < numMeshEnts);
     ValArray c;
-    const auto shapeValues = elm.shapeFn.getValues(localCoord);
-    for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci)
+    const auto shapeValues = shapeFn.getValues(localCoord);
+    for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
       c[ci] = 0;
-    for (auto topo : elm.elm2dof.getTopology()) { // element topology
-      for (int ni = 0; ni < elm.shapeFn.numNodes; ++ni) {
-        for (int ci = 0; ci < elm.shapeFn.numComponentsPerDof; ++ci) {
-          auto map = elm.elm2dof(ni, ci, ent, topo);
+    for (auto topo : elm2dof.getTopology()) { // element topology
+      for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
+        for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
+          auto map = elm2dof(ni, ci, ent, topo);
           c[ci] += field(map.node, map.component, map.entity, map.topo) *
                    shapeValues[ni];
         }

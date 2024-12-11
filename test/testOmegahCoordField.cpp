@@ -82,10 +82,8 @@ bool triangleLocalToGlobal(Omega_h::Mesh mesh) {
   coordField.meshField.parallel_for({0}, {meshInfo.numVtx}, setCoordField,
                                     "setCoordField");
 
-  MeshField::Element elm{MeshField::LinearTriangleCoordinateShape(),
-                         LinearTriangleToVertexField(mesh)};
-
-  MeshField::FieldElement fcoords(meshInfo.numTri, coordField, elm);
+  MeshField::FieldElement fcoords(meshInfo.numTri, coordField, MeshField::LinearTriangleCoordinateShape(),
+                         LinearTriangleToVertexField(mesh));
   Kokkos::View<MeshField::Real *[3]> localCoords("localCoords", mesh.nfaces());
   Kokkos::deep_copy(localCoords, 1 / 3.0); // the centroid of the triangle
   auto globalCoords = MeshField::evaluate(fcoords, localCoords);
