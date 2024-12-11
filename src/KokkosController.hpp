@@ -18,6 +18,8 @@ namespace Controller {
 
 template <class SliceType, class T> struct KokkosSliceWrapper {
 
+  //TODO - add execution space typedef, copy from controller
+  typedef exe = Controller::exe; //FIXME
   SliceType slice;
   int dimensions[5];
   typedef T Type;
