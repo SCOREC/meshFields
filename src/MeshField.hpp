@@ -78,9 +78,11 @@ template <class Slice> class Field {
   /**
    * @brief
    * given an index in the range of 0 to the total capacity of the Field,
-   * return the multi-rank index
+   * return the row-major (i.e., C/C++ layout or Kokkos::LayoutRight)
+   * multi-rank index
    * @details
    * relies on computeDivisors
+   * @return a Kokkos::Array with the row-major multi-rank index
    */
   KOKKOS_INLINE_FUNCTION
   auto linearIdxToTensorIdx(size_t index) const {
@@ -93,6 +95,12 @@ template <class Slice> class Field {
     return multiIndex;
   }
 
+  /**
+   * get the product of the rank extents
+   */
+  KOKKOS_INLINE_FUNCTION
+  auto totalSize() const { return size(0) * divisors[0]; }
+
 public:
   static const int MAX_RANK = Slice::MAX_RANK;
   static const int Rank = Slice::RANK;
@@ -100,9 +108,18 @@ public:
 
   Field(Slice s) : slice(s), divisors(computeDivisors()) {}
 
+  /**
+   * @brief
+   * get the size/extent of the specified rank
+   * @param i (in) the rank to query
+   * @return the size/extent
+   */
   KOKKOS_INLINE_FUNCTION
   auto size(int i) const { return slice.size(i); }
 
+  /**
+   * access the underlying field at the specified index
+   */
   KOKKOS_INLINE_FUNCTION
   auto &operator()(int s) const { return slice(s); }
 
@@ -120,15 +137,9 @@ public:
   auto &operator()(int s, int a, int i, int j, int k) const {
     return slice(s, a, i, j, k);
   }
-  KOKKOS_INLINE_FUNCTION
-  auto getFlatViewSize() const {
-    size_t N = size(0);
-    for (size_t i = 1; i < Rank; ++i)
-      N *= size(i);
-    return N;
-  }
+
   void serialize_impl(Kokkos::View<base_type *> &serial) const {
-    assert(serial.size() == getFlatViewSize());
+    assert(serial.size() == totalSize());
     Kokkos::parallel_for(
         "field serializer", serial.size(),
         KOKKOS_CLASS_LAMBDA(const int index) {
@@ -150,20 +161,44 @@ public:
           }
         });
   }
+
+  /**
+   * @brief
+   * copy the Field into a single rank Kokkos View
+   * @details
+   * See linearIdxToTensorIdx
+   * @return the Kokkos View
+   */
   Kokkos::View<base_type *> serialize() const {
-    auto N = this->getFlatViewSize();
+    auto N = totalSize();
     Kokkos::View<base_type *> serial("serialized field", N);
     serialize_impl(serial);
     return std::move(serial);
   }
+
+  /**
+   * @brief
+   * copy the Field into a given Kokkos View
+   * @details
+   * The Kokkos View needs to have extent = the product of the Field extents.
+   * See linearIdxToTensorIdx
+   * @param serial (in/out) the Kokkow View to copy into
+   */
   void serialize(Kokkos::View<base_type *> &serial) const {
-    size_t N = getFlatViewSize();
+    const size_t N = totalSize();
     assert(N == serial.size());
     serialize_impl(serial);
   }
 
+  /**
+   * @brief
+   * copy the given Kokkos View into the Field
+   * @details
+   * See linearIdxToTensorIdx
+   * @param serial (in/out) the Kokkow View to copy into
+   */
   void deserialize(const Kokkos::View<const base_type *> &serialized) {
-    size_t N = getFlatViewSize();
+    const size_t N = totalSize();
     assert(N == serialized.size());
     Kokkos::parallel_for(
         "field deserializer", N, KOKKOS_CLASS_LAMBDA(const int index) {
@@ -192,7 +227,6 @@ public:
     Kokkos::parallel_for(
         p, KOKKOS_CLASS_LAMBDA(const int &i) { operator()(i) = view(i); });
   }
-
   template <class View> void setRankTwo(View &view) {
     Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::Rank>({0, 0});
     Kokkos::Array b =
@@ -203,7 +237,6 @@ public:
           operator()(i, j) = view(i, j);
         });
   }
-
   template <class View> void setRankThree(View &view) {
     Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::Rank>({0, 0, 0});
     Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::Rank>(
@@ -239,6 +272,8 @@ public:
   }
   /**
    * sets field(i,j,...) = view(i,j,...) for all i,j,...  up to rank 5.
+   * @todo check datatype of View
+   * @tparam View to copy from, must have matching extent and rank
    */
   template <class View> void set(View &view) {
     constexpr std::size_t view_rank = View::rank;
