@@ -157,6 +157,22 @@ public:
   }
 };
 
+/**
+ * @brief
+ * Supports creation and access to Fields, and parallel_[for|scan|reduce]
+ * operations over them.
+ *
+ * @todo Can the parallel_[for|scan|reduce] be free functions or does the
+ * dependency on the controllers prevent that?
+ *
+ * @details
+ * This is a thin wrapper over the Controller.
+ *
+ * @tparam Controller manages and provides the storage for Fields, current
+ * options are KokkosController or CabanaController
+ *
+ * @param controller see Controller
+ */
 template <class Controller> class MeshField {
 
   Controller sliceController;
