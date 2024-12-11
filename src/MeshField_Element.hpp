@@ -136,6 +136,8 @@ struct FieldElement {
  * Given an array of parametric coordinates 'localCoords', one per mesh element,
  * evaluate the fields value within each element.
  *
+ * @todo add static asserts for values and functions provided by the templated
+ * types
  * @todo consider making this a member function of FieldElement
  * @todo support passing a CSR for more than one point eval per element - SPR
  * needs this? - at least need uniform number of points for each element
@@ -153,8 +155,6 @@ template <typename FieldElement>
 Kokkos::View<Real *[FieldElement::NumComponents]>
 evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
          Kokkos::View<LO *> offsets) {
-  // TODO add static asserts for values and functions provided by the templated
-  // types
   if (Debug) {
     // check input parametric coords are positive and sum to one
     LO numErrors = 0;
