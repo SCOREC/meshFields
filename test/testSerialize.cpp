@@ -56,11 +56,11 @@ void test_multi() {
         view5(i, j, k, l, m) = i + j + k + l + m;
       });
 
-  mf.setField(field1, view1);
-  mf.setField(field2, view2);
-  mf.setField(field3, view3);
-  mf.setField(field4, view4);
-  mf.setField(field5, view5);
+  field1.set(view1);
+  field2.set(view2);
+  field3.set(view3);
+  field4.set(view4);
+  field5.set(view5);
 
   auto serialized1 = field1.serialize();
   auto serialized2 = field2.serialize();

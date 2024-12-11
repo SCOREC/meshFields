@@ -9,8 +9,13 @@
 
 namespace Controller {
 
+/**
+ * @todo use a class; following
+ * https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c2-use-class-if-the-class-has-an-invariant-use-struct-if-the-data-members-can-vary-independently
+ */
 template <class SliceType, class T> struct CabanaSliceWrapper {
 
+  using ExecutionSpace = typename SliceType::execution_space;
   static const int MAX_RANK = 4;
   static const std::size_t RANK = Kokkos::View<T>::rank + 1;
   int dimensions[MAX_RANK];

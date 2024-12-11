@@ -7,9 +7,24 @@
 #include <stdexcept>
 #include <type_traits> // std::same_v<t1,t2>
 
+#include "MeshField_Fail.hpp"
 #include "MeshField_Utility.hpp"
 #include <Kokkos_Core.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
+
+namespace {
+template <class Field, class View>
+void checkExtents(Field &field, View &view, std::string key) {
+  bool matches = true;
+  for (int i = 0; i < Field::Rank; i++) {
+    matches = matches && (view.extent(i) == field.size(i));
+  }
+  if (!matches) {
+    MeshField::fail("%s: the extents of the view does not match the field\n",
+                    key.c_str());
+  }
+}
+} // namespace
 
 namespace MeshField {
 
@@ -39,23 +54,38 @@ template <class Slice> class Field {
   typedef typename std::remove_pointer<type_rank4>::type type_rank5;
   typedef type_rank5 base_type;
 
-  // divisor[i] = product(i+1,5,size)
+  using ExecutionSpace = typename Slice::ExecutionSpace;
+
   const Kokkos::Array<size_t, Slice::RANK> divisors;
+
+  /**
+   * @brief
+   * precompute divisors needed for linearIdxToTensorIdx
+   * @details
+   * divisor[i] = product(i+1,5,size)
+   */
   auto computeDivisors() {
-    Kokkos::Array<size_t, Slice::RANK> div;
-    for (int r = 0; r < RANK; r++) {
+    Kokkos::Array<size_t, Rank> div;
+    for (int r = 0; r < Rank; r++) {
       div[r] = 1;
-      for (int i = r + 1; i < Slice::RANK; ++i) {
+      for (int i = r + 1; i < Rank; ++i) {
         div[r] *= size(i);
       }
     }
     return div;
   }
 
+  /**
+   * @brief
+   * given an index in the range of 0 to the total capacity of the Field,
+   * return the multi-rank index
+   * @details
+   * relies on computeDivisors
+   */
   KOKKOS_INLINE_FUNCTION
   auto linearIdxToTensorIdx(size_t index) const {
-    Kokkos::Array<size_t, RANK> multiIndex;
-    for (int i = 0; i < RANK; ++i) {
+    Kokkos::Array<size_t, Rank> multiIndex;
+    for (int i = 0; i < Rank; ++i) {
       multiIndex[i] = index / divisors[i];
       assert(multiIndex[i] < size(i));
       index %= divisors[i];
@@ -65,7 +95,7 @@ template <class Slice> class Field {
 
 public:
   static const int MAX_RANK = Slice::MAX_RANK;
-  static const int RANK = Slice::RANK;
+  static const int Rank = Slice::RANK;
   using BaseType = base_type;
 
   Field(Slice s) : slice(s), divisors(computeDivisors()) {}
@@ -93,15 +123,16 @@ public:
   KOKKOS_INLINE_FUNCTION
   auto getFlatViewSize() const {
     size_t N = size(0);
-    for (size_t i = 1; i < RANK; ++i)
+    for (size_t i = 1; i < Rank; ++i)
       N *= size(i);
     return N;
   }
   void serialize_impl(Kokkos::View<base_type *> &serial) const {
+    assert(serial.size() == getFlatViewSize());
     Kokkos::parallel_for(
         "field serializer", serial.size(),
         KOKKOS_CLASS_LAMBDA(const int index) {
-          constexpr std::size_t rank = RANK;
+          constexpr std::size_t rank = Rank;
           auto serial_data = serial;
           auto sIndex = linearIdxToTensorIdx(index);
           if constexpr (rank == 1) {
@@ -138,7 +169,7 @@ public:
         "field deserializer", N, KOKKOS_CLASS_LAMBDA(const int index) {
           auto serialized_data = serialized;
 
-          constexpr std::size_t rank = RANK;
+          constexpr std::size_t rank = Rank;
           auto sIndex = linearIdxToTensorIdx(index);
           if constexpr (rank == 1) {
             slice(index) = serialized_data(index);
@@ -156,88 +187,78 @@ public:
         });
   }
 
-  template <class View>
-  void setFieldRankOne(View &view) {
-    using EXE_SPACE = typename Slice::exe;
-    Kokkos::RangePolicy<EXE_SPACE> p(0, field.size(0));
+  template <class View> void setRankOne(View &view) {
+    Kokkos::RangePolicy<ExecutionSpace> p(0, size(0));
     Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i) { field(i) = view(i); });
+        p, KOKKOS_CLASS_LAMBDA(const int &i) { operator()(i) = view(i); });
   }
 
-  template <class View>
-  void setFieldRankTwo(View &view) {
-    using EXE_SPACE = typename Slice::exe;
-    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
+  template <class View> void setRankTwo(View &view) {
+    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::Rank>({0, 0});
+    Kokkos::Array b =
+        MeshFieldUtil::to_kokkos_array<Field::Rank>({size(0), size(1)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::Rank>, ExecutionSpace> p(a, b);
     Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i, const int &j) {
-          field(i, j) = view(i, j);
+        p, KOKKOS_CLASS_LAMBDA(const int &i, const int &j) {
+          operator()(i, j) = view(i, j);
         });
   }
 
-  template <class View>
-  void setFieldRankThree(View &view) {
-    using EXE_SPACE = typename Slice::exe;
-    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1), field.size(2)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
+  template <class View> void setRankThree(View &view) {
+    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::Rank>({0, 0, 0});
+    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::Rank>(
+        {size(0), size(1), size(2)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::Rank>, ExecutionSpace> p(a, b);
     Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i, const int &j, const int &k) {
-          field(i, j, k) = view(i, j, k);
+        p, KOKKOS_CLASS_LAMBDA(const int &i, const int &j, const int &k) {
+          operator()(i, j, k) = view(i, j, k);
         });
   }
-  template <class View>
-  void setFieldRankFour(View &view) {
-    using EXE_SPACE = typename Slice::exe;
-    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0, 0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1), field.size(2), field.size(3)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
+  template <class View> void setRankFour(View &view) {
+    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::Rank>({0, 0, 0, 0});
+    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::Rank>(
+        {size(0), size(1), size(2), size(3)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::Rank>, ExecutionSpace> p(a, b);
     Kokkos::parallel_for(
-        p,
-        KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
-          field(i, j, k, l) = view(i, j, k, l);
+        p, KOKKOS_CLASS_LAMBDA(const int &i, const int &j, const int &k,
+                               const int &l) {
+          operator()(i, j, k, l) = view(i, j, k, l);
         });
   }
-  template <class View>
-  void setFieldRankFive(View &view) {
-    using EXE_SPACE = typename Slice::exe;
+  template <class View> void setRankFive(View &view) {
     Kokkos::Array a =
-        MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0, 0, 0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1), field.size(2), field.size(3),
-         field.size(4)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
+        MeshFieldUtil::to_kokkos_array<Field::Rank>({0, 0, 0, 0, 0});
+    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::Rank>(
+        {size(0), size(1), size(2), size(3), size(4)});
+    Kokkos::MDRangePolicy<Kokkos::Rank<Field::Rank>, ExecutionSpace> p(a, b);
     Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l,
-                         const int &m) {
-          field(i, j, k, l, m) = view(i, j, k, l, m);
+        p, KOKKOS_CLASS_LAMBDA(const int &i, const int &j, const int &k,
+                               const int &l, const int &m) {
+          operator()(i, j, k, l, m) = view(i, j, k, l, m);
         });
   }
-
-  /** sets field(i,j,...) = view(i,j,...) for all i,j,...  up to rank 5.
+  /**
+   * sets field(i,j,...) = view(i,j,...) for all i,j,...  up to rank 5.
    */
-  template <class View> void setField(View &view) {
+  template <class View> void set(View &view) {
     constexpr std::size_t view_rank = View::rank;
     constexpr std::size_t field_rank = Slice::RANK;
     static_assert(field_rank <= Slice::MAX_RANK);
     static_assert(view_rank == field_rank);
-
+    checkExtents(*this, view, __func__);
     if constexpr (field_rank == 1) {
-      setFieldRankOne(field, view);
+      setRankOne(view);
     } else if constexpr (field_rank == 2) {
-      setFieldRankTwo(field, view);
+      setRankTwo(view);
     } else if constexpr (field_rank == 3) {
-      setFieldRankThree(field, view);
+      setRankThree(view);
     } else if constexpr (field_rank == 4) {
-      setFieldRankFour(field, view);
+      setRankFour(view);
     } else if constexpr (field_rank == 5) {
-      setFieldRankFive(field, view);
+      setRankFive(view);
     } else {
-      fprintf(stderr, "setField error: Invalid Field Rank\n");
+      fail("Field::set error: field rank is %d, it must be [1:5]\n",
+           field_rank);
     }
   }
 };
@@ -291,21 +312,21 @@ public:
     /* TODO: infinite reducers */
     /* Number of arguements to lambda should be equal to number of ranks +
      * number of reducers
-     * -> adjust 'RANK' accordingly */
+     * -> adjust 'Rank' accordingly */
     constexpr std::size_t reducer_count = 1;
-    constexpr auto RANK =
+    constexpr auto funcRank =
         MeshFieldUtil::function_traits<FunctorType>::arity - reducer_count;
 
     using EXE_SPACE = typename Controller::exe;
     assert(start.size() == end.size());
-    if constexpr (RANK <= 1) {
+    if constexpr (funcRank <= 1) {
       Kokkos::RangePolicy<EXE_SPACE> policy((*start.begin()), (*end.begin()));
       Kokkos::parallel_reduce(tag, policy, reductionKernel, reducer);
     } else {
-      auto a_start = MeshFieldUtil::to_kokkos_array<RANK>(start);
-      auto a_end = MeshFieldUtil::to_kokkos_array<RANK>(end);
-      Kokkos::MDRangePolicy<Kokkos::Rank<RANK>, EXE_SPACE> policy(a_start,
-                                                                  a_end);
+      auto a_start = MeshFieldUtil::to_kokkos_array<funcRank>(start);
+      auto a_end = MeshFieldUtil::to_kokkos_array<funcRank>(end);
+      Kokkos::MDRangePolicy<Kokkos::Rank<funcRank>, EXE_SPACE> policy(a_start,
+                                                                      a_end);
       Kokkos::parallel_reduce(tag, policy, reductionKernel, reducer);
     }
   }

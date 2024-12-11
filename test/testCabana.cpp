@@ -349,10 +349,10 @@ void testSetField() {
         v4(i, j, k, l) += i + j + k + l;
       });
 
-  mf.setField(f1, v1);
-  mf.setField(f2, v2);
-  mf.setField(f3, v3);
-  mf.setField(f4, v4);
+  f1.set(v1);
+  f2.set(v2);
+  f3.set(v3);
+  f4.set(v4);
 
   Kokkos::parallel_for(
       "", p,

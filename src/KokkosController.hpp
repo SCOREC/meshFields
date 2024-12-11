@@ -16,10 +16,13 @@
 
 namespace Controller {
 
+/**
+ * @todo use a class; following
+ * https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c2-use-class-if-the-class-has-an-invariant-use-struct-if-the-data-members-can-vary-independently
+ */
 template <class SliceType, class T> struct KokkosSliceWrapper {
 
-  //TODO - add execution space typedef, copy from controller
-  typedef exe = Controller::exe; //FIXME
+  using ExecutionSpace = typename SliceType::memory_space::execution_space;
   SliceType slice;
   int dimensions[5];
   typedef T Type;
