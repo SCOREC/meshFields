@@ -3,6 +3,9 @@
 #include "MeshField.hpp"
 #include "MeshField_Macros.hpp"
 #include "MeshField_Utility.hpp"
+#include "MeshField_SimdFor.hpp"
+#include "MeshField_Reduce.hpp"
+#include "MeshField_Scan.hpp"
 
 #include <Cabana_Core.hpp>
 #include <Kokkos_Core.hpp>
@@ -35,9 +38,8 @@ void testMakeSliceCabana(int num_tuples) {
   using Ctrl =
       Controller::CabanaController<ExecutionSpace, MemorySpace, double>;
   Ctrl c(num_tuples);
-  MeshField::MeshField<Ctrl> cabanaMeshField(c);
 
-  auto field0 = cabanaMeshField.makeField<0>();
+  auto field0 = MeshField::makeField<Ctrl, 0>(c);
 
   auto testKernel = KOKKOS_LAMBDA(const int x) {
     double gamma = (double)x;
@@ -54,14 +56,13 @@ void testParallelReduceCabana() {
   using Ctrl = Controller::CabanaController<ExecutionSpace, MemorySpace, int>;
   const int N = 9;
   Ctrl c(N);
-  MeshField::MeshField<Ctrl> cabanaMeshField(c);
 
   {
     double result = 0, verify = 0;
     auto reduce_kernel = KOKKOS_LAMBDA(const int &i, double &lsum) {
       lsum += i * 1.0;
     };
-    cabanaMeshField.parallel_reduce("CabanaReduceTest1", {0}, {N},
+    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest1", {0}, {N},
                                     reduce_kernel, result);
     for (int i = 0; i < N; i++)
       verify += i * 1.0;
@@ -73,7 +74,7 @@ void testParallelReduceCabana() {
         KOKKOS_LAMBDA(const int &i, const int &j, double &lsum) {
       lsum += i * j;
     };
-    cabanaMeshField.parallel_reduce("CabanaReduceTest2", {0, 0}, {N, N},
+    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest2", {0, 0}, {N, N},
                                     reduce_kernel, result);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
@@ -88,7 +89,7 @@ void testParallelReduceCabana() {
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k, double &lsum) {
       lsum += i * j * k;
     };
-    cabanaMeshField.parallel_reduce("CabanaReduceTest3", {0, 0, 0}, {N, N, N},
+    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest3", {0, 0, 0}, {N, N, N},
                                     reduce_kernel, result);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
@@ -106,7 +107,7 @@ void testParallelReduceCabana() {
                                        const int &l, double &lsum) {
       lsum += i * j * k * l;
     };
-    cabanaMeshField.parallel_reduce("CabanaReduceTest4", {0, 0, 0, 0},
+    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest4", {0, 0, 0, 0},
                                     {N, N, N, N}, reduce_kernel, result);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
@@ -131,48 +132,37 @@ void testCabanaControllerSize() {
 
   using simple =
       Controller::CabanaController<ExecutionSpace, MemorySpace, int[b]>;
+  simple c1(a);
+  for (int i = 0; i < 2; i++) {
+    assert(c1.size(0, i) == psi[i]);
+  }
+
   using multi =
       Controller::CabanaController<ExecutionSpace, MemorySpace, int[b][c][d],
                                    char[b][c][d], bool[b][c][d]>;
-  using varied =
-      Controller::CabanaController<ExecutionSpace, MemorySpace, double[b][c],
-                                   int, float[b][c][d], char[b]>;
-  using empty = Controller::CabanaController<ExecutionSpace, MemorySpace, int>;
-
-  simple c1(a);
   multi c2(a);
-  varied c3(a);
-  empty c4;
-
-  MeshField::MeshField<simple> simple_kok(c1);
-  MeshField::MeshField<multi> multi_kok(c2);
-  MeshField::MeshField<varied> varied_kok(c3);
-  MeshField::MeshField<empty> empty_kok(c4);
-
-  // simple_kok
-  for (int i = 0; i < 2; i++) {
-    assert(simple_kok.size(0, i) == psi[i]);
-  }
-
-  // multi_kok
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 4; j++) {
-      assert(multi_kok.size(i, j) == psi[j]);
+      assert(c2.size(i, j) == psi[j]);
     }
   }
 
-  // varied_kok
+  using varied =
+      Controller::CabanaController<ExecutionSpace, MemorySpace, double[b][c],
+                                   int, float[b][c][d], char[b]>;
+  varied c3(a);
   for (int i = 0; i < 3; i++)
-    assert(varied_kok.size(0, i) == psi[i]);
-  assert(varied_kok.size(1, 0) == psi[0]);
+    assert(c3.size(0, i) == psi[i]);
+  assert(c3.size(1, 0) == psi[0]);
   for (int i = 0; i < 4; i++)
-    assert(varied_kok.size(2, i) == psi[i]);
+    assert(c3.size(2, i) == psi[i]);
   for (int i = 0; i < 2; i++)
-    assert(varied_kok.size(3, i) == psi[i]);
+    assert(c3.size(3, i) == psi[i]);
 
-  // empty_kok
+  using empty = Controller::CabanaController<ExecutionSpace, MemorySpace, int>;
+  empty c4;
   for (int i = 0; i < 4; i++) {
-    assert(empty_kok.size(0, i) == 0);
+    assert(c4.size(0, i) == 0);
   }
   printf("== END testCabanaControllerSize ==\n");
 }
@@ -196,23 +186,19 @@ void testCabanaFieldSize() {
   multi c2(a);
   varied c3(a);
   empty c4;
-  MeshField::MeshField<simple> simple_kok(c1);
-  MeshField::MeshField<multi> multi_kok(c2);
-  MeshField::MeshField<varied> varied_kok(c3);
-  MeshField::MeshField<empty> empty_kok(c4);
 
   const int MAX_RANK = 4;
 
-  { // simple_kok
-    auto field0 = simple_kok.makeField<0>();
+  {
+    auto field0 = MeshField::makeField<simple, 0>(c1);
     for (int i = 0; i < 2; i++)
       assert(field0.size(i) == psi[i]);
   }
 
-  { // multi_kok
-    auto field0 = multi_kok.makeField<0>();
-    auto field1 = multi_kok.makeField<1>();
-    auto field2 = multi_kok.makeField<2>();
+  {
+    auto field0 = MeshField::makeField<multi, 0>(c2);
+    auto field1 = MeshField::makeField<multi, 1>(c2);
+    auto field2 = MeshField::makeField<multi, 2>(c2);
     for (int i = 0; i < MAX_RANK; i++) {
       assert(field0.size(i) == psi[i]);
       assert(field1.size(i) == psi[i]);
@@ -220,11 +206,11 @@ void testCabanaFieldSize() {
     }
   }
 
-  { // varied_kok
-    auto field0 = varied_kok.makeField<0>();
-    auto field1 = varied_kok.makeField<1>();
-    auto field2 = varied_kok.makeField<2>();
-    auto field3 = varied_kok.makeField<3>();
+  {
+    auto field0 = MeshField::makeField<varied, 0>(c3);
+    auto field1 = MeshField::makeField<varied, 1>(c3);
+    auto field2 = MeshField::makeField<varied, 2>(c3);
+    auto field3 = MeshField::makeField<varied, 3>(c3);
 
     for (int i = 0; i < 3; i++) {
       assert(field0.size(i) == psi[i]);
@@ -239,8 +225,8 @@ void testCabanaFieldSize() {
       assert(field3.size(i) == psi[i]);
     }
   }
-  { // empty_kok
-    auto field0 = empty_kok.makeField<0>();
+  {
+    auto field0 = MeshField::makeField<empty, 0>(c4);
     for (int i = 0; i < MAX_RANK; i++) {
       assert(field0.size(i) == 0);
     }
@@ -256,37 +242,36 @@ void testCabanaParallelFor() {
         Controller::CabanaController<ExecutionSpace, MemorySpace, int, int[y],
                                      int[y][z], int[y][z][a]>;
     simd_ctrlr c1(x);
-    MeshField::MeshField<simd_ctrlr> mf(c1);
-    auto field0 = mf.makeField<0>();
-    auto field1 = mf.makeField<1>();
-    auto field2 = mf.makeField<2>();
-    auto field3 = mf.makeField<3>();
+    auto field0 = MeshField::makeField<simd_ctrlr, 0>(c1);
+    auto field1 = MeshField::makeField<simd_ctrlr, 1>(c1);
+    auto field2 = MeshField::makeField<simd_ctrlr, 2>(c1);
+    auto field3 = MeshField::makeField<simd_ctrlr, 3>(c1);
 
     auto vectorKernel = KOKKOS_LAMBDA(const int &i) {
       field0(i) = i;
       assert(field0(i) == i);
     };
-    mf.parallel_for({0}, {x}, vectorKernel, "simple_loop");
+    MeshField::simd_parallel_for(simd_ctrlr, {0}, {x}, vectorKernel, "simple_loop");
 
     auto vectorKernel2 = KOKKOS_LAMBDA(const int &i, const int &j) {
       field1(i, j) = i + j;
       assert(field1(i, j) == i + j);
     };
-    mf.parallel_for({0, 0}, {x, y}, vectorKernel2, "simple_loop");
+    MeshField::simd_parallel_for(simd_ctrlr, {0, 0}, {x, y}, vectorKernel2, "simple_loop");
 
     auto vectorKernel3 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k) {
       field2(i, j, k) = i + j + k;
       assert(field2(i, j, k) == i + j + k);
     };
-    mf.parallel_for({0, 0, 0}, {x, y, z}, vectorKernel3, "simple_loop");
+    MeshField::simd_parallel_for(simd_ctrlr, {0, 0, 0}, {x, y, z}, vectorKernel3, "simple_loop");
 
     auto vectorKernel4 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
       field3(i, j, k, l) = i + j + k + l;
       assert(field3(i, j, k, l) == i + j + k + l);
     };
-    mf.parallel_for({0, 0, 0, 0}, {x, y, z, a}, vectorKernel4, "simple_loop");
+    MeshField::simd_parallel_for(simd_ctrlr, {0, 0, 0, 0}, {x, y, z, a}, vectorKernel4, "simple_loop");
   }
 
   printf("== END testCabanaParallelFor() ==\n");
@@ -298,9 +283,8 @@ void testParallelScan() {
   using s_cab =
       Controller::CabanaController<ExecutionSpace, MemorySpace, int, int>;
   s_cab c1(N);
-  MeshField::MeshField<s_cab> mfc(c1);
-  auto pre = mfc.makeField<0>();
-  auto post = mfc.makeField<1>();
+  auto pre = MeshField::makeField<s_cab, 0>(c1);
+  auto post = MeshField::makeField<s_cab, 1>(c1);
 
   auto scan_kernel =
       KOKKOS_LAMBDA(int i, int &partial_sum, const bool is_final) {
@@ -313,7 +297,7 @@ void testParallelScan() {
 
   for (int i = 1; i <= N; i++) {
     int result;
-    mfc.parallel_scan("default", 0, i, scan_kernel, result);
+    MeshField::parallel_scan(s_cab, "default", 0, i, scan_kernel, result);
     assert(result == seriesSum(i));
   }
   printf("== END testParallelScan ==\n");
@@ -325,11 +309,10 @@ void testSetField() {
   using cab1 = Controller::CabanaController<ExecutionSpace, MemorySpace, int,
                                             int[N], int[N][N], int[N][N][N]>;
   cab1 c1(N);
-  MeshField::MeshField<cab1> mf(c1);
-  auto f1 = mf.makeField<0>();
-  auto f2 = mf.makeField<1>();
-  auto f3 = mf.makeField<2>();
-  auto f4 = mf.makeField<3>();
+  auto f1 = MeshField::makeField<cab1, 0>(c1);
+  auto f2 = MeshField::makeField<cab1, 1>(c1);
+  auto f3 = MeshField::makeField<cab1, 2>(c1);
+  auto f4 = MeshField::makeField<cab1, 3>(c1);
 
   Kokkos::View<int *> v1("1", N);
   Kokkos::View<int **> v2("2", N, N);

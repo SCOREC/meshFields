@@ -168,12 +168,11 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
         Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
     // 1 dof with 1 component per vtx
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx});
-    MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
-    auto vtxField = kokkosMeshField.template makeField<0>();
+    auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
     using LinearLagrangeShapeField =
-        ShapeField<MeshField<Ctrlr>, LinearTriangleShape, LA>;
-    LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
+        ShapeField<Ctrlr, LinearTriangleShape, LA>;
+    LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
     if (meshInfo.numVtx <= 0) {
@@ -187,13 +186,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     // 1 dof with 1 comp per vtx/edge
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx,
                    /*field 1*/ 1, 1, meshInfo.numEdge});
-    MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
-    auto vtxField = kokkosMeshField.template makeField<0>();
-    auto edgeField = kokkosMeshField.template makeField<1>();
+    auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+    auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
     using QuadraticLagrangeShapeField =
-        ShapeField<MeshField<Ctrlr>, QuadraticTriangleShape, QA>;
-    QuadraticLagrangeShapeField qlsf(kokkosMeshField, meshInfo,
+        ShapeField<Ctrlr, QuadraticTriangleShape, QA>;
+    QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo,
                                      {vtxField, edgeField});
     return qlsf;
   } else {
@@ -229,12 +227,11 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
       Controller::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
   const int numComp = meshInfo.dim;
   Ctrlr kk_ctrl({/*field 0*/ 1, numComp, meshInfo.numVtx});
-  MeshField<Ctrlr> kokkosMeshField(kk_ctrl);
-  auto vtxField = kokkosMeshField.template makeField<0>();
+  auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   using LA = LinearAccessor<decltype(vtxField)>;
   using LinearLagrangeShapeField =
-      ShapeField<MeshField<Ctrlr>, LinearTriangleShape, LA>;
-  LinearLagrangeShapeField llsf(kokkosMeshField, meshInfo, {vtxField});
+      ShapeField<Ctrlr, LinearTriangleShape, LA>;
+  LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
   return llsf;
 };
 

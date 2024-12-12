@@ -3,6 +3,7 @@
 #include "MeshField_Element.hpp"
 #include "MeshField_Fail.hpp"
 #include "MeshField_ShapeField.hpp"
+#include "MeshField_For.hpp"
 #include "Omega_h_build.hpp"
 #include "Omega_h_file.hpp"
 #include "Omega_h_simplex.hpp"
@@ -79,7 +80,7 @@ bool triangleLocalToGlobal(Omega_h::Mesh mesh) {
     coordField(0, 0, i, MeshField::Vertex) = coords[i * MeshDim];
     coordField(0, 1, i, MeshField::Vertex) = coords[i * MeshDim + 1];
   };
-  coordField.meshField.parallel_for({0}, {meshInfo.numVtx}, setCoordField,
+  MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx}, setCoordField,
                                     "setCoordField");
 
   MeshField::FieldElement fcoords(meshInfo.numTri, coordField,

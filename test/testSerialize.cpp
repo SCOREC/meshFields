@@ -16,8 +16,7 @@ void test_1_1_16() {
   using kCon =
       Controller::KokkosController<MemorySpace, ExecutionSpace, int ***>;
   kCon c1({1, 1, 16});
-  MeshField::MeshField mf(c1);
-  MeshField::Field field = mf.makeField<0>();
+  MeshField::Field field = MeshField::makeField<kCon, 0>(c1);
   auto field_serialized = field.serialize();
 }
 
@@ -28,12 +27,11 @@ void test_multi() {
                                    int ***, int ****, int *****>;
   kok1 c1({N, N, N, N, N, N, N, N, N, N, N, N, N, N, N});
 
-  MeshField::MeshField mf(c1);
-  MeshField::Field field1 = mf.makeField<0>();
-  MeshField::Field field2 = mf.makeField<1>();
-  MeshField::Field field3 = mf.makeField<2>();
-  MeshField::Field field4 = mf.makeField<3>();
-  MeshField::Field field5 = mf.makeField<4>();
+  MeshField::Field field1 = MeshField::makeField<kok1, 0>(c1);
+  MeshField::Field field2 = MeshField::makeField<kok1, 1>(c1);
+  MeshField::Field field3 = MeshField::makeField<kok1, 2>(c1);
+  MeshField::Field field4 = MeshField::makeField<kok1, 3>(c1);
+  MeshField::Field field5 = MeshField::makeField<kok1, 4>(c1);
 
   Kokkos::View<int *> view1("1", N);
   Kokkos::View<int **> view2("2", N, N);

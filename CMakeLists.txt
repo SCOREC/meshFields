@@ -24,8 +24,16 @@ set(MESHFIELD_HEADERS
   src/MeshField_Element.hpp
   src/MeshField_Shape.hpp
   src/MeshField_Fail.hpp
+  src/MeshField_For.hpp
+  src/MeshField_Reduce.hpp
+  src/MeshField_Scan.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
+if(MeshFields_USE_Cabana)
+  list(APPEND MESHFIELD_HEADERS 
+    src/CabanaController.hpp
+    src/MeshField_SimdFor.hpp)
+endif()
 
 set(MESHFIELD_SOURCES
   src/MeshField_Fail.cpp
