@@ -151,11 +151,19 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
-    return MeshField::Element{MeshField::LinearTriangleShape(),
-                              LinearTriangleToVertexField(mesh)};
+    struct result {
+      MeshField::LinearTriangleShape shp;
+      LinearTriangleToVertexField map;
+    };
+    return result{MeshField::LinearTriangleShape(),
+                  LinearTriangleToVertexField(mesh)};
   } else if constexpr (ShapeOrder == 2) {
-    return MeshField::Element{MeshField::QuadraticTriangleShape(),
-                              QuadraticTriangleToField(mesh)};
+    struct result {
+      MeshField::QuadraticTriangleShape shp;
+      QuadraticTriangleToField map;
+    };
+    return result{MeshField::QuadraticTriangleShape(),
+                  QuadraticTriangleToField(mesh)};
   }
 }
 
@@ -226,9 +234,9 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
   coordField.meshField.parallel_for({0}, {meshInfo.numVtx}, setCoordField,
                                     "setCoordField");
 
-  const auto elm = getTriangleElement<ShapeOrder>(mesh);
+  const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
 
-  MeshField::FieldElement f(meshInfo.numTri, field, elm);
+  MeshField::FieldElement f(meshInfo.numTri, field, shp, map);
   Kokkos::View<MeshField::LO *> offsets("offsets", meshInfo.numTri + 1);
   Kokkos::parallel_for(
       "setOffsets", meshInfo.numTri,
@@ -237,9 +245,9 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
                     meshInfo.numTri * NumPtsPerElem);
   auto eval = MeshField::evaluate(f, localCoords, offsets);
 
-  MeshField::Element coordElm{MeshField::LinearTriangleCoordinateShape(),
-                              LinearTriangleToVertexField(mesh)};
-  MeshField::FieldElement fcoords(meshInfo.numTri, coordField, coordElm);
+  MeshField::FieldElement fcoords(meshInfo.numTri, coordField,
+                                  MeshField::LinearTriangleCoordinateShape(),
+                                  LinearTriangleToVertexField(mesh));
   auto globalCoords = MeshField::evaluate(fcoords, localCoords, offsets);
 
   // check the result

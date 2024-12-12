@@ -24,37 +24,6 @@ struct ElementToDofHolderMap {
 
 /**
  * @brief
- * Combines the shape function definition and the type that provides the mapping
- * from the element indices to the underlying field storage
- * @details
- * Examples:
- *  Element = Triangle and field storage is at mesh vertices (linear
- *   shape fn)
- *  Element = Edge and field storage is at mesh vertices
- *   (linear shape fn)
- *  Element = Triangle and field storage is at mesh vertices and
- *   edges (quadratic shape fn)
- *
- * @todo
- * consider removing this, the extra object/type isn't needed outside the
- * FieldElement
- *
- *
- * @param shapeFnIn see Shape
- * @param elm2dofIn see ElementDofHolderAccessor
- */
-template <typename Shape, typename ElementDofHolderAccessor> struct Element {
-  // TODO add static asserts for variables and functions provided by the
-  // templated types
-  Shape shapeFn;
-  static const size_t MeshEntDim = Shape::meshEntDim; // better way?
-  ElementDofHolderAccessor elm2dof;
-  Element(const Shape shapeFnIn, const ElementDofHolderAccessor elm2dofIn)
-      : shapeFn(shapeFnIn), elm2dof(elm2dofIn) {}
-};
-
-/**
- * @brief
  * Supports the evaluation of a field, and other per-element
  * operations, given the definition of the element ((the topological type of
  * mesh entity to operate over (i.e., edge, tri, quad, tet,
@@ -76,7 +45,8 @@ template <typename Shape, typename ElementDofHolderAccessor> struct Element {
  * @param fieldIn see FieldAccessor
  * @param elmIn see ElementType
  */
-template <typename FieldAccessor, typename ShapeType, typename ElementDofHolderAccessor>
+template <typename FieldAccessor, typename ShapeType,
+          typename ElementDofHolderAccessor>
 struct FieldElement {
   const size_t numMeshEnts;
   const FieldAccessor field;
@@ -85,8 +55,10 @@ struct FieldElement {
 
   static const size_t MeshEntDim = ShapeType::meshEntDim;
   FieldElement(size_t numMeshEntsIn, const FieldAccessor &fieldIn,
-      const ShapeType shapeFnIn, const ElementDofHolderAccessor elm2dofIn)
-      : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn), elm2dof(elm2dofIn) {}
+               const ShapeType shapeFnIn,
+               const ElementDofHolderAccessor elm2dofIn)
+      : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn),
+        elm2dof(elm2dofIn) {}
 
   using ValArray = Kokkos::Array<typename FieldAccessor::BaseType,
                                  ShapeType::numComponentsPerDof>;
