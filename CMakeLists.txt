@@ -27,6 +27,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_For.hpp
   src/MeshField_Reduce.hpp
   src/MeshField_Scan.hpp
+  src/MeshField_MeshField.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
 if(MeshFields_USE_Cabana)
