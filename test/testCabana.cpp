@@ -2,10 +2,10 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_Macros.hpp"
-#include "MeshField_Utility.hpp"
-#include "MeshField_SimdFor.hpp"
 #include "MeshField_Reduce.hpp"
 #include "MeshField_Scan.hpp"
+#include "MeshField_SimdFor.hpp"
+#include "MeshField_Utility.hpp"
 
 #include <Cabana_Core.hpp>
 #include <Kokkos_Core.hpp>
@@ -62,8 +62,8 @@ void testParallelReduceCabana() {
     auto reduce_kernel = KOKKOS_LAMBDA(const int &i, double &lsum) {
       lsum += i * 1.0;
     };
-    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest1", {0}, {N},
-                                    reduce_kernel, result);
+    MeshField::parallel_reduce(ExecutionSpace(), "CabanaReduceTest1", {0}, {N},
+                               reduce_kernel, result);
     for (int i = 0; i < N; i++)
       verify += i * 1.0;
     assert(doubleCompare(verify, result));
@@ -74,8 +74,8 @@ void testParallelReduceCabana() {
         KOKKOS_LAMBDA(const int &i, const int &j, double &lsum) {
       lsum += i * j;
     };
-    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest2", {0, 0}, {N, N},
-                                    reduce_kernel, result);
+    MeshField::parallel_reduce(ExecutionSpace(), "CabanaReduceTest2", {0, 0},
+                               {N, N}, reduce_kernel, result);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
         verify += i * j;
@@ -89,8 +89,8 @@ void testParallelReduceCabana() {
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k, double &lsum) {
       lsum += i * j * k;
     };
-    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest3", {0, 0, 0}, {N, N, N},
-                                    reduce_kernel, result);
+    MeshField::parallel_reduce(ExecutionSpace(), "CabanaReduceTest3", {0, 0, 0},
+                               {N, N, N}, reduce_kernel, result);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
         for (int k = 0; k < N; k++) {
@@ -107,8 +107,9 @@ void testParallelReduceCabana() {
                                        const int &l, double &lsum) {
       lsum += i * j * k * l;
     };
-    MeshField::parallel_reduce(Ctrl, "CabanaReduceTest4", {0, 0, 0, 0},
-                                    {N, N, N, N}, reduce_kernel, result);
+    MeshField::parallel_reduce(ExecutionSpace(), "CabanaReduceTest4",
+                               {0, 0, 0, 0}, {N, N, N, N}, reduce_kernel,
+                               result);
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
         for (int k = 0; k < N; k++) {
@@ -251,27 +252,30 @@ void testCabanaParallelFor() {
       field0(i) = i;
       assert(field0(i) == i);
     };
-    MeshField::simd_parallel_for(simd_ctrlr, {0}, {x}, vectorKernel, "simple_loop");
+    MeshField::simd_parallel_for(c1, {0}, {x}, vectorKernel, "simple_loop");
 
     auto vectorKernel2 = KOKKOS_LAMBDA(const int &i, const int &j) {
       field1(i, j) = i + j;
       assert(field1(i, j) == i + j);
     };
-    MeshField::simd_parallel_for(simd_ctrlr, {0, 0}, {x, y}, vectorKernel2, "simple_loop");
+    MeshField::simd_parallel_for(c1, {0, 0}, {x, y}, vectorKernel2,
+                                 "simple_loop");
 
     auto vectorKernel3 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k) {
       field2(i, j, k) = i + j + k;
       assert(field2(i, j, k) == i + j + k);
     };
-    MeshField::simd_parallel_for(simd_ctrlr, {0, 0, 0}, {x, y, z}, vectorKernel3, "simple_loop");
+    MeshField::simd_parallel_for(c1, {0, 0, 0}, {x, y, z}, vectorKernel3,
+                                 "simple_loop");
 
     auto vectorKernel4 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
       field3(i, j, k, l) = i + j + k + l;
       assert(field3(i, j, k, l) == i + j + k + l);
     };
-    MeshField::simd_parallel_for(simd_ctrlr, {0, 0, 0, 0}, {x, y, z, a}, vectorKernel4, "simple_loop");
+    MeshField::simd_parallel_for(c1, {0, 0, 0, 0}, {x, y, z, a}, vectorKernel4,
+                                 "simple_loop");
   }
 
   printf("== END testCabanaParallelFor() ==\n");
@@ -297,7 +301,8 @@ void testParallelScan() {
 
   for (int i = 1; i <= N; i++) {
     int result;
-    MeshField::parallel_scan(s_cab, "default", 0, i, scan_kernel, result);
+    MeshField::parallel_scan(ExecutionSpace(), "default", 0, i, scan_kernel,
+                             result);
     assert(result == seriesSum(i));
   }
   printf("== END testParallelScan ==\n");

@@ -170,8 +170,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx});
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
-    using LinearLagrangeShapeField =
-        ShapeField<Ctrlr, LinearTriangleShape, LA>;
+    using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
     LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
@@ -191,8 +190,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
     using QuadraticLagrangeShapeField =
         ShapeField<Ctrlr, QuadraticTriangleShape, QA>;
-    QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo,
-                                     {vtxField, edgeField});
+    QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
     return qlsf;
   } else {
     fail("CreateLagrangeField does not support the specified "
@@ -229,8 +227,7 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   Ctrlr kk_ctrl({/*field 0*/ 1, numComp, meshInfo.numVtx});
   auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   using LA = LinearAccessor<decltype(vtxField)>;
-  using LinearLagrangeShapeField =
-      ShapeField<Ctrlr, LinearTriangleShape, LA>;
+  using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
   LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
   return llsf;
 };

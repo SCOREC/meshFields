@@ -78,16 +78,16 @@ template <class SliceType, class T> struct CabanaSliceWrapper {
 
 using namespace Cabana;
 
-template <class ExecutionSpace, class MemorySpace, class... Ts>
+template <class ExeSpace, class MemorySpace, class... Ts>
 class CabanaController {
 
   // type definitions
   using TypeTuple = std::tuple<Ts...>;
-  using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
+  using DeviceType = Kokkos::Device<ExeSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
 
 public:
-  typedef ExecutionSpace exe;
+  using ExecutionSpace = ExeSpace;
   // Including num_tuples -> so 3 additional extents
   static const int MAX_RANK = 4;
   static constexpr int vecLen =
@@ -181,7 +181,6 @@ public:
       sizes[i] = this->size(index, i);
     return wrapper_slice_t<type, stride>(std::move(slice), sizes);
   }
-
 };
 } // namespace Controller
 

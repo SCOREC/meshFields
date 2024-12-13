@@ -1,10 +1,10 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
-#include "MeshField_Macros.hpp"
-#include "MeshField_Utility.hpp"
 #include "MeshField_For.hpp"
+#include "MeshField_Macros.hpp"
 #include "MeshField_Reduce.hpp"
 #include "MeshField_Scan.hpp"
+#include "MeshField_Utility.hpp"
 
 #include <cassert>
 #include <initializer_list>
@@ -129,13 +129,16 @@ void testKokkosParallelFor() {
       rk5(i, j, k, l, m) = i + j + k + l + m;
       assert(rk5(i, j, k, l, m) == i + j + k + l + m);
     };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {a}, k1, "testKokkosParallelFor(rank1)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0}, {a, b}, k2, "testKokkosParallelFor(rank2)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0}, {a, b, c}, k3, "testKokkosParallelFor(rank3)");
+    MeshField::parallel_for(ExecutionSpace(), {0}, {a}, k1,
+                            "testKokkosParallelFor(rank1)");
+    MeshField::parallel_for(ExecutionSpace(), {0, 0}, {a, b}, k2,
+                            "testKokkosParallelFor(rank2)");
+    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0}, {a, b, c}, k3,
+                            "testKokkosParallelFor(rank3)");
     MeshField::parallel_for(ExecutionSpace(), {0, 0, 0, 0}, {a, b, c, d}, k4,
-                     "testKokkosParallelFor(rank4)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0, 0, 0}, {a, b, c, d, e}, k5,
-                     "testKokkosParallelFor(rank5)");
+                            "testKokkosParallelFor(rank4)");
+    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0, 0, 0}, {a, b, c, d, e},
+                            k5, "testKokkosParallelFor(rank5)");
   }
 
   printf("== END testKokkosParallelFor ==\n");
@@ -155,7 +158,8 @@ void kokkosParallelReduceTest() {
     auto kernel = KOKKOS_LAMBDA(const int &i, double &lsum) {
       lsum += 1.0 * i;
     };
-    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest", {0}, {N}, kernel, result);
+    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest", {0}, {N}, kernel,
+                               result);
     double result_verify = 0;
     for (int i = 0; i < N; i++) {
       result_verify += 1.0 * i;
@@ -169,7 +173,8 @@ void kokkosParallelReduceTest() {
     auto kernel = KOKKOS_LAMBDA(const int &i, const int &j, double &lsum) {
       lsum += i * j;
     };
-    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest2", {0, 0}, {N, N}, kernel, result);
+    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest2", {0, 0}, {N, N},
+                               kernel, result);
     double result_verify = 0;
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
@@ -187,7 +192,8 @@ void kokkosParallelReduceTest() {
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k, double &lsum) {
       lsum += i * j * k;
     };
-    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest3", {0, 0, 0}, {N, N, N}, kernel, result);
+    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest3", {0, 0, 0},
+                               {N, N, N}, kernel, result);
     double result_verify = 0;
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
@@ -206,8 +212,8 @@ void kokkosParallelReduceTest() {
                                 const int &l, double &lsum) {
       lsum += i * j * k * l;
     };
-    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest4", {0, 0, 0, 0}, {N, N, N, N}, kernel,
-                        result);
+    MeshField::parallel_reduce(ExecutionSpace(), "ReduceTest4", {0, 0, 0, 0},
+                               {N, N, N, N}, kernel, result);
     double result_verify = 0;
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < N; j++) {
@@ -238,14 +244,14 @@ void kokkosControllerSizeTest() {
   /* BEGIN STATIC DIMENSIONS TESTS */
   {
     using simple_static =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int[a]>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int[a]>;
     simple_static c1;
     assert(c1.size(0, 0) == a);
   }
   {
     using large_simple_static =
-      Controller::KokkosController<MemorySpace, ExecutionSpace,
-      int[a][b][c][d][e]>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace,
+                                     int[a][b][c][d][e]>;
     large_simple_static c2;
     for (int i = 0; i < 5; i++) {
       assert(c2.size(0, i) == psi[i]);
@@ -253,35 +259,35 @@ void kokkosControllerSizeTest() {
   }
   {
     using multi_static =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int[a][b][c],
-      double[a][b][c]>;
-      multi_static c3;
-      for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 3; j++) {
-          int foo = c3.size(i, j);
-          assert((foo == psi[j]));
-        }
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int[a][b][c],
+                                     double[a][b][c]>;
+    multi_static c3;
+    for (int i = 0; i < 2; i++) {
+      for (int j = 0; j < 3; j++) {
+        int foo = c3.size(i, j);
+        assert((foo == psi[j]));
       }
+    }
   }
   /* END STATIC DIMENSIONS TESTS */
   /* BEGIN DYNAMIC DIMENSION TESTS */
   {
     using simple_dynamic =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int *>;
     simple_dynamic c1({5});
     assert(c1.size(0, 0) == a);
   }
   {
     using large_simple_dynamic =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *****>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int *****>;
     large_simple_dynamic c2({5, 4, 3, 2, 1});
     for (int i = 0; i < 5; i++)
       assert(c2.size(0, i) == psi[i]);
   }
   {
     using multi_dynamic =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int ***,
-      double ***>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int ***,
+                                     double ***>;
     multi_dynamic c3({5, 4, 3, 5, 4, 3});
     for (int i = 0; i < 2; i++)
       for (int j = 0; j < 3; j++)
@@ -291,41 +297,41 @@ void kokkosControllerSizeTest() {
   /* BEGIN MIXED DIMENSION TESTS */
   {
     using simple_mixed =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *[b]>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int *[b]>;
     simple_mixed c1({5});
     assert(c1.size(0, 0) == a);
     assert(c1.size(0, 1) == b);
   }
   {
     using large_simple_mixed =
-      Controller::KokkosController<MemorySpace, ExecutionSpace,
-      int **[c][d][e]>;
+        Controller::KokkosController<MemorySpace, ExecutionSpace,
+                                     int **[c][d][e]>;
     large_simple_mixed c2({5, 4});
     for (int i = 0; i < 5; i++)
       assert(c2.size(0, i) == psi[i]);
   }
   {
     using multi_mixed =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
-      double **[c][d][e]>;
-      multi_mixed c3({5, 4, 3, 5, 4});
-      for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 3; j++) {
-          assert(c3.size(i, j) == psi[j]);
-        }
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
+                                     double **[c][d][e]>;
+    multi_mixed c3({5, 4, 3, 5, 4});
+    for (int i = 0; i < 2; i++) {
+      for (int j = 0; j < 3; j++) {
+        assert(c3.size(i, j) == psi[j]);
       }
+    }
   }
   {
     using complex_multi_mixed =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
-      double **[c][d][e], char ****[e],
-      bool *[b][c][d][e]>;
-      complex_multi_mixed c4({5, 4, 3, 5, 4, 5, 4, 3, 2, 5});
-      for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 5; j++) {
-          assert(c4.size(i, j) == psi[j]);
-        }
+        Controller::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
+                                     double **[c][d][e], char ****[e],
+                                     bool *[b][c][d][e]>;
+    complex_multi_mixed c4({5, 4, 3, 5, 4, 5, 4, 3, 2, 5});
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        assert(c4.size(i, j) == psi[j]);
       }
+    }
   }
   /* END MIXED DIMENSION TESTS */
 
@@ -434,7 +440,8 @@ void testParallelScan() {
 
   for (int i = 1; i <= N; i++) {
     int result;
-    MeshField::parallel_scan(ExecutionSpace(), "default", 0, i, scan_kernel, result);
+    MeshField::parallel_scan(ExecutionSpace(), "default", 0, i, scan_kernel,
+                             result);
     assert(result == seriesSum(i));
   }
   printf("== END testParallelScan ==\n");

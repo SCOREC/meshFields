@@ -307,7 +307,8 @@ public:
  *
  * @param controller see Controller
  */
-template <class Controller, std::size_t index> auto makeField(Controller controller) {
+template <class Controller, std::size_t index>
+auto makeField(Controller controller) {
   auto slice = controller.template makeSlice<index>();
   return Field(std::move(slice));
 }

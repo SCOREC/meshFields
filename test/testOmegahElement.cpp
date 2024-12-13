@@ -2,8 +2,8 @@
 #include "MeshField.hpp"
 #include "MeshField_Element.hpp"
 #include "MeshField_Fail.hpp"
-#include "MeshField_ShapeField.hpp"
 #include "MeshField_For.hpp"
+#include "MeshField_ShapeField.hpp"
 #include "Omega_h_build.hpp"
 #include "Omega_h_file.hpp"
 #include "Omega_h_simplex.hpp"
@@ -204,7 +204,8 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
     const auto y = coords[i * MeshDim + 1];
     field(0, 0, i, MeshField::Vertex) = func(x, y);
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx}, setField, "setField");
+  MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx}, setField,
+                          "setField");
   if (ShapeOrder == 2) {
     const auto edgeDim = 1;
     const auto vtxDim = 0;
@@ -219,8 +220,8 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
           (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
       field(0, 0, edge, MeshField::Edge) = func(x, y);
     };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numEdge}, setFieldAtEdges,
-                                 "setFieldAtEdges");
+    MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numEdge},
+                            setFieldAtEdges, "setFieldAtEdges");
   }
 
   if (ShapeOrder == 1) {
@@ -232,8 +233,8 @@ bool triangleLocalPointEval(Omega_h::Mesh mesh,
     coordField(0, 0, i, MeshField::Vertex) = coords[i * MeshDim];
     coordField(0, 1, i, MeshField::Vertex) = coords[i * MeshDim + 1];
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx}, setCoordField,
-                                    "setCoordField");
+  MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx},
+                          setCoordField, "setCoordField");
 
   const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
 

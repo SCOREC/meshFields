@@ -203,7 +203,6 @@ public:
 
   ~KokkosController() = default;
 
-
   /**
    * given a Controller w/ types Tx = <int*[2][3],double[1][2][3],char*>
    * size(i,j) will return dimension size from Tx[i,j];

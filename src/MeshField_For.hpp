@@ -1,5 +1,5 @@
-#include <Kokkos_Core.hpp>
 #include "MeshField_Utility.hpp"
+#include <Kokkos_Core.hpp>
 namespace MeshField {
 template <typename ExecutionSpace, typename FunctorType, class IS, class IE>
 void parallel_for(ExecutionSpace, const std::initializer_list<IS> &start,
@@ -15,10 +15,9 @@ void parallel_for(ExecutionSpace, const std::initializer_list<IS> &start,
     Kokkos::RangePolicy<ExecutionSpace> p(a_start[0], a_end[0]);
     Kokkos::parallel_for(tag, p, vectorKernel);
   } else {
-    Kokkos::MDRangePolicy<Kokkos::Rank<funcRank>, ExecutionSpace> policy(a_start,
-                                                                     a_end);
+    Kokkos::MDRangePolicy<Kokkos::Rank<funcRank>, ExecutionSpace> policy(
+        a_start, a_end);
     Kokkos::parallel_for(tag, policy, vectorKernel);
   }
 }
-}
-
+} // namespace MeshField
