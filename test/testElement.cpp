@@ -1,6 +1,6 @@
 #include "KokkosController.hpp"
-#include "MeshField.hpp"
 #include "MeshField_Element.hpp"
+#include "MeshField_Field.hpp"
 #include "MeshField_ShapeField.hpp"
 #include <Kokkos_Core.hpp>
 #include <iostream>
@@ -42,9 +42,9 @@ void triangleLocalPointEval() {
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = 5;
   meshInfo.numTri = 3;
-  auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1, 2>(
-          meshInfo);
+  auto field = MeshField::CreateLagrangeField<
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 2>(
+      meshInfo);
 
   MeshField::FieldElement f(numElms, field, MeshField::LinearTriangleShape(),
                             LinearTriangleToVertexField());
@@ -88,9 +88,9 @@ void edgeLocalPointEval() {
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = 5;
   meshInfo.numEdge = 7;
-  auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 1, 1>(
-          meshInfo);
+  auto field = MeshField::CreateLagrangeField<
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1>(
+      meshInfo);
 
   MeshField::FieldElement f(meshInfo.numEdge, field,
                             MeshField::LinearEdgeShape(),
@@ -142,9 +142,9 @@ void quadraticTriangleLocalPointEval() {
   meshInfo.numVtx = 3;
   meshInfo.numEdge = 3;
   meshInfo.numTri = 1;
-  auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2, 2>(
-          meshInfo);
+  auto field = MeshField::CreateLagrangeField<
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 2>(
+      meshInfo);
 
   MeshField::FieldElement f(meshInfo.numTri, field,
                             MeshField::QuadraticTriangleShape(),
@@ -195,9 +195,9 @@ void quadraticTetrahedronLocalPointEval() {
   meshInfo.numEdge = 6;
   meshInfo.numTri = 4;
   meshInfo.numTet = 1;
-  auto field =
-      MeshField::CreateLagrangeField<ExecutionSpace, MeshField::Real, 2, 3>(
-          meshInfo);
+  auto field = MeshField::CreateLagrangeField<
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 3>(
+      meshInfo);
 
   MeshField::FieldElement f(meshInfo.numTet, field,
                             MeshField::QuadraticTetrahedronShape(),
@@ -213,6 +213,7 @@ int main(int argc, char **argv) {
   triangleLocalPointEval();
   edgeLocalPointEval();
   quadraticTriangleLocalPointEval();
+  quadraticTetrahedronLocalPointEval();
   Kokkos::finalize();
   return 0;
 }

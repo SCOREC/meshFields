@@ -2,7 +2,7 @@
 #define MESHFIELD_SHAPEFIELD_HPP
 
 #include "KokkosController.hpp"
-#include "MeshField.hpp"
+#include "MeshField_Field.hpp"
 #include "MeshField_Shape.hpp"
 #include <type_traits> //decltype
 
@@ -138,7 +138,7 @@ template <typename VtxAccessor> struct LinearAccessor {
  * the MeshField, the fields it provides, and the required accessors to those
  * fields.
  *
- * @todo support the Cabana Controller
+ * @todo test with the Cabana Controller
  *
  * @tparam ExecutionSpace a Kokkos ExecutionSpace (i.e., Cuda, Serial, etc.)
  * @tparam DataType the primative datatype for storing field entries; 32b or 64b
@@ -150,7 +150,9 @@ template <typename VtxAccessor> struct LinearAccessor {
  * @param meshInfo defines on-process mesh metadata
  * @return a linear or quadratic ShapeField
  */
-template <typename ExecutionSpace, typename DataType, size_t order, size_t dim>
+template <typename ExecutionSpace,
+          template <typename> typename Controller = MeshField::KokkosController,
+          typename DataType, size_t order, size_t dim>
 auto CreateLagrangeField(const MeshInfo &meshInfo) {
   static_assert((std::is_same_v<Real4, DataType> == true ||
                  std::is_same_v<Real8, DataType> == true),
@@ -166,8 +168,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
     }
-    using Ctrlr =
-        MeshField::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
+    using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
     // 1 dof with 1 component per vtx
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx});
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
@@ -182,8 +183,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     if (meshInfo.numEdge <= 0) {
       fail("mesh has no edges\n");
     }
-    using Ctrlr = MeshField::KokkosController<MemorySpace, ExecutionSpace,
-                                              DataType ***, DataType ***>;
+    using Ctrlr =
+        Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>;
     // 1 dof with 1 comp per vtx/edge
     Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx,
                    /*field 1*/ 1, 1, meshInfo.numEdge});
@@ -211,20 +212,22 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
  * The field's primative datatype is hardcoded to use 64b floats.
  * Note, the user must set the field entries with coordinates from the mesh.
  *
+ * @todo test with Cabana Controller
+ *
  * @tparam ExecutionSpace a Kokkos ExecutionSpace (i.e., Cuda, Serial, etc.)
  *
  * @param meshInfo defines on-process mesh metadata
  * @return a linear ShapeField
  */
-template <typename ExecutionSpace>
+template <typename ExecutionSpace,
+          template <typename> typename Controller = MeshField::KokkosController>
 auto CreateCoordinateField(const MeshInfo &meshInfo) {
   if (meshInfo.numVtx <= 0) {
     fail("mesh has no vertices\n");
   }
   using DataType = Real;
   using MemorySpace = typename ExecutionSpace::memory_space;
-  using Ctrlr =
-      MeshField::KokkosController<MemorySpace, ExecutionSpace, DataType ***>;
+  using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
   const int numComp = meshInfo.dim;
   Ctrlr kk_ctrl({/*field 0*/ 1, numComp, meshInfo.numVtx});
   auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);

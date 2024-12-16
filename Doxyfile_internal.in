@@ -924,6 +924,7 @@ INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Defines.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Fail.cpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Fail.hpp \
+@CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Field.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_logging.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Macros.hpp \
