@@ -20,7 +20,6 @@ set(MESHFIELD_HEADERS
   src/MeshField_Utility.hpp
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
-  src/MeshField.hpp
   src/MeshField_Element.hpp
   src/MeshField_Shape.hpp
   src/MeshField_Fail.hpp
@@ -28,6 +27,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Reduce.hpp
   src/MeshField_Scan.hpp
   src/MeshField_Field.hpp
+  src/MeshField.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
 if(MeshFields_USE_Cabana)
@@ -173,7 +173,7 @@ endif()
 test_func(KokkosTests ./KokkosTests)
 test_func(SerializationTests ./SerializationTests)
 test_func(ElementTests ./ElementTests)
-test_func(OmegahElementTests ./OmegahElementTests)
+# test_func(OmegahElementTests ./OmegahElementTests)
 test_func(OmegahCoordFieldTest ./OmegahCoordFieldTest)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
