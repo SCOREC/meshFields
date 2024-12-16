@@ -34,7 +34,7 @@ void testMakeSliceKokkos() {
   printf("== START testMakeSliceKokkos ==\n");
   int N = 10;
   using Ctrlr =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, double *>;
+      MeshField::KokkosController<MemorySpace, ExecutionSpace, double *>;
   Ctrlr c({10});
 
   auto field0 = MeshField::makeField<Ctrlr, 0>(c);
@@ -53,22 +53,21 @@ void testKokkosConstructor(int num_tuples) {
   printf("== START testKokkosConstructor ==\n");
   {
     using Ctrlr =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, double **[3]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, double **[3]>;
     Ctrlr c({num_tuples, num_tuples});
   }
   {
     using Ctrlr =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, double[3]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, double[3]>;
     Ctrlr c;
   }
   {
     using Ctrlr =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int *****>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int *****>;
     Ctrlr c({10, 10, 10, 10, 10});
   }
   {
-    using Ctrlr =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int>;
+    using Ctrlr = MeshField::KokkosController<MemorySpace, ExecutionSpace, int>;
     Ctrlr c;
   }
 
@@ -78,8 +77,7 @@ void testKokkosConstructor(int num_tuples) {
 void testingStufffs() {
 
   printf("== START testingStufffs ==\n");
-  using Ctrlr =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *>;
+  using Ctrlr = MeshField::KokkosController<MemorySpace, ExecutionSpace, int *>;
   Ctrlr c({10});
 
   auto field0 = MeshField::makeField<Ctrlr, 0>(c);
@@ -99,9 +97,9 @@ void testKokkosParallelFor() {
   const int e = 6;
   {
     using Ctrlr =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int[a],
-                                     int[a][b], int[a][b][c], int[a][b][c][d],
-                                     int[a][b][c][d][e]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int[a],
+                                    int[a][b], int[a][b][c], int[a][b][c][d],
+                                    int[a][b][c][d][e]>;
     Ctrlr ctrl;
     auto rk1 = MeshField::makeField<Ctrlr, 0>(ctrl);
     auto rk2 = MeshField::makeField<Ctrlr, 1>(ctrl);
@@ -149,8 +147,7 @@ void kokkosParallelReduceTest() {
    * https://kokkos.github.io/kokkos-core-wiki/API/core/parallel-dispatch/parallel_reduce.html?highlight=parallel_reduce*/
 
   printf("== START kokkosParallelReduceTest ==\n");
-  using Ctrlr =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *>;
+  using Ctrlr = MeshField::KokkosController<MemorySpace, ExecutionSpace, int *>;
   Ctrlr c1({10});
   {
     double result;
@@ -244,14 +241,14 @@ void kokkosControllerSizeTest() {
   /* BEGIN STATIC DIMENSIONS TESTS */
   {
     using simple_static =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int[a]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int[a]>;
     simple_static c1;
     assert(c1.size(0, 0) == a);
   }
   {
     using large_simple_static =
-        Controller::KokkosController<MemorySpace, ExecutionSpace,
-                                     int[a][b][c][d][e]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace,
+                                    int[a][b][c][d][e]>;
     large_simple_static c2;
     for (int i = 0; i < 5; i++) {
       assert(c2.size(0, i) == psi[i]);
@@ -259,8 +256,8 @@ void kokkosControllerSizeTest() {
   }
   {
     using multi_static =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int[a][b][c],
-                                     double[a][b][c]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int[a][b][c],
+                                    double[a][b][c]>;
     multi_static c3;
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 3; j++) {
@@ -273,21 +270,21 @@ void kokkosControllerSizeTest() {
   /* BEGIN DYNAMIC DIMENSION TESTS */
   {
     using simple_dynamic =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int *>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int *>;
     simple_dynamic c1({5});
     assert(c1.size(0, 0) == a);
   }
   {
     using large_simple_dynamic =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int *****>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int *****>;
     large_simple_dynamic c2({5, 4, 3, 2, 1});
     for (int i = 0; i < 5; i++)
       assert(c2.size(0, i) == psi[i]);
   }
   {
     using multi_dynamic =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int ***,
-                                     double ***>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int ***,
+                                    double ***>;
     multi_dynamic c3({5, 4, 3, 5, 4, 3});
     for (int i = 0; i < 2; i++)
       for (int j = 0; j < 3; j++)
@@ -297,23 +294,23 @@ void kokkosControllerSizeTest() {
   /* BEGIN MIXED DIMENSION TESTS */
   {
     using simple_mixed =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int *[b]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int *[b]>;
     simple_mixed c1({5});
     assert(c1.size(0, 0) == a);
     assert(c1.size(0, 1) == b);
   }
   {
     using large_simple_mixed =
-        Controller::KokkosController<MemorySpace, ExecutionSpace,
-                                     int **[c][d][e]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace,
+                                    int **[c][d][e]>;
     large_simple_mixed c2({5, 4});
     for (int i = 0; i < 5; i++)
       assert(c2.size(0, i) == psi[i]);
   }
   {
     using multi_mixed =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
-                                     double **[c][d][e]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
+                                    double **[c][d][e]>;
     multi_mixed c3({5, 4, 3, 5, 4});
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 3; j++) {
@@ -323,9 +320,9 @@ void kokkosControllerSizeTest() {
   }
   {
     using complex_multi_mixed =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
-                                     double **[c][d][e], char ****[e],
-                                     bool *[b][c][d][e]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int ***[d][e],
+                                    double **[c][d][e], char ****[e],
+                                    bool *[b][c][d][e]>;
     complex_multi_mixed c4({5, 4, 3, 5, 4, 5, 4, 3, 2, 5});
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -344,16 +341,16 @@ void kokkosFieldSizeTest() {
   const int psi[5] = {a, b, c, d, e};
   {
     using simple_static =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int[a],
-                                     char[a][b], double[a][b][c],
-                                     bool[a][b][c][d], long[a][b][c][d][e]>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int[a],
+                                    char[a][b], double[a][b][c],
+                                    bool[a][b][c][d], long[a][b][c][d][e]>;
     using simple_dynamic =
-        Controller::KokkosController<MemorySpace, ExecutionSpace, int *,
-                                     char **, double ***, bool ****,
-                                     long *****>;
-    using mixed = Controller::KokkosController<
-        MemorySpace, ExecutionSpace, int *[b][c][d][e], char **[c][d][e],
-        double ***[d][e], bool ****[e], long *****>;
+        MeshField::KokkosController<MemorySpace, ExecutionSpace, int *, char **,
+                                    double ***, bool ****, long *****>;
+    using mixed =
+        MeshField::KokkosController<MemorySpace, ExecutionSpace,
+                                    int *[b][c][d][e], char **[c][d][e],
+                                    double ***[d][e], bool ****[e], long *****>;
     simple_static c1;
     simple_dynamic c2({5, 5, 4, 5, 4, 3, 5, 4, 3, 2, 5, 4, 3, 2, 1});
     mixed c3({5, 5, 4, 5, 4, 3, 5, 4, 3, 2, 5, 4, 3, 2, 1});
@@ -424,7 +421,7 @@ void testParallelScan() {
   const int N = 100;
   printf("== START testParallelScan ==\n");
   using s_kok =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *, int *>;
+      MeshField::KokkosController<MemorySpace, ExecutionSpace, int *, int *>;
   s_kok c1({N, N});
   auto pre = MeshField::makeField<s_kok, 0>(c1);
   auto post = MeshField::makeField<s_kok, 1>(c1);
@@ -451,8 +448,8 @@ void testSetField() {
   printf("== START testSetField ==\n");
   const int N = 10;
   using kok1 =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
-                                   int ***, int ****, int *****>;
+      MeshField::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
+                                  int ***, int ****, int *****>;
   kok1 c1({N, N, N, N, N, N, N, N, N, N, N, N, N, N, N});
   auto f1 = MeshField::makeField<kok1, 0>(c1);
   auto f2 = MeshField::makeField<kok1, 1>(c1);
@@ -503,8 +500,8 @@ void testSetField() {
 void testSetCorrect() {
   printf("== START testSetCorrect ==\n");
   const int N = 10;
-  using kok1 = Controller::KokkosController<MemorySpace, ExecutionSpace, int **,
-                                            int ***, int ****, int *****>;
+  using kok1 = MeshField::KokkosController<MemorySpace, ExecutionSpace, int **,
+                                           int ***, int ****, int *****>;
   kok1 c1({N, 1, N, N, N, N, N, 15, N, N, N, N, N, 6});
 
   // Checking that sizes are loaded correctly

@@ -13,7 +13,7 @@
 #include "MeshField_Macros.hpp"
 #include <Kokkos_Core.hpp>
 
-namespace Controller {
+namespace MeshField {
 
 /**
  * @todo use a class; following
@@ -225,6 +225,6 @@ public:
   }
 };
 
-} // namespace Controller
+} // namespace MeshField
 
 #endif

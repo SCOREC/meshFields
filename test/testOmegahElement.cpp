@@ -41,20 +41,20 @@ void checkResult() {
   Kokkos::parallel_reduce(
       "checkResult", meshInfo.numTri,
       KOKKOS_LAMBDA(const int &ent, MeshField::LO &lerrors) {
-      for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-      const auto x = globalCoords(pt, 0);
-      const auto y = globalCoords(pt, 1);
-      const auto expected = func(x, y);
-      const auto computed = eval(pt, 0);
-      MeshField::LO isError = 0;
-      if (Kokkos::fabs(computed - expected) > MeshField::MachinePrecision) {
-      isError = 1;
-      Kokkos::printf("result for elm %d, pt %d, does not match: expected "
-          "%f computed %f\n",
-          ent, pt, expected, computed);
-      }
-      lerrors += isError;
-      }
+        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+          const auto x = globalCoords(pt, 0);
+          const auto y = globalCoords(pt, 1);
+          const auto expected = func(x, y);
+          const auto computed = eval(pt, 0);
+          MeshField::LO isError = 0;
+          if (Kokkos::fabs(computed - expected) > MeshField::MachinePrecision) {
+            isError = 1;
+            Kokkos::printf("result for elm %d, pt %d, does not match: expected "
+                           "%f computed %f\n",
+                           ent, pt, expected, computed);
+          }
+          lerrors += isError;
+        }
       },
       numErrors);
   return (numErrors > 0);
@@ -98,6 +98,8 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
   {
     auto mesh = createMeshTri18(lib);
+    OmegahMeshField omf(mesh, controller?); //how to hide and select controller?
+
     static const size_t OnePtPerElem = 1;
     static const size_t ThreePtsPerElem = 3;
     auto centroids = createElmAreaCoords<OnePtPerElem>(

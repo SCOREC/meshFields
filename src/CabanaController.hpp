@@ -7,7 +7,7 @@
 #include <Cabana_Core.hpp>
 #include <MeshField_Utility.hpp>
 
-namespace Controller {
+namespace MeshField {
 
 /**
  * @todo use a class; following
@@ -75,8 +75,6 @@ template <class SliceType, class T> struct CabanaSliceWrapper {
     return slice.access(s, a, j, k, l, m);
   }
 };
-
-using namespace Cabana;
 
 template <class ExeSpace, class MemorySpace, class... Ts>
 class CabanaController {
@@ -182,6 +180,6 @@ public:
     return wrapper_slice_t<type, stride>(std::move(slice), sizes);
   }
 };
-} // namespace Controller
+} // namespace MeshField
 
 #endif

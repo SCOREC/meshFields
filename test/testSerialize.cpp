@@ -14,7 +14,7 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 void test_1_1_16() {
   using kCon =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int ***>;
+      MeshField::KokkosController<MemorySpace, ExecutionSpace, int ***>;
   kCon c1({1, 1, 16});
   MeshField::Field field = MeshField::makeField<kCon, 0>(c1);
   auto field_serialized = field.serialize();
@@ -23,8 +23,8 @@ void test_1_1_16() {
 void test_multi() {
   const int N = 10;
   using kok1 =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
-                                   int ***, int ****, int *****>;
+      MeshField::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
+                                  int ***, int ****, int *****>;
   kok1 c1({N, N, N, N, N, N, N, N, N, N, N, N, N, N, N});
 
   MeshField::Field field1 = MeshField::makeField<kok1, 0>(c1);
