@@ -150,9 +150,42 @@ template <typename ExecutionSpace, template <typename...> typename Controller =
 class OmegahMeshField {
 private:
   Omega_h::Mesh &mesh;
+  const MeshField::MeshInfo meshInfo;
+
+  using DataType = Real;
+  using MemorySpace = typename ExecutionSpace::memory_space;
+  using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
+  using vtxField = decltype(MeshField::makeField<Ctrlr, 0>(Ctrlr({1, 1, 1})));
+  using LA = LinearAccessor<vtxField>;
+  using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
+  LinearLagrangeShapeField
+      coordField; // FIXME - need a cleaner way to get the type
+
+  auto createCoordinateField(Omega_h::Mesh mesh) {
+    const auto mesh_info = getMeshInfo(mesh);
+    const auto meshDim = mesh_info.dim;
+    auto coords = mesh.coords();
+    auto coordField =
+        MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
+    auto setCoordField = KOKKOS_LAMBDA(const int &i) {
+      coordField(0, 0, i, MeshField::Vertex) = coords[i * meshDim];
+      coordField(0, 1, i, MeshField::Vertex) = coords[i * meshDim + 1];
+    };
+    MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
+                            setCoordField, "setCoordField");
+    return coordField;
+  }
 
 public:
-  OmegahMeshField(Omega_h::Mesh mesh_in) : mesh(mesh_in) {}
+  OmegahMeshField(Omega_h::Mesh mesh_in)
+      : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
+        coordField(createCoordinateField(mesh)) {}
+
+  template <typename DataType, size_t order, size_t dim>
+  auto CreateLagrangeField() {
+    return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
+                                          order, dim>(meshInfo);
+  }
 
   template <typename Field> void writeVtk(Field &field) {
     using FieldDataType = typename decltype(field.vtxField)::BaseType;
@@ -165,8 +198,8 @@ public:
 
   // evaluate a field at the specified local coordinate for each triangle
   template <typename AnalyticFunction, typename ViewType, typename ShapeField>
-  ShapeField triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                                    AnalyticFunction func, ShapeField field) {
+  auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
+                              AnalyticFunction func, ShapeField field) {
     const auto MeshDim = 2;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");
@@ -175,21 +208,8 @@ public:
     if (ShapeOrder != 1 && ShapeOrder != 2) {
       MeshField::fail("input field order must be 1 or 2\n");
     }
-    const auto meshInfo = getMeshInfo(mesh);
 
-    // TODO - define interface that takes function of cartesian coords / real
-    //  space and gets the cartesian position of 'nodes' and sets the field
-    //  at the node using the result of the function
-    //  - mfem calls this 'project'
-    // set field based on analytic function
     auto coords = mesh.coords();
-    auto setField = KOKKOS_LAMBDA(const int &i) {
-      const auto x = coords[i * MeshDim];
-      const auto y = coords[i * MeshDim + 1];
-      field(0, 0, i, MeshField::Vertex) = func(x, y);
-    };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx}, setField,
-                            "setField");
     if (ShapeOrder == 2) {
       const auto edgeDim = 1;
       const auto vtxDim = 0;
@@ -208,18 +228,9 @@ public:
                               setFieldAtEdges, "setFieldAtEdges");
     }
 
-    if (ShapeOrder == 1) {
-      writeVtk(mesh, field);
-    }
-
-    auto coordField =
-        MeshField::CreateCoordinateField<ExecutionSpace, Controller>(meshInfo);
-    auto setCoordField = KOKKOS_LAMBDA(const int &i) {
-      coordField(0, 0, i, MeshField::Vertex) = coords[i * MeshDim];
-      coordField(0, 1, i, MeshField::Vertex) = coords[i * MeshDim + 1];
-    };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx},
-                            setCoordField, "setCoordField");
+    //    if (ShapeOrder == 1) {
+    //      writeVtk(mesh, field);
+    //    }
 
     const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
 
@@ -231,11 +242,7 @@ public:
     Kokkos::deep_copy(Kokkos::subview(offsets, offsets.size() - 1),
                       meshInfo.numTri * NumPtsPerElem);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
-
-    MeshField::FieldElement fcoords(meshInfo.numTri, coordField,
-                                    MeshField::LinearTriangleCoordinateShape(),
-                                    LinearTriangleToVertexField(mesh));
-    auto globalCoords = MeshField::evaluate(fcoords, localCoords, offsets);
+    return eval;
   }
 };
 

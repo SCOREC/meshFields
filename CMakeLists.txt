@@ -172,7 +172,7 @@ endif()
 test_func(KokkosTests ./KokkosTests)
 test_func(SerializationTests ./SerializationTests)
 test_func(ElementTests ./ElementTests)
-# test_func(OmegahElementTests ./OmegahElementTests)
+test_func(OmegahElementTests ./OmegahElementTests)
 test_func(OmegahCoordFieldTest ./OmegahCoordFieldTest)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
