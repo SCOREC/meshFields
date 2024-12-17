@@ -1,3 +1,6 @@
+#ifndef MESHFIELD_SCAN_HPP
+#define MESHFIELD_SCAN_HPP
+
 #include "MeshField_Utility.hpp"
 #include <Kokkos_Core.hpp>
 namespace MeshField {
@@ -11,3 +14,5 @@ void parallel_scan(ExecutionSpace, std::string tag, int64_t start_index,
   Kokkos::parallel_scan(tag, p, scanKernel, result);
 }
 } // namespace MeshField
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef MESHFIELD_SIMDFOR_HPP
+#define MESHFIELD_SIMDFOR_HPP
+
 #include "MeshField_Utility.hpp"
 #include <Cabana_Core.hpp>
 
@@ -96,3 +99,5 @@ void simd_parallel_for(CabController,
            CabMeshField::vecLen>(vectorKernel, a_start, a_end, tag);
 }
 } // namespace MeshField
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef MESHFIELD_REDUCE_HPP
+#define MESHFIELD_REDUCE_HPP
+
 #include "MeshField_Utility.hpp"
 #include <Kokkos_Core.hpp>
 namespace MeshField {
@@ -29,3 +32,5 @@ void parallel_reduce(ExecutionSpace, std::string tag,
   }
 }
 } // namespace MeshField
+
+#endif

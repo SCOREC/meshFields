@@ -1,5 +1,5 @@
-#ifndef meshfield_hpp
-#define meshfield_hpp
+#ifndef MESHFIELD_FIELD_HPP
+#define MESHFIELD_FIELD_HPP
 
 #include <Kokkos_Array.hpp>
 #include <array>

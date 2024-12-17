@@ -1,6 +1,13 @@
+#ifndef MESHFIELD_MESHFIELD_HPP
+#define MESHFIELD_MESHFIELD_HPP
+
 #include "KokkosController.hpp"
-#include "Omega_h_mesh.hpp" //move
-#include "Omega_h_file.hpp" //move
+#include "MeshField_Element.hpp"
+#include "MeshField_Fail.hpp"
+#include "MeshField_For.hpp"
+#include "MeshField_ShapeField.hpp"
+#include "Omega_h_file.hpp"    //move
+#include "Omega_h_mesh.hpp"    //move
 #include "Omega_h_simplex.hpp" //move
 
 namespace {
@@ -138,54 +145,37 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh mesh) {
 
 namespace MeshField {
 
-template <typename Controller> class MeshField {
-private:
-  Controller ctrl;
-
-public:
-  MeshField(Controller ctrl_in) : ctrl(ctrl_in) {}
-  template <typename Field> virtual void writeVtk(Field &field) = 0;
-  template <typename AnalyticFunction, typename Field>
-  virtual Field
-  triangleLocalPointEval(Kokkos::View<MeshField::Real *[3]> localCoords,
-                         size_t NumPtsPerElem, AnalyticFunction func,
-                         Field field);
-};
-
-template < template<typename> typename Controller = MeshField::KokkosController >
-class OmegahMeshField : public MeshField {
+template <typename ExecutionSpace, template <typename...> typename Controller =
+                                       MeshField::KokkosController>
+class OmegahMeshField {
 private:
   Omega_h::Mesh &mesh;
 
 public:
-  MeshField(Omega_h::Mesh mesh_in)
-      : mesh(mesh_in) {}
+  OmegahMeshField(Omega_h::Mesh mesh_in) : mesh(mesh_in) {}
 
   template <typename Field> void writeVtk(Field &field) {
     using FieldDataType = typename decltype(field.vtxField)::BaseType;
     // HACK assumes there is a vertex field.. in the Field Mixin object
     auto field_view = field.vtxField.serialize();
-    mesh.writeVtk("foo.vtk", &mesh, mesh.dim());
-    // Omega_h::Write<FieldDataType> field_write(field_view);
-    // mesh.add_tag(0, "field", 1, Omega_h::read(field_write));
-    // Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
+    Omega_h::Write<FieldDataType> field_write(field_view);
+    mesh.add_tag(0, "field", 1, Omega_h::read(field_write));
+    Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
   }
 
   // evaluate a field at the specified local coordinate for each triangle
-  template <typename AnalyticFunction, typename Field>
-  Field triangleLocalPointEval(Kokkos::View<MeshField::Real *[3]> localCoords,
-                               size_t NumPtsPerElem, AnalyticFunction func,
-                               Field field) {
+  template <typename AnalyticFunction, typename ViewType, typename ShapeField>
+  ShapeField triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
+                                    AnalyticFunction func, ShapeField field) {
     const auto MeshDim = 2;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");
     }
+    const size_t ShapeOrder = 1; // typename ShapeField::order; //wrong
     if (ShapeOrder != 1 && ShapeOrder != 2) {
-      MeshField::fail("field order must be 1 or 2\n");
+      MeshField::fail("input field order must be 1 or 2\n");
     }
     const auto meshInfo = getMeshInfo(mesh);
-    auto field = MeshField::CreateLagrangeField<ExecutionSpace, Controller, MeshField::Real,
-                                                ShapeOrder, MeshDim>(meshInfo);
 
     // TODO - define interface that takes function of cartesian coords / real
     //  space and gets the cartesian position of 'nodes' and sets the field
@@ -250,3 +240,5 @@ public:
 };
 
 } // namespace MeshField
+
+#endif

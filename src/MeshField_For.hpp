@@ -1,3 +1,6 @@
+#ifndef MESHFIELD_FOR_HPP
+#define MESHFIELD_FOR_HPP
+
 #include "MeshField_Utility.hpp"
 #include <Kokkos_Core.hpp>
 namespace MeshField {
@@ -21,3 +24,5 @@ void parallel_for(ExecutionSpace, const std::initializer_list<IS> &start,
   }
 }
 } // namespace MeshField
+
+#endif

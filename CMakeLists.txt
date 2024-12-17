@@ -42,7 +42,6 @@ set(MESHFIELD_SOURCES
 
 add_library(meshFields ${MESHFIELD_SOURCES})
 
-#create header only library
 target_compile_features(meshFields INTERFACE cxx_std_17)
 target_include_directories(meshFields
   PUBLIC

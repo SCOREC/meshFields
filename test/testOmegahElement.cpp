@@ -1,8 +1,8 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
-#include "MeshField_Element.hpp" //remove?
-#include "MeshField_Fail.hpp" //remove?
-#include "MeshField_For.hpp" //remove?
+#include "MeshField_Element.hpp"    //remove?
+#include "MeshField_Fail.hpp"       //remove?
+#include "MeshField_For.hpp"        //remove?
 #include "MeshField_ShapeField.hpp" //remove?
 #include "Omega_h_build.hpp"
 #include "Omega_h_file.hpp"
@@ -35,30 +35,32 @@ Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
   return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
 }
 
-void checkResult() {
-  // check the result
-  MeshField::LO numErrors = 0;
-  Kokkos::parallel_reduce(
-      "checkResult", meshInfo.numTri,
-      KOKKOS_LAMBDA(const int &ent, MeshField::LO &lerrors) {
-        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-          const auto x = globalCoords(pt, 0);
-          const auto y = globalCoords(pt, 1);
-          const auto expected = func(x, y);
-          const auto computed = eval(pt, 0);
-          MeshField::LO isError = 0;
-          if (Kokkos::fabs(computed - expected) > MeshField::MachinePrecision) {
-            isError = 1;
-            Kokkos::printf("result for elm %d, pt %d, does not match: expected "
-                           "%f computed %f\n",
-                           ent, pt, expected, computed);
-          }
-          lerrors += isError;
-        }
-      },
-      numErrors);
-  return (numErrors > 0);
-}
+// void checkResult(MeshField::MeshInfo meshInfo) {
+//   // check the result
+//   MeshField::LO numErrors = 0;
+//   Kokkos::parallel_reduce(
+//       "checkResult", meshInfo.numTri,
+//       KOKKOS_LAMBDA(const int &ent, MeshField::LO &lerrors) {
+//         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+//           const auto x = globalCoords(pt, 0);
+//           const auto y = globalCoords(pt, 1);
+//           const auto expected = func(x, y);
+//           const auto computed = eval(pt, 0);
+//           MeshField::LO isError = 0;
+//           if (Kokkos::fabs(computed - expected) >
+//           MeshField::MachinePrecision) {
+//             isError = 1;
+//             Kokkos::printf("result for elm %d, pt %d, does not match:
+//             expected "
+//                            "%f computed %f\n",
+//                            ent, pt, expected, computed);
+//           }
+//           lerrors += isError;
+//         }
+//       },
+//       numErrors);
+//   return (numErrors > 0);
+// }
 
 struct TestCoords {
   Kokkos::View<MeshField::Real *[3]> coords;
@@ -98,7 +100,8 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
   {
     auto mesh = createMeshTri18(lib);
-    OmegahMeshField omf(mesh, controller?); //how to hide and select controller?
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
+        mesh);
 
     static const size_t OnePtPerElem = 1;
     static const size_t ThreePtsPerElem = 3;
@@ -125,15 +128,15 @@ int main(int argc, char **argv) {
     static const size_t LinearField = 1;
     static const size_t QuadraticField = 2;
     for (auto testCase : cases) {
-      auto failed = triangleLocalPointEval<LinearFunction, LinearField>(
+      auto failed = omf.triangleLocalPointEval<LinearFunction, LinearField>(
           mesh, testCase.coords, testCase.NumPtsPerElem, LinearFunction{});
       if (failed)
         doFail("linear", "linear", testCase.name);
-      failed = triangleLocalPointEval<QuadraticFunction, QuadraticField>(
+      failed = omf.triangleLocalPointEval<QuadraticFunction, QuadraticField>(
           mesh, testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{});
       if (failed)
         doFail("quadratic", "quadratic", testCase.name);
-      failed = triangleLocalPointEval<LinearFunction, QuadraticField>(
+      failed = omf.triangleLocalPointEval<LinearFunction, QuadraticField>(
           mesh, testCase.coords, testCase.NumPtsPerElem, LinearFunction{});
       if (failed)
         doFail("quadratic", "linear", testCase.name);

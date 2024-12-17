@@ -151,7 +151,8 @@ template <typename VtxAccessor> struct LinearAccessor {
  * @return a linear or quadratic ShapeField
  */
 template <typename ExecutionSpace,
-          template <typename> typename Controller = MeshField::KokkosController,
+          template <typename...>
+          typename Controller = MeshField::KokkosController,
           typename DataType, size_t order, size_t dim>
 auto CreateLagrangeField(const MeshInfo &meshInfo) {
   static_assert((std::is_same_v<Real4, DataType> == true ||
@@ -219,8 +220,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
  * @param meshInfo defines on-process mesh metadata
  * @return a linear ShapeField
  */
-template <typename ExecutionSpace,
-          template <typename> typename Controller = MeshField::KokkosController>
+template <typename ExecutionSpace, template <typename...> typename Controller =
+                                       MeshField::KokkosController>
 auto CreateCoordinateField(const MeshInfo &meshInfo) {
   if (meshInfo.numVtx <= 0) {
     fail("mesh has no vertices\n");
