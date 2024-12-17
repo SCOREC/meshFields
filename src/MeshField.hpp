@@ -149,19 +149,7 @@ template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
 class OmegahMeshField {
 private:
-  Omega_h::Mesh &mesh;
-  const MeshField::MeshInfo meshInfo;
-
-  using DataType = Real;
-  using MemorySpace = typename ExecutionSpace::memory_space;
-  using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
-  using vtxField = decltype(MeshField::makeField<Ctrlr, 0>(Ctrlr({1, 1, 1})));
-  using LA = LinearAccessor<vtxField>;
-  using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
-  LinearLagrangeShapeField
-      coordField; // FIXME - need a cleaner way to get the type
-
-  auto createCoordinateField(Omega_h::Mesh mesh) {
+  static auto createCoordinateField(Omega_h::Mesh mesh) {
     const auto mesh_info = getMeshInfo(mesh);
     const auto meshDim = mesh_info.dim;
     auto coords = mesh.coords();
@@ -175,6 +163,11 @@ private:
                             setCoordField, "setCoordField");
     return coordField;
   }
+
+  Omega_h::Mesh &mesh;
+  const MeshField::MeshInfo meshInfo;
+  using CoordField = decltype(createCoordinateField(Omega_h::Mesh()));
+  CoordField coordField;
 
 public:
   OmegahMeshField(Omega_h::Mesh mesh_in)
