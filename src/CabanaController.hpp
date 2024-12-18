@@ -94,7 +94,7 @@ public:
 private:
   // all the type defenitions that are needed us to get the type of the slice
   // returned by the underlying AoSoA
-  using soa_t = SoA<DataTypes, vecLen>;
+  using soa_t = Cabana::SoA<DataTypes, vecLen>;
 
   template <std::size_t index>
   using member_data_t =

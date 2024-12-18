@@ -95,8 +95,8 @@ void simd_parallel_for(CabController,
       MeshFieldUtil::to_kokkos_array<RANK>(start_init);
   Kokkos::Array<int64_t, RANK> a_end =
       MeshFieldUtil::to_kokkos_array<RANK>(end_init);
-  simd_for<FunctorType, typename CabMeshField::ExecutionSpace,
-           CabMeshField::vecLen>(vectorKernel, a_start, a_end, tag);
+  simd_for<FunctorType, typename CabController::ExecutionSpace,
+           CabController::vecLen>(vectorKernel, a_start, a_end, tag);
 }
 } // namespace MeshField
 
