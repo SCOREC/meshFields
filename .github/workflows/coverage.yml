@@ -126,6 +126,7 @@ jobs:
       shell: bash
       run: |
         make
+        ctest -V
         make coverage
 
      #Uploads coverage directory with lcov generated HTML
