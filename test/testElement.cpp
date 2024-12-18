@@ -199,9 +199,11 @@ void quadraticTetrahedronLocalPointEval() {
   meshInfo.numTri = 4;
   meshInfo.numTet = 1;
   meshInfo.dim = MeshDim;
-  auto field = MeshField::CreateLagrangeField<
-      ExecutionSpace, MeshField::KokkosController, MeshField::Real, ShapeOrder, MeshDim>(
-      meshInfo);
+  auto field =
+      MeshField::CreateLagrangeField<ExecutionSpace,
+                                     MeshField::KokkosController,
+                                     MeshField::Real, ShapeOrder, MeshDim>(
+          meshInfo);
 
   MeshField::FieldElement f(meshInfo.numTet, field,
                             MeshField::QuadraticTetrahedronShape(),
