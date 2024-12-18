@@ -12,7 +12,7 @@
 
 namespace {
 
-MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
+MeshField::MeshInfo getMeshInfo(Omega_h::Mesh &mesh) {
   MeshField::MeshInfo meshInfo;
   meshInfo.dim = mesh.dim();
   meshInfo.numVtx = mesh.nverts();
@@ -36,10 +36,8 @@ template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
 decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller>(
     MeshField::MeshInfo()))
-createCoordinateField(Omega_h::Mesh mesh) {
-  const auto mesh_info = getMeshInfo(mesh);
+createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
   const auto meshDim = mesh_info.dim;
-  auto coords = mesh.coords();
   auto coordField =
       MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
@@ -53,7 +51,7 @@ createCoordinateField(Omega_h::Mesh mesh) {
 
 struct LinearTriangleToVertexField {
   Omega_h::LOs triVerts;
-  LinearTriangleToVertexField(Omega_h::Mesh mesh)
+  LinearTriangleToVertexField(Omega_h::Mesh &mesh)
       : triVerts(mesh.ask_elem_verts()) {
     if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
       MeshField::fail(
@@ -85,7 +83,7 @@ struct LinearTriangleToVertexField {
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
-  QuadraticTriangleToField(Omega_h::Mesh mesh)
+  QuadraticTriangleToField(Omega_h::Mesh &mesh)
       : triVerts(mesh.ask_elem_verts()),
         triEdges(mesh.ask_down(mesh.dim(), 1).ab2b) {
     if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
@@ -142,7 +140,7 @@ struct QuadraticTriangleToField {
   }
 };
 
-template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh mesh) {
+template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
     struct result {
@@ -172,13 +170,14 @@ private:
   Omega_h::Mesh &mesh;
   const MeshField::MeshInfo meshInfo;
   using CoordField = decltype(createCoordinateField<ExecutionSpace, Controller>(
-      Omega_h::Mesh()));
+      MeshField::MeshInfo(), Omega_h::Reals()));
   CoordField coordField;
 
 public:
   OmegahMeshField(Omega_h::Mesh mesh_in)
       : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
-        coordField(createCoordinateField<ExecutionSpace, Controller>(mesh)) {}
+        coordField(createCoordinateField<ExecutionSpace, Controller>(
+            getMeshInfo(mesh_in), mesh_in.coords())) {}
 
   template <typename DataType, size_t order, size_t dim>
   auto CreateLagrangeField() {
@@ -207,7 +206,7 @@ public:
   }
 
   template <typename AnalyticFunction, typename ShapeField>
-  void setEdges(Omega_h::Mesh mesh, AnalyticFunction func, ShapeField field) {
+  void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto MeshDim = mesh.dim();
     const auto edgeDim = 1;
     const auto vtxDim = 0;
