@@ -175,6 +175,7 @@ struct QuadraticTetrahedronToField {
         /*vertices*/ MeshField::Vertex,
         MeshField::Vertex,
         MeshField::Vertex,
+        MeshField::Vertex,
         /*edges*/ MeshField::Edge,
         MeshField::Edge,
         MeshField::Edge,
@@ -190,13 +191,16 @@ struct QuadraticTetrahedronToField {
 // evaluate a field at the specified local coordinate for one tet using
 // linear shape functions
 void quadraticTetrahedronLocalPointEval() {
+  const int MeshDim = 3;
+  const int ShapeOrder = 2;
   MeshField::MeshInfo meshInfo;
   meshInfo.numVtx = 4;
   meshInfo.numEdge = 6;
   meshInfo.numTri = 4;
   meshInfo.numTet = 1;
+  meshInfo.dim = MeshDim;
   auto field = MeshField::CreateLagrangeField<
-      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 3>(
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, ShapeOrder, MeshDim>(
       meshInfo);
 
   MeshField::FieldElement f(meshInfo.numTet, field,
