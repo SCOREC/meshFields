@@ -11,6 +11,46 @@
 #include "Omega_h_simplex.hpp" //move
 
 namespace {
+
+MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
+  MeshField::MeshInfo meshInfo;
+  meshInfo.dim = mesh.dim();
+  meshInfo.numVtx = mesh.nverts();
+  if (mesh.dim() > 1)
+    meshInfo.numEdge = mesh.nedges();
+  if (mesh.family() == OMEGA_H_SIMPLEX) {
+    if (mesh.dim() > 1)
+      meshInfo.numTri = mesh.nfaces();
+    if (mesh.dim() == 3)
+      meshInfo.numTet = mesh.nregions();
+  } else { // hypercube
+    if (mesh.dim() > 1)
+      meshInfo.numQuad = mesh.nfaces();
+    if (mesh.dim() == 3)
+      meshInfo.numHex = mesh.nregions();
+  }
+  return meshInfo;
+}
+
+template <typename ExecutionSpace, template <typename...> typename Controller =
+                                       MeshField::KokkosController>
+decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller>(
+    MeshField::MeshInfo()))
+createCoordinateField(Omega_h::Mesh mesh) {
+  const auto mesh_info = getMeshInfo(mesh);
+  const auto meshDim = mesh_info.dim;
+  auto coords = mesh.coords();
+  auto coordField =
+      MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
+  auto setCoordField = KOKKOS_LAMBDA(const int &i) {
+    coordField(0, 0, i, MeshField::Vertex) = coords[i * meshDim];
+    coordField(0, 1, i, MeshField::Vertex) = coords[i * meshDim + 1];
+  };
+  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
+                          setCoordField, "setCoordField");
+  return coordField;
+}
+
 struct LinearTriangleToVertexField {
   Omega_h::LOs triVerts;
   LinearTriangleToVertexField(Omega_h::Mesh mesh)
@@ -102,26 +142,6 @@ struct QuadraticTriangleToField {
   }
 };
 
-MeshField::MeshInfo getMeshInfo(Omega_h::Mesh mesh) {
-  MeshField::MeshInfo meshInfo;
-  meshInfo.dim = mesh.dim();
-  meshInfo.numVtx = mesh.nverts();
-  if (mesh.dim() > 1)
-    meshInfo.numEdge = mesh.nedges();
-  if (mesh.family() == OMEGA_H_SIMPLEX) {
-    if (mesh.dim() > 1)
-      meshInfo.numTri = mesh.nfaces();
-    if (mesh.dim() == 3)
-      meshInfo.numTet = mesh.nregions();
-  } else { // hypercube
-    if (mesh.dim() > 1)
-      meshInfo.numQuad = mesh.nfaces();
-    if (mesh.dim() == 3)
-      meshInfo.numHex = mesh.nregions();
-  }
-  return meshInfo;
-}
-
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
@@ -149,30 +169,16 @@ template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
 class OmegahMeshField {
 private:
-  static auto createCoordinateField(Omega_h::Mesh mesh) {
-    const auto mesh_info = getMeshInfo(mesh);
-    const auto meshDim = mesh_info.dim;
-    auto coords = mesh.coords();
-    auto coordField =
-        MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
-    auto setCoordField = KOKKOS_LAMBDA(const int &i) {
-      coordField(0, 0, i, MeshField::Vertex) = coords[i * meshDim];
-      coordField(0, 1, i, MeshField::Vertex) = coords[i * meshDim + 1];
-    };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
-                            setCoordField, "setCoordField");
-    return coordField;
-  }
-
   Omega_h::Mesh &mesh;
   const MeshField::MeshInfo meshInfo;
-  using CoordField = decltype(createCoordinateField(Omega_h::Mesh()));
+  using CoordField = decltype(createCoordinateField<ExecutionSpace, Controller>(
+      Omega_h::Mesh()));
   CoordField coordField;
 
 public:
   OmegahMeshField(Omega_h::Mesh mesh_in)
       : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
-        coordField(createCoordinateField(mesh)) {}
+        coordField(createCoordinateField<ExecutionSpace, Controller>(mesh)) {}
 
   template <typename DataType, size_t order, size_t dim>
   auto CreateLagrangeField() {
