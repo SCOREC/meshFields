@@ -195,6 +195,38 @@ public:
     Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
   }
 
+  template <typename ViewType = Kokkos::View<MeshField::LO *>>
+  ViewType createOffsets(size_t numTri, size_t numPtsPerElem) {
+    ViewType offsets("offsets", numTri + 1);
+    Kokkos::parallel_for(
+        "setOffsets", numTri,
+        KOKKOS_LAMBDA(int i) { offsets(i) = i * numPtsPerElem; });
+    Kokkos::deep_copy(Kokkos::subview(offsets, offsets.size() - 1),
+                      numTri * numPtsPerElem);
+    return offsets;
+  }
+
+  template <typename AnalyticFunction, typename ShapeField>
+  void setEdges(Omega_h::Mesh mesh, AnalyticFunction func, ShapeField field) {
+    const auto MeshDim = mesh.dim();
+    const auto edgeDim = 1;
+    const auto vtxDim = 0;
+    const auto edge2vtx = mesh.ask_down(edgeDim, vtxDim).ab2b;
+    auto coords = mesh.coords();
+    auto setFieldAtEdges = KOKKOS_LAMBDA(const int &edge) {
+      // get dofholder position at the midpoint of edge
+      // - TODO should be encoded in the field?
+      const auto left = edge2vtx[edge * 2];
+      const auto right = edge2vtx[edge * 2 + 1];
+      const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
+      const auto y =
+          (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
+      field(0, 0, edge, MeshField::Edge) = func(x, y);
+    };
+    MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numEdge},
+                            setFieldAtEdges, "setFieldAtEdges");
+  }
+
   // evaluate a field at the specified local coordinate for each triangle
   template <typename AnalyticFunction, typename ViewType, typename ShapeField>
   auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
@@ -208,23 +240,8 @@ public:
       MeshField::fail("input field order must be 1 or 2\n");
     }
 
-    auto coords = mesh.coords();
     if (ShapeOrder == 2) {
-      const auto edgeDim = 1;
-      const auto vtxDim = 0;
-      const auto edge2vtx = mesh.ask_down(edgeDim, vtxDim).ab2b;
-      auto setFieldAtEdges = KOKKOS_LAMBDA(const int &edge) {
-        // get dofholder position at the midpoint of edge
-        // - TODO should be encoded in the field?
-        const auto left = edge2vtx[edge * 2];
-        const auto right = edge2vtx[edge * 2 + 1];
-        const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
-        const auto y =
-            (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
-        field(0, 0, edge, MeshField::Edge) = func(x, y);
-      };
-      MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numEdge},
-                              setFieldAtEdges, "setFieldAtEdges");
+      setEdges(mesh, func, field);
     }
 
     //    if (ShapeOrder == 1) {
@@ -234,12 +251,7 @@ public:
     const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
 
     MeshField::FieldElement f(meshInfo.numTri, field, shp, map);
-    Kokkos::View<MeshField::LO *> offsets("offsets", meshInfo.numTri + 1);
-    Kokkos::parallel_for(
-        "setOffsets", meshInfo.numTri,
-        KOKKOS_LAMBDA(int i) { offsets(i) = i * NumPtsPerElem; });
-    Kokkos::deep_copy(Kokkos::subview(offsets, offsets.size() - 1),
-                      meshInfo.numTri * NumPtsPerElem);
+    auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
     return eval;
   }
