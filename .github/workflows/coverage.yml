@@ -33,8 +33,6 @@ jobs:
         sudo apt-get install doxygen
         sudo apt-get install graphviz
         sudo apt-get install libhdf5-mpi-dev
-        sudo apt-get install gdb
-        sudo apt-get install valgrind
 
     ## Kokkos
     - name: Kokkos Checkout repo
@@ -128,13 +126,6 @@ jobs:
       shell: bash
       run: |
         make
-        set +e
-        ./OmegahElementTests 
-        echo "r" > getStack.gdb
-        echo "bt" >> getStack.gdb
-        echo "quit" >> getStack.gdb
-        gdb --command=getStack.gdb ./OmegahElementTests 
-        valgrind ./OmegahElementTests
         make coverage
 
      #Uploads coverage directory with lcov generated HTML
