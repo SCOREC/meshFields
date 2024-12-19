@@ -130,9 +130,10 @@ jobs:
         ulimit -c unlimited
         set +e
         ./OmegahElementTests
+        ls
         echo "bt" > getStack.gdb
         echo "quit" >> getStack.gdb
-        gdb --command=getStack.gdb ./OmegahElementTests core*
+        gdb --command=getStack.gdb ./OmegahElementTests 
         make coverage
 
      #Uploads coverage directory with lcov generated HTML
