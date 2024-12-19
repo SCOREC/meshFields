@@ -106,6 +106,12 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
   {
     auto mesh = createMeshTri18(lib);
+    {
+      const auto dim = mesh.dim();
+      if (dim != 2) {
+        MeshField::fail("0.1 input mesh must be 2d, meshdim is %d\n", dim);
+      }
+    }
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
         mesh);
 
@@ -137,6 +143,12 @@ int main(int argc, char **argv) {
     static const size_t QuadraticField = 2;
     for (auto testCase : cases) {
       {
+        {
+          const auto dim = mesh.dim();
+          if (dim != 2) {
+            MeshField::fail("0.2 input mesh must be 2d, meshdim is %d\n", dim);
+          }
+        }
         const auto ShapeOrder = 1;
         const auto MeshDim = 2;
         auto coords = mesh.coords();

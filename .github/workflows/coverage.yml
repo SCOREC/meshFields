@@ -129,6 +129,7 @@ jobs:
       run: |
         make
         set +e
+        ./OmegahElementTests 
         echo "r" > getStack.gdb
         echo "bt" >> getStack.gdb
         echo "quit" >> getStack.gdb
