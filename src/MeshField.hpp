@@ -174,7 +174,7 @@ private:
   CoordField coordField;
 
 public:
-  OmegahMeshField(Omega_h::Mesh mesh_in)
+  OmegahMeshField(Omega_h::Mesh &mesh_in)
       : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
         coordField(createCoordinateField<ExecutionSpace, Controller>(
             getMeshInfo(mesh_in), mesh_in.coords())) {}
