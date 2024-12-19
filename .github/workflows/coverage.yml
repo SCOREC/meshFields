@@ -33,6 +33,7 @@ jobs:
         sudo apt-get install doxygen
         sudo apt-get install graphviz
         sudo apt-get install libhdf5-mpi-dev
+        sudo apt-get install gdb
 
     ## Kokkos
     - name: Kokkos Checkout repo
