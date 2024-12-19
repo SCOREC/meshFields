@@ -185,6 +185,8 @@ public:
                                           order, dim>(meshInfo);
   }
 
+  auto getCoordField() { return coordField; }
+
   template <typename Field> void writeVtk(Field &field) {
     using FieldDataType = typename decltype(field.vtxField)::BaseType;
     // HACK assumes there is a vertex field.. in the Field Mixin object

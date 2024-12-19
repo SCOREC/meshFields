@@ -35,44 +35,45 @@ Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
   return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
 }
 
-// void checkResult(MeshField::MeshInfo meshInfo) { //FIXME
-//
-//    MeshField::FieldElement fcoords(meshInfo.numTri, coordField,
-//                                    MeshField::LinearTriangleCoordinateShape(),
-//                                    LinearTriangleToVertexField(mesh));
-//    auto globalCoords = MeshField::evaluate(fcoords, localCoords, offsets);
-//
-//   // check the result
-//   MeshField::LO numErrors = 0;
-//   Kokkos::parallel_reduce(
-//       "checkResult", meshInfo.numTri,
-//       KOKKOS_LAMBDA(const int &ent, MeshField::LO &lerrors) {
-//         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-//           const auto x = globalCoords(pt, 0);
-//           const auto y = globalCoords(pt, 1);
-//           const auto expected = func(x, y);
-//           const auto computed = eval(pt, 0);
-//           MeshField::LO isError = 0;
-//           if (Kokkos::fabs(computed - expected) >
-//           MeshField::MachinePrecision) {
-//             isError = 1;
-//             Kokkos::printf("result for elm %d, pt %d, does not match:
-//             expected "
-//                            "%f computed %f\n",
-//                            ent, pt, expected, computed);
-//           }
-//           lerrors += isError;
-//         }
-//       },
-//       numErrors);
-//   return (numErrors > 0);
-// }
-
 struct TestCoords {
   Kokkos::View<MeshField::Real *[3]> coords;
   size_t NumPtsPerElem;
   std::string name;
 };
+
+template <typename Result, typename CoordField, typename AnalyticFunction>
+bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
+                 TestCoords testCase, AnalyticFunction func) {
+  MeshField::FieldElement fcoords(mesh.nfaces(), coordField,
+                                  MeshField::LinearTriangleCoordinateShape(),
+                                  LinearTriangleToVertexField(mesh));
+  auto globalCoords = MeshField::evaluate(fcoords, testCase.coords);
+
+  const auto numPtsPerElem = testCase.NumPtsPerElem;
+  MeshField::LO numErrors = 0;
+  Kokkos::parallel_reduce(
+      "checkResult", mesh.nfaces(),
+      KOKKOS_LAMBDA(const int &ent, MeshField::LO &lerrors) {
+        const auto first = ent * numPtsPerElem;
+        const auto last = first + numPtsPerElem;
+        for (auto pt = first; pt < last; pt++) {
+          const auto x = globalCoords(pt, 0);
+          const auto y = globalCoords(pt, 1);
+          const auto expected = func(x, y);
+          const auto computed = result(pt, 0);
+          MeshField::LO isError = 0;
+          if (Kokkos::fabs(computed - expected) > MeshField::MachinePrecision) {
+            isError = 1;
+            Kokkos::printf("result for elm %d, pt %d, does not match: expected "
+                           "%f computed %f\n",
+                           ent, pt, expected, computed);
+          }
+          lerrors += isError;
+        }
+      },
+      numErrors);
+  return (numErrors > 0);
+}
 
 template <size_t NumPtsPerElem>
 Kokkos::View<MeshField::Real *[3]>
@@ -110,7 +111,6 @@ int main(int argc, char **argv) {
         mesh);
 
     // setup field with values from the analytic function
-
     static const size_t OnePtPerElem = 1;
     static const size_t ThreePtsPerElem = 3;
     auto centroids = createElmAreaCoords<OnePtPerElem>(
@@ -156,10 +156,10 @@ int main(int argc, char **argv) {
       auto result =
           omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
               testCase.coords, testCase.NumPtsPerElem, LinearFunction{}, field);
-      // FIXME
-      //  auto failed = checkResult(...):
-      //  if (failed)
-      //    doFail("linear", "linear", testCase.name);
+      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                LinearFunction{});
+      if (failed)
+        doFail("linear", "linear", testCase.name);
     }
 
     //      failed = omf.triangleLocalPointEval<QuadraticFunction,
