@@ -127,11 +127,9 @@ jobs:
       shell: bash
       run: |
         make
-        ulimit -c unlimited
         set +e
-        ./OmegahElementTests
-        ls
-        echo "bt" > getStack.gdb
+        echo "r" > getStack.gdb
+        echo "bt" >> getStack.gdb
         echo "quit" >> getStack.gdb
         gdb --command=getStack.gdb ./OmegahElementTests 
         make coverage
