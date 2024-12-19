@@ -126,7 +126,11 @@ jobs:
       shell: bash
       run: |
         make
-        ctest -V
+        ulimit -c unlimited
+        ./OmegahElementTests
+        echo "bt" > getStack.gdb
+        echo "quit" >> getStack.gdb
+        gdb --command=getStack.gdb ./OmegahElementTests core*
         make coverage
 
      #Uploads coverage directory with lcov generated HTML
