@@ -7,10 +7,15 @@
 #include <Cabana_Core.hpp>
 #include <MeshField_Utility.hpp>
 
-namespace Controller {
+namespace MeshField {
 
+/**
+ * @todo use a class; following
+ * https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c2-use-class-if-the-class-has-an-invariant-use-struct-if-the-data-members-can-vary-independently
+ */
 template <class SliceType, class T> struct CabanaSliceWrapper {
 
+  using ExecutionSpace = typename SliceType::execution_space;
   static const int MAX_RANK = 4;
   static const std::size_t RANK = Kokkos::View<T>::rank + 1;
   int dimensions[MAX_RANK];
@@ -71,18 +76,16 @@ template <class SliceType, class T> struct CabanaSliceWrapper {
   }
 };
 
-using namespace Cabana;
-
-template <class ExecutionSpace, class MemorySpace, class... Ts>
+template <class ExeSpace, class MemorySpace, class... Ts>
 class CabanaController {
 
   // type definitions
   using TypeTuple = std::tuple<Ts...>;
-  using DeviceType = Kokkos::Device<ExecutionSpace, MemorySpace>;
+  using DeviceType = Kokkos::Device<ExeSpace, MemorySpace>;
   using DataTypes = Cabana::MemberTypes<Ts...>;
 
 public:
-  typedef ExecutionSpace exe;
+  using ExecutionSpace = ExeSpace;
   // Including num_tuples -> so 3 additional extents
   static const int MAX_RANK = 4;
   static constexpr int vecLen =
@@ -91,7 +94,7 @@ public:
 private:
   // all the type defenitions that are needed us to get the type of the slice
   // returned by the underlying AoSoA
-  using soa_t = SoA<DataTypes, vecLen>;
+  using soa_t = Cabana::SoA<DataTypes, vecLen>;
 
   template <std::size_t index>
   using member_data_t =
@@ -176,97 +179,7 @@ public:
       sizes[i] = this->size(index, i);
     return wrapper_slice_t<type, stride>(std::move(slice), sizes);
   }
-
-  template <class Fn>
-  typename std::enable_if<1 == MeshFieldUtil::function_traits<Fn>::arity>::type
-  simd_for(Fn &kernel, const Kokkos::Array<int64_t, 1> &start,
-           const Kokkos::Array<int64_t, 1> &end, std::string tag) {
-    Cabana::SimdPolicy<vecLen> policy(start[0], end[0]);
-    Cabana::simd_parallel_for(
-        policy,
-        KOKKOS_LAMBDA(const int &s, const int &a) {
-          const std::size_t i = Cabana::Impl::Index<vecLen>::i(s, a);
-          kernel(i);
-        },
-        tag);
-  }
-
-  template <class Fn>
-  typename std::enable_if<2 == MeshFieldUtil::function_traits<Fn>::arity>::type
-  simd_for(Fn &kernel, const Kokkos::Array<int64_t, 2> &start,
-           const Kokkos::Array<int64_t, 2> &end, std::string tag) {
-    Cabana::SimdPolicy<vecLen> policy(start[0], end[0]);
-    const int64_t s1 = start[1];
-    const int64_t e1 = end[1];
-    Cabana::simd_parallel_for(
-        policy,
-        KOKKOS_LAMBDA(const int &s, const int &a) {
-          const std::size_t i = Cabana::Impl::Index<vecLen>::i(s, a);
-          for (int j = s1; j < e1; j++)
-            kernel(i, j);
-        },
-        tag);
-  }
-
-  template <class Fn>
-  typename std::enable_if<3 == MeshFieldUtil::function_traits<Fn>::arity>::type
-  simd_for(Fn &kernel, const Kokkos::Array<int64_t, 3> &start,
-           const Kokkos::Array<int64_t, 3> &end, std::string tag) {
-    Cabana::SimdPolicy<vecLen> policy(start[0], end[0]);
-    const int s1 = start[1], s2 = start[2];
-    const int e1 = end[1], e2 = end[2];
-    Cabana::simd_parallel_for(
-        policy,
-        KOKKOS_LAMBDA(const int &s, const int &a) {
-          const std::size_t i = Cabana::Impl::Index<vecLen>::i(s, a);
-          for (int j = s1; j < e1; j++) {
-            for (int k = s2; k < e2; k++) {
-              kernel(i, j, k);
-            }
-          }
-        },
-        tag);
-  }
-
-  template <class Fn>
-  typename std::enable_if<4 == MeshFieldUtil::function_traits<Fn>::arity>::type
-  simd_for(Fn &kernel, const Kokkos::Array<int64_t, 4> &start,
-           const Kokkos::Array<int64_t, 4> &end, std::string tag) {
-    Cabana::SimdPolicy<vecLen> policy(start[0], end[0]);
-    const int s1 = start[1], s2 = start[2], s3 = start[3];
-    const int e1 = end[1], e2 = end[2], e3 = end[3];
-    Cabana::simd_parallel_for(
-        policy,
-        KOKKOS_LAMBDA(const int &s, const int &a) {
-          const std::size_t i = Cabana::Impl::Index<vecLen>::i(s, a);
-          for (int j = s1; j < e1; j++) {
-            for (int k = s2; k < e2; k++) {
-              for (int l = s3; l < e3; l++) {
-                kernel(i, j, k, l);
-              }
-            }
-          }
-        },
-        tag);
-  }
-
-  template <typename FunctorType, class IS, class IE>
-  void parallel_for(const std::initializer_list<IS> &start_init,
-                    const std::initializer_list<IE> &end_init,
-                    FunctorType &vectorKernel, std::string tag) {
-    static_assert(std::is_integral<IS>::value, "Integral required\n");
-    static_assert(std::is_integral<IE>::value, "Integral required\n");
-    constexpr std::size_t RANK =
-        MeshFieldUtil::function_traits<FunctorType>::arity;
-    assert(start_init.size() >= RANK);
-    assert(end_init.size() >= RANK);
-    Kokkos::Array<int64_t, RANK> a_start =
-        MeshFieldUtil::to_kokkos_array<RANK>(start_init);
-    Kokkos::Array<int64_t, RANK> a_end =
-        MeshFieldUtil::to_kokkos_array<RANK>(end_init);
-    simd_for<FunctorType>(vectorKernel, a_start, a_end, tag);
-  }
 };
-} // namespace Controller
+} // namespace MeshField
 
 #endif
