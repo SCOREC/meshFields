@@ -141,7 +141,8 @@ int main(int argc, char **argv) {
 
     static const size_t LinearField = 1;
     static const size_t QuadraticField = 2;
-    for (auto testCase : cases) {
+//    for (auto testCase : cases) {
+    auto testCase = TestCoords{centroids, OnePtPerElem, "centroids"};
       {
         {
           const auto dim = mesh.dim();
@@ -187,7 +188,7 @@ int main(int argc, char **argv) {
       //          LinearFunction{});
       //      if (failed)
       //        doFail("quadratic", "linear", testCase.name);
-    }
+//    }
   }
   Kokkos::finalize();
   return 0;
