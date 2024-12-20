@@ -207,27 +207,6 @@ public:
     return offsets;
   }
 
-  template <typename AnalyticFunction, typename ShapeField>
-  void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
-    const auto MeshDim = mesh.dim();
-    const auto edgeDim = 1;
-    const auto vtxDim = 0;
-    const auto edge2vtx = mesh.ask_down(edgeDim, vtxDim).ab2b;
-    auto coords = mesh.coords();
-    auto setFieldAtEdges = KOKKOS_LAMBDA(const int &edge) {
-      // get dofholder position at the midpoint of edge
-      // - TODO should be encoded in the field?
-      const auto left = edge2vtx[edge * 2];
-      const auto right = edge2vtx[edge * 2 + 1];
-      const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
-      const auto y =
-          (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
-      field(0, 0, edge, MeshField::Edge) = func(x, y);
-    };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numEdge},
-                            setFieldAtEdges, "setFieldAtEdges");
-  }
-
   // evaluate a field at the specified local coordinate for each triangle
   template <typename AnalyticFunction, typename ViewType, typename ShapeField>
   auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
@@ -239,10 +218,6 @@ public:
     const size_t ShapeOrder = 1; // typename ShapeField::order; //wrong
     if (ShapeOrder != 1 && ShapeOrder != 2) {
       MeshField::fail("input field order must be 1 or 2\n");
-    }
-
-    if (ShapeOrder == 2) {
-      setEdges(mesh, func, field);
     }
 
     //    if (ShapeOrder == 1) {

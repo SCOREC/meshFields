@@ -75,6 +75,43 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
   return (numErrors > 0);
 }
 
+template <typename AnalyticFunction, typename ShapeField>
+void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
+  const auto MeshDim = mesh.dim();
+  const auto vtxDim = 0;
+  auto coords = mesh.coords();
+  auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
+    // get dofholder position at the midpoint of edge
+    // - TODO should be encoded in the field?
+    const auto x = coords[vtx * MeshDim];
+    const auto y = coords[vtx * MeshDim + 1];
+    field(0, 0, vtx, MeshField::Vertex) = func(x, y);
+  };
+  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
+                          setFieldAtVertices, "setFieldAtVertices");
+}
+
+template <typename AnalyticFunction, typename ShapeField>
+void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
+  const auto MeshDim = mesh.dim();
+  const auto edgeDim = 1;
+  const auto vtxDim = 0;
+  const auto edge2vtx = mesh.ask_down(edgeDim, vtxDim).ab2b;
+  auto coords = mesh.coords();
+  auto setFieldAtEdges = KOKKOS_LAMBDA(const int &edge) {
+    // get dofholder position at the midpoint of edge
+    // - TODO should be encoded in the field?
+    const auto left = edge2vtx[edge * 2];
+    const auto right = edge2vtx[edge * 2 + 1];
+    const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
+    const auto y =
+        (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
+    field(0, 0, edge, MeshField::Edge) = func(x, y);
+  };
+  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nedges()},
+                          setFieldAtEdges, "setFieldAtEdges");
+}
+
 template <size_t NumPtsPerElem>
 Kokkos::View<MeshField::Real *[3]>
 createElmAreaCoords(size_t numElements,
@@ -124,33 +161,27 @@ int main(int argc, char **argv) {
         {1.0, 0.0, 0.0,
          0.0, 1.0, 0.0,
          0.0, 0.0, 1.0});
-    // clang-format on
-
-    // clang-format off
     const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
                         TestCoords{interior, OnePtPerElem, "interior"},
                         TestCoords{vertex, OnePtPerElem, "vertex"},
                         TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
     // clang-format on
 
+    auto coords = mesh.coords();
+    const auto MeshDim = 2;
     static const size_t LinearField = 1;
     static const size_t QuadraticField = 2;
-    //    for (auto testCase : cases) {
+    // for (auto testCase : cases) {
     auto testCase = TestCoords{centroids, OnePtPerElem, "centroids"};
     {
       const auto ShapeOrder = 1;
-      const auto MeshDim = 2;
-      auto coords = mesh.coords();
       auto field =
           omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
       auto func = LinearFunction();
-      auto setField = KOKKOS_LAMBDA(const int &i) {
-        const auto x = coords[i * MeshDim];
-        const auto y = coords[i * MeshDim + 1];
-        field(0, 0, i, MeshField::Vertex) = func(x, y);
-      };
-      MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()}, setField,
-                              "setField");
+      setVertices(mesh, func, field);
+      if (ShapeOrder == 2) {
+        setEdges(mesh, func, field);
+      }
       using ViewType = decltype(testCase.coords);
       using FieldType = decltype(field);
       auto result =
@@ -175,7 +206,7 @@ int main(int argc, char **argv) {
     //          LinearFunction{});
     //      if (failed)
     //        doFail("quadratic", "linear", testCase.name);
-    //    }
+    //}
   }
   Kokkos::finalize();
   return 0;
