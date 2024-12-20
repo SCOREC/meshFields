@@ -169,44 +169,50 @@ int main(int argc, char **argv) {
 
     auto coords = mesh.coords();
     const auto MeshDim = 2;
-    static const size_t LinearField = 1;
-    static const size_t QuadraticField = 2;
-    // for (auto testCase : cases) {
-    auto testCase = TestCoords{centroids, OnePtPerElem, "centroids"};
-    {
-      const auto ShapeOrder = 1;
-      auto field =
-          omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-      auto func = LinearFunction();
-      setVertices(mesh, func, field);
-      if (ShapeOrder == 2) {
-        setEdges(mesh, func, field);
-      }
+    for (auto testCase : cases) {
       using ViewType = decltype(testCase.coords);
-      using FieldType = decltype(field);
-      auto result =
+      {
+        const auto ShapeOrder = 1;
+        auto field =
+          omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+        auto func = LinearFunction();
+        setVertices(mesh, func, field);
+        using FieldType = decltype(field);
+        auto result =
           omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
               testCase.coords, testCase.NumPtsPerElem, LinearFunction{}, field);
-      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                LinearFunction{});
-      if (failed)
-        doFail("linear", "linear", testCase.name);
-    }
+        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+            LinearFunction{});
+        if (failed)
+          doFail("linear", "linear", testCase.name);
+      }
 
-    //      failed = omf.triangleLocalPointEval<QuadraticFunction,
-    //      QuadraticField>(
-    //          mesh, testCase.coords, testCase.NumPtsPerElem,
-    //          QuadraticFunction{});
-    //      if (failed)
-    //        doFail("quadratic", "quadratic", testCase.name);
-    //
-    //      failed = omf.triangleLocalPointEval<LinearFunction,
-    //      QuadraticField>(
-    //          mesh, testCase.coords, testCase.NumPtsPerElem,
-    //          LinearFunction{});
-    //      if (failed)
-    //        doFail("quadratic", "linear", testCase.name);
-    //}
+      {
+        const auto ShapeOrder = 2;
+        auto field =
+          omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+        auto func = QuadraticFunction();
+        setVertices(mesh, func, field);
+        setEdges(mesh, func, field);
+        using FieldType = decltype(field);
+        auto result =
+          omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
+              testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{}, field);
+        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+            QuadraticFunction{});
+        if (failed)
+          doFail("quadratic", "quadratic", testCase.name);
+      }
+
+      //{
+      //failed = omf.triangleLocalPointEval<LinearFunction,
+      //       ShapeOrder>(
+      //           mesh, testCase.coords, testCase.NumPtsPerElem,
+      //           LinearFunction{});
+      //if (failed)
+      //  doFail("quadratic", "linear", testCase.name);
+      //}
+    }
   }
   Kokkos::finalize();
   return 0;
