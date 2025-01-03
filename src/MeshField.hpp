@@ -215,7 +215,7 @@ public:
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");
     }
-    const size_t ShapeOrder = 1; // typename ShapeField::order; //wrong
+    const auto ShapeOrder = ShapeField::Order;
     if (ShapeOrder != 1 && ShapeOrder != 2) {
       MeshField::fail("input field order must be 1 or 2\n");
     }

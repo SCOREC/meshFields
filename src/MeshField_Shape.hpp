@@ -43,6 +43,7 @@ struct LinearEdgeShape {
   static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 1;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
 };
 
 struct LinearTriangleShape {
@@ -61,6 +62,7 @@ struct LinearTriangleShape {
   static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 2;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
 };
 
 struct LinearTriangleCoordinateShape {
@@ -78,6 +80,7 @@ struct LinearTriangleCoordinateShape {
   static const size_t numComponentsPerDof = 2;
   static const size_t meshEntDim = 2;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
 };
 
 struct QuadraticTriangleShape {
@@ -102,6 +105,7 @@ struct QuadraticTriangleShape {
   constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};
   constexpr static size_t NumDofHolders[2] = {3, 3};
   constexpr static size_t DofsPerHolder[2] = {1, 1};
+  constexpr static size_t Order = 2;
 };
 struct QuadraticTetrahedronShape {
   KOKKOS_INLINE_FUNCTION
@@ -129,6 +133,7 @@ struct QuadraticTetrahedronShape {
   constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};
   constexpr static size_t NumDofHolders[2] = {4, 6};
   constexpr static size_t DofsPerHolder[2] = {1, 1};
+  constexpr static size_t Order = 2;
 };
 
 } // namespace MeshField

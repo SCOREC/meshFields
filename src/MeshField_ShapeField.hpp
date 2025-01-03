@@ -57,6 +57,7 @@ struct ShapeField : public Mixins... {
   MeshFieldType meshField;
   Shape shape;
   MeshInfo meshInfo;
+  constexpr static auto Order = Shape::Order;
   ShapeField(MeshFieldType &meshFieldIn, MeshInfo meshInfoIn, Mixins... mixins)
       : meshField(meshFieldIn), meshInfo(meshInfoIn), Mixins(mixins)... {};
 };
