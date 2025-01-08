@@ -95,7 +95,6 @@ struct FieldElement {
         }
       }
     }
-    Kokkos::printf("ent %d c %f\n", ent, c);
     return c;
   }
 };

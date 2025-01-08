@@ -78,7 +78,6 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
 template <typename AnalyticFunction, typename ShapeField>
 void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
   const auto MeshDim = mesh.dim();
-  const auto vtxDim = 0;
   auto coords = mesh.coords();
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
     // get dofholder position at the midpoint of edge
