@@ -91,7 +91,6 @@ struct FieldElement {
         for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
           const auto fval = field(map.node, map.component, map.entity, map.topo);
-          Kokkos::printf("ent %d topo %d ni %d ci %d fval %f sval %f\n", ent, topo, ni, ci, fval, shapeValues[ni]);
           c[ci] += fval * shapeValues[ni];
         }
       }
