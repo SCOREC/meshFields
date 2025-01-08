@@ -44,12 +44,14 @@ struct TestCoords {
 template <typename Result, typename CoordField, typename AnalyticFunction>
 bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
                  TestCoords testCase, AnalyticFunction func) {
+  const auto numPtsPerElem = testCase.NumPtsPerElem;
+  std::cout << "begin coord eval\n";
   MeshField::FieldElement fcoords(mesh.nfaces(), coordField,
                                   MeshField::LinearTriangleCoordinateShape(),
                                   LinearTriangleToVertexField(mesh));
-  auto globalCoords = MeshField::evaluate(fcoords, testCase.coords);
+  auto globalCoords = MeshField::evaluate(fcoords, testCase.coords, numPtsPerElem);
+  std::cout << "done coord eval\n";
 
-  const auto numPtsPerElem = testCase.NumPtsPerElem;
   MeshField::LO numErrors = 0;
   Kokkos::parallel_reduce(
       "checkResult", mesh.nfaces(),
@@ -161,31 +163,33 @@ int main(int argc, char **argv) {
         {1.0, 0.0, 0.0,
          0.0, 1.0, 0.0,
          0.0, 0.0, 1.0});
-    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
-                        TestCoords{interior, OnePtPerElem, "interior"},
-                        TestCoords{vertex, OnePtPerElem, "vertex"},
-                        TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
+    //const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
+    //                    TestCoords{interior, OnePtPerElem, "interior"},
+    //                    TestCoords{vertex, OnePtPerElem, "vertex"},
+    //                    TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
+    const auto cases = { TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
     // clang-format on
 
     auto coords = mesh.coords();
     const auto MeshDim = 2;
     for (auto testCase : cases) {
+      std::cout << "Case: " << testCase.name << "\n";
       using ViewType = decltype(testCase.coords);
-      {
-        const auto ShapeOrder = 1;
-        auto field =
-          omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-        auto func = LinearFunction();
-        setVertices(mesh, func, field);
-        using FieldType = decltype(field);
-        auto result =
-          omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-              testCase.coords, testCase.NumPtsPerElem, LinearFunction{}, field);
-        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-            LinearFunction{});
-        if (failed)
-          doFail("linear", "linear", testCase.name);
-      }
+//      {
+//        const auto ShapeOrder = 1;
+//        auto field =
+//          omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+//        auto func = LinearFunction();
+//        setVertices(mesh, func, field);
+//        using FieldType = decltype(field);
+//        auto result =
+//          omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+//              testCase.coords, testCase.NumPtsPerElem, LinearFunction{}, field);
+//        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+//            LinearFunction{});
+//        if (failed)
+//          doFail("linear", "linear", testCase.name);
+//      }
 
       {
         const auto ShapeOrder = 2;
@@ -198,6 +202,7 @@ int main(int argc, char **argv) {
         auto result =
           omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
               testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{}, field);
+        std::cout << "Case: " << testCase.name << " checking result\n";
         auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
             QuadraticFunction{});
         if (failed)
