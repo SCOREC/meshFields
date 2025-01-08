@@ -48,7 +48,8 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
   MeshField::FieldElement fcoords(mesh.nfaces(), coordField,
                                   MeshField::LinearTriangleCoordinateShape(),
                                   LinearTriangleToVertexField(mesh));
-  auto globalCoords = MeshField::evaluate(fcoords, testCase.coords, numPtsPerElem);
+  auto globalCoords =
+      MeshField::evaluate(fcoords, testCase.coords, numPtsPerElem);
 
   MeshField::LO numErrors = 0;
   Kokkos::parallel_reduce(
@@ -173,15 +174,16 @@ int main(int argc, char **argv) {
       {
         const auto ShapeOrder = 1;
         auto field =
-          omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
         auto func = LinearFunction();
         setVertices(mesh, func, field);
         using FieldType = decltype(field);
         auto result =
-          omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-              testCase.coords, testCase.NumPtsPerElem, LinearFunction{}, field);
+            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
+                field);
         auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-            LinearFunction{});
+                                  LinearFunction{});
         if (failed)
           doFail("linear", "linear", testCase.name);
       }
@@ -189,26 +191,27 @@ int main(int argc, char **argv) {
       {
         const auto ShapeOrder = 2;
         auto field =
-          omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
         auto func = QuadraticFunction();
         setVertices(mesh, func, field);
         setEdges(mesh, func, field);
         using FieldType = decltype(field);
         auto result =
-          omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
-              testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{}, field);
+            omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{},
+                field);
         auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-            QuadraticFunction{});
+                                  QuadraticFunction{});
         if (failed)
           doFail("quadratic", "quadratic", testCase.name);
       }
 
       //{
-      //failed = omf.triangleLocalPointEval<LinearFunction,
+      // failed = omf.triangleLocalPointEval<LinearFunction,
       //       ShapeOrder>(
       //           mesh, testCase.coords, testCase.NumPtsPerElem,
       //           LinearFunction{});
-      //if (failed)
+      // if (failed)
       //  doFail("quadratic", "linear", testCase.name);
       //}
     }

@@ -90,7 +90,8 @@ struct FieldElement {
       for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
         for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
-          const auto fval = field(map.node, map.component, map.entity, map.topo);
+          const auto fval =
+              field(map.node, map.component, map.entity, map.topo);
           c[ci] += fval * shapeValues[ni];
         }
       }
@@ -209,11 +210,12 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
  */
 template <typename FieldElement>
 Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
-    FieldElement &fes, Kokkos::View<Real **> localCoords, size_t numPtsPerElement) {
+    FieldElement &fes, Kokkos::View<Real **> localCoords,
+    size_t numPtsPerElement) {
   Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
   Kokkos::parallel_for(
       fes.numMeshEnts + 1,
-      KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent*numPtsPerElement; });
+      KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
   return evaluate(fes, localCoords, offsets);
 }
 
