@@ -103,7 +103,7 @@ jobs:
         # convert lcov to cobertura
         popd
         pip install lcov_cobertura
-        lcov_cobertura ${mfbdir}/coverage.info
+        lcov_cobertura ${mfbdir}/coverage.info -e build-kokkos
 
      #Uploads coverage directory with lcov generated HTML
     - name: Upload lcov report
