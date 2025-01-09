@@ -1,315 +1,233 @@
-#ifndef meshfield_hpp
-#define meshfield_hpp
+#ifndef MESHFIELD_MESHFIELD_HPP
+#define MESHFIELD_MESHFIELD_HPP
 
-#include <Kokkos_Array.hpp>
-#include <array>
-#include <cstdio>
-#include <stdexcept>
-#include <type_traits> // std::same_v<t1,t2>
+#include "KokkosController.hpp"
+#include "MeshField_Element.hpp"
+#include "MeshField_Fail.hpp"
+#include "MeshField_For.hpp"
+#include "MeshField_ShapeField.hpp"
+#include "Omega_h_file.hpp"    //move
+#include "Omega_h_mesh.hpp"    //move
+#include "Omega_h_simplex.hpp" //move
 
-#include "MeshField_Utility.hpp"
-#include <Kokkos_Core.hpp>
-#include <Kokkos_StdAlgorithms.hpp>
+namespace {
 
-namespace MeshField {
-template <class Slice> class Field {
-
-  Slice slice;
-  typedef typename Slice::Type Type;
-  typedef typename std::remove_pointer<Type>::type type_rank1;
-  typedef typename std::remove_pointer<type_rank1>::type type_rank2;
-  typedef typename std::remove_pointer<type_rank2>::type type_rank3;
-  typedef typename std::remove_pointer<type_rank3>::type type_rank4;
-  typedef typename std::remove_pointer<type_rank4>::type type_rank5;
-  typedef type_rank5 base_type;
-
-  KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankTwo(size_t index) const {
-    size_t s = index / size(1);
-    size_t a = index % size(1);
-    Kokkos::Array<size_t, 2> sIndex{{s, a}};
-    return sIndex;
+MeshField::MeshInfo getMeshInfo(Omega_h::Mesh &mesh) {
+  MeshField::MeshInfo meshInfo;
+  meshInfo.dim = mesh.dim();
+  meshInfo.numVtx = mesh.nverts();
+  if (mesh.dim() > 1)
+    meshInfo.numEdge = mesh.nedges();
+  if (mesh.family() == OMEGA_H_SIMPLEX) {
+    if (mesh.dim() > 1)
+      meshInfo.numTri = mesh.nfaces();
+    if (mesh.dim() == 3)
+      meshInfo.numTet = mesh.nregions();
+  } else { // hypercube
+    if (mesh.dim() > 1)
+      meshInfo.numQuad = mesh.nfaces();
+    if (mesh.dim() == 3)
+      meshInfo.numHex = mesh.nregions();
   }
-  KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankThree(size_t index) const {
-    size_t s = index / (size(2) * size(1));
-    size_t temp_index = index - s * size(2) * size(1);
-    size_t a = temp_index / size(1);
-    size_t i = temp_index % size(1);
-    Kokkos::Array<size_t, 3> sIndex{{s, a, i}};
-    return sIndex;
-  }
-  KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankFour(size_t index) const {
-    size_t s = index / (size(3) * size(2) * size(1));
-    size_t temp_index = index - s * size(3) * size(2) * size(1);
-    size_t a = temp_index / (size(2) * size(1));
-    temp_index -= a * size(2) * size(1);
-    size_t i = temp_index / size(1);
-    size_t j = temp_index % size(1);
-    Kokkos::Array<size_t, 4> sIndex{{s, a, i, j}};
-    return sIndex;
-  }
-  KOKKOS_INLINE_FUNCTION
-  auto serialIndexRankFive(size_t index) const {
-    size_t s = index / (size(4) * size(3) * size(2) * size(1));
-    size_t temp_index = index - s * size(4) * size(3) * size(2) * size(1);
-    size_t a = temp_index / (size(3) * size(2) * size(1));
-    temp_index -= a * size(3) * size(2) * size(1);
-    size_t i = temp_index / (size(2) * size(1));
-    temp_index -= i * size(2) * size(1);
-    size_t j = temp_index / size(1);
-    size_t k = temp_index % size(1);
-    Kokkos::Array<size_t, 5> sIndex{{s, a, i, j, k}};
-    return sIndex;
+  return meshInfo;
+}
+
+template <typename ExecutionSpace, template <typename...> typename Controller =
+                                       MeshField::KokkosController>
+decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller>(
+    MeshField::MeshInfo()))
+createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
+  const auto meshDim = mesh_info.dim;
+  auto coordField =
+      MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
+  auto setCoordField = KOKKOS_LAMBDA(const int &i) {
+    coordField(0, 0, i, MeshField::Vertex) = coords[i * meshDim];
+    coordField(0, 1, i, MeshField::Vertex) = coords[i * meshDim + 1];
+  };
+  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
+                          setCoordField, "setCoordField");
+  return coordField;
+}
+
+struct LinearTriangleToVertexField {
+  Omega_h::LOs triVerts;
+  LinearTriangleToVertexField(Omega_h::Mesh &mesh)
+      : triVerts(mesh.ask_elem_verts()) {
+    if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
   }
 
-public:
-  static const int MAX_RANK = Slice::MAX_RANK;
-  static const int RANK = Slice::RANK;
-
-  Field(Slice s) : slice(s) {}
-
-  KOKKOS_INLINE_FUNCTION
-  auto size(int i) const { return slice.size(i); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s) const { return slice(s); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a) const { return slice(s, a); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i) const { return slice(s, a, i); }
-
-  KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i, int j) const {
-    return slice(s, a, i, j);
-  }
-  KOKKOS_INLINE_FUNCTION
-  auto &operator()(int s, int a, int i, int j, int k) const {
-    return slice(s, a, i, j, k);
-  }
-  KOKKOS_INLINE_FUNCTION
-  auto getFlatViewSize() const {
-    size_t N = size(0);
-    for (size_t i = 1; i < RANK; ++i)
-      N *= size(i);
-    return N;
-  }
-  void serialize_impl(Kokkos::View<base_type *> &serial) const {
-    Kokkos::parallel_for(
-        "field serializer", serial.size(),
-        KOKKOS_CLASS_LAMBDA(const int index) {
-          constexpr std::size_t rank = RANK;
-          auto serial_data = serial;
-          if constexpr (rank == 1) {
-            serial_data(index) = slice(index);
-          } else if constexpr (rank == 2) {
-            auto sIndex = serialIndexRankTwo(index);
-            serial_data(index) = slice(sIndex[0], sIndex[1]);
-          } else if constexpr (rank == 3) {
-            auto sIndex = serialIndexRankThree(index);
-            serial_data(index) = slice(sIndex[0], sIndex[1], sIndex[2]);
-          } else if constexpr (rank == 4) {
-            auto sIndex = serialIndexRankFour(index);
-            serial_data(index) =
-                slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3]);
-          } else if constexpr (rank == 5) {
-            auto sIndex = serialIndexRankFive(index);
-            serial_data(index) =
-                slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]);
-          }
-        });
-  }
-  Kokkos::View<base_type *> serialize() const {
-    auto N = this->getFlatViewSize();
-    Kokkos::View<base_type *> serial("serialized field", N);
-    serialize_impl(serial);
-    return std::move(serial);
-  }
-  void serialize(Kokkos::View<base_type *> &serial) const {
-    size_t N = getFlatViewSize();
-    assert(N == serial.size());
-    serialize_impl(serial);
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Triangle};
   }
 
-  void deserialize(const Kokkos::View<const base_type *> &serialized) {
-    size_t N = getFlatViewSize();
-    assert(N == serialized.size());
-    Kokkos::parallel_for(
-        "field deserializer", N, KOKKOS_CLASS_LAMBDA(const int index) {
-          auto serialized_data = serialized;
-
-          constexpr std::size_t rank = RANK;
-          if constexpr (rank == 1) {
-            slice(index) = serialized_data(index);
-          } else if constexpr (rank == 2) {
-            auto sIndex = serialIndexRankTwo(index);
-            slice(sIndex[0], sIndex[1]) = serialized_data(index);
-          } else if constexpr (rank == 3) {
-            auto sIndex = serialIndexRankThree(index);
-            slice(sIndex[0], sIndex[1], sIndex[2]) = serialized_data(index);
-          } else if constexpr (rank == 4) {
-            auto sIndex = serialIndexRankFour(index);
-            slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3]) =
-                serialized_data(index);
-          } else if constexpr (rank == 5) {
-            auto sIndex = serialIndexRankFive(index);
-            slice(sIndex[0], sIndex[1], sIndex[2], sIndex[3], sIndex[4]) =
-                serialized_data(index);
-          }
-        });
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
+             MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Triangle);
+    const auto triDim = 2;
+    const auto vtxDim = 0;
+    const auto ignored = -1;
+    const auto localVtxIdx =
+        Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
+    const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+    const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+    return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
 
-template <class Controller> class MeshField {
+struct QuadraticTriangleToField {
+  Omega_h::LOs triVerts;
+  Omega_h::LOs triEdges;
+  QuadraticTriangleToField(Omega_h::Mesh &mesh)
+      : triVerts(mesh.ask_elem_verts()),
+        triEdges(mesh.ask_down(mesh.dim(), 1).ab2b) {
+    if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
+  }
 
-  Controller sliceController;
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Triangle};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
+             MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Triangle);
+    // Omega_h has no concept of nodes so we can define the map from
+    // triNodeIdx to the dof holder index
+    const MeshField::LO triNode2DofHolder[6] = {
+        /*vertices*/ 0, 1, 2,
+        /*edges*/ 0,    1, 2};
+    const MeshField::Mesh_Topology triNode2DofHolderTopo[6] = {
+        /*vertices*/
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        /*edges*/
+        MeshField::Edge, MeshField::Edge, MeshField::Edge};
+    const auto dofHolderIdx = triNode2DofHolder[triNodeIdx];
+    const auto dofHolderTopo = triNode2DofHolderTopo[triNodeIdx];
+    // Given the topo index and type find the Omega_h vertex or edge index that
+    // bounds the triangle
+    Omega_h::LO osh_ent;
+    if (dofHolderTopo == MeshField::Vertex) {
+      const auto triDim = 2;
+      const auto vtxDim = 0;
+      const auto ignored = -1;
+      const auto localVtxIdx =
+          Omega_h::simplex_down_template(triDim, vtxDim, dofHolderIdx, ignored);
+      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+      osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+    } else if (dofHolderTopo == MeshField::Edge) {
+      const auto triDim = 2;
+      const auto edgeDim = 1;
+      const auto triToEdgeDegree = Omega_h::simplex_degree(triDim, edgeDim);
+      // passing dofHolderIdx as Omega_h_simplex.hpp does not provide
+      // a function that maps a triangle and edge index to a 'canonical' edge
+      // index. This may need to be revisited...
+      osh_ent = triEdges[(tri * triToEdgeDegree) + dofHolderIdx];
+    } else {
+      assert(false);
+    }
+    return {0, triCompIdx, osh_ent, dofHolderTopo};
+  }
+};
+
+template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
+  static_assert(ShapeOrder == 1 || ShapeOrder == 2);
+  if constexpr (ShapeOrder == 1) {
+    struct result {
+      MeshField::LinearTriangleShape shp;
+      LinearTriangleToVertexField map;
+    };
+    return result{MeshField::LinearTriangleShape(),
+                  LinearTriangleToVertexField(mesh)};
+  } else if constexpr (ShapeOrder == 2) {
+    struct result {
+      MeshField::QuadraticTriangleShape shp;
+      QuadraticTriangleToField map;
+    };
+    return result{MeshField::QuadraticTriangleShape(),
+                  QuadraticTriangleToField(mesh)};
+  }
+}
+
+} // namespace
+
+namespace MeshField {
+
+template <typename ExecutionSpace, template <typename...> typename Controller =
+                                       MeshField::KokkosController>
+class OmegahMeshField {
+private:
+  Omega_h::Mesh &mesh;
+  const MeshField::MeshInfo meshInfo;
+  using CoordField = decltype(createCoordinateField<ExecutionSpace, Controller>(
+      MeshField::MeshInfo(), Omega_h::Reals()));
+  CoordField coordField;
 
 public:
-  MeshField(Controller controller) : sliceController(std::move(controller)) {}
+  OmegahMeshField(Omega_h::Mesh &mesh_in)
+      : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
+        coordField(createCoordinateField<ExecutionSpace, Controller>(
+            getMeshInfo(mesh_in), mesh_in.coords())) {}
 
-  int size(int type_index, int dimension_index) {
-    // given a Controller w/ types Tx = <int*[2][3],double[1][2][3],char*>
-    // size(i,j) will return dimension size from Tx[i,j];
-    // So in the above 'Tx' example, size(0,2) == 3.
-    return sliceController.size(type_index, dimension_index);
+  template <typename DataType, size_t order, size_t dim>
+  auto CreateLagrangeField() {
+    return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
+                                          order, dim>(meshInfo);
   }
 
-  template <std::size_t index> auto makeField() {
-    auto slice = sliceController.template makeSlice<index>();
-    return Field(std::move(slice));
+  auto getCoordField() { return coordField; }
+
+  // FIXME support 2d and 3d and fields with order>1
+  template <typename Field> void writeVtk(Field &field) {
+    using FieldDataType = typename decltype(field.vtxField)::BaseType;
+    // HACK assumes there is a vertex field.. in the Field Mixin object
+    auto field_view = field.vtxField.serialize();
+    Omega_h::Write<FieldDataType> field_write(field_view);
+    mesh.add_tag(0, "field", 1, Omega_h::read(field_write));
+    Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
   }
 
-  template <class Field, class View>
-  void setFieldRankOne(Field &field, View &view) {
-    using EXE_SPACE = typename Controller::exe;
-    Kokkos::RangePolicy<EXE_SPACE> p(0, field.size(0));
+  template <typename ViewType = Kokkos::View<MeshField::LO *>>
+  ViewType createOffsets(size_t numTri, size_t numPtsPerElem) {
+    ViewType offsets("offsets", numTri + 1);
     Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i) { field(i) = view(i); });
+        "setOffsets", numTri,
+        KOKKOS_LAMBDA(int i) { offsets(i) = i * numPtsPerElem; });
+    Kokkos::deep_copy(Kokkos::subview(offsets, offsets.size() - 1),
+                      numTri * numPtsPerElem);
+    return offsets;
   }
 
-  template <class Field, class View>
-  void setFieldRankTwo(Field &field, View &view) {
-    using EXE_SPACE = typename Controller::exe;
-    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
-    Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i, const int &j) {
-          field(i, j) = view(i, j);
-        });
-  }
-
-  template <class Field, class View>
-  void setFieldRankThree(Field &field, View &view) {
-    using EXE_SPACE = typename Controller::exe;
-    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1), field.size(2)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
-    Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i, const int &j, const int &k) {
-          field(i, j, k) = view(i, j, k);
-        });
-  }
-  template <class Field, class View>
-  void setFieldRankFour(Field &field, View &view) {
-    using EXE_SPACE = typename Controller::exe;
-    Kokkos::Array a = MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0, 0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1), field.size(2), field.size(3)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
-    Kokkos::parallel_for(
-        p,
-        KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
-          field(i, j, k, l) = view(i, j, k, l);
-        });
-  }
-  template <class Field, class View>
-  void setFieldRankFive(Field &field, View &view) {
-    using EXE_SPACE = typename Controller::exe;
-    Kokkos::Array a =
-        MeshFieldUtil::to_kokkos_array<Field::RANK>({0, 0, 0, 0, 0});
-    Kokkos::Array b = MeshFieldUtil::to_kokkos_array<Field::RANK>(
-        {field.size(0), field.size(1), field.size(2), field.size(3),
-         field.size(4)});
-    Kokkos::MDRangePolicy<Kokkos::Rank<Field::RANK>, EXE_SPACE> p(a, b);
-    Kokkos::parallel_for(
-        p, KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l,
-                         const int &m) {
-          field(i, j, k, l, m) = view(i, j, k, l, m);
-        });
-  }
-
-  template <class FieldT, class View> void setField(FieldT &field, View &view) {
-    // Accepts a Field object and Kokkos::View
-    // -> sets field(i,j,...) = view(i,j,...) for all i,j,...
-    //    up to rank 5.
-    constexpr std::size_t view_rank = View::rank;
-    constexpr std::size_t field_rank = FieldT::RANK;
-    static_assert(field_rank <= FieldT::MAX_RANK);
-    static_assert(view_rank == field_rank);
-
-    if constexpr (field_rank == 1) {
-      setFieldRankOne(field, view);
-    } else if constexpr (field_rank == 2) {
-      setFieldRankTwo(field, view);
-    } else if constexpr (field_rank == 3) {
-      setFieldRankThree(field, view);
-    } else if constexpr (field_rank == 4) {
-      setFieldRankFour(field, view);
-    } else if constexpr (field_rank == 5) {
-      setFieldRankFive(field, view);
-    } else {
-      fprintf(stderr, "setField error: Invalid Field Rank\n");
+  // evaluate a field at the specified local coordinate for each triangle
+  template <typename AnalyticFunction, typename ViewType, typename ShapeField>
+  auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
+                              AnalyticFunction func, ShapeField field) {
+    const auto MeshDim = 2;
+    if (mesh.dim() != MeshDim) {
+      MeshField::fail("input mesh must be 2d\n");
     }
-  }
-
-  template <typename FunctorType, class IS, class IE>
-  void parallel_for(const std::initializer_list<IS> &start,
-                    const std::initializer_list<IE> &end,
-                    FunctorType &vectorKernel, std::string tag) {
-    sliceController.parallel_for(start, end, vectorKernel, tag);
-  }
-
-  template <typename FunctorType, class IS, class IE, class ReducerType>
-  void parallel_reduce(std::string tag, const std::initializer_list<IS> &start,
-                       const std::initializer_list<IE> &end,
-                       FunctorType &reductionKernel, ReducerType &reducer) {
-    /* TODO: infinite reducers */
-    /* Number of arguements to lambda should be equal to number of ranks +
-     * number of reducers
-     * -> adjust 'RANK' accordingly */
-    constexpr std::size_t reducer_count = 1;
-    constexpr auto RANK =
-        MeshFieldUtil::function_traits<FunctorType>::arity - reducer_count;
-
-    using EXE_SPACE = typename Controller::exe;
-    assert(start.size() == end.size());
-    if constexpr (RANK <= 1) {
-      Kokkos::RangePolicy<EXE_SPACE> policy((*start.begin()), (*end.begin()));
-      Kokkos::parallel_reduce(tag, policy, reductionKernel, reducer);
-    } else {
-      auto a_start = MeshFieldUtil::to_kokkos_array<RANK>(start);
-      auto a_end = MeshFieldUtil::to_kokkos_array<RANK>(end);
-      Kokkos::MDRangePolicy<Kokkos::Rank<RANK>, EXE_SPACE> policy(a_start,
-                                                                  a_end);
-      Kokkos::parallel_reduce(tag, policy, reductionKernel, reducer);
+    const auto ShapeOrder = ShapeField::Order;
+    if (ShapeOrder != 1 && ShapeOrder != 2) {
+      MeshField::fail("input field order must be 1 or 2\n");
     }
-  }
 
-  template <typename KernelType, typename resultant>
-  void parallel_scan(std::string tag, int64_t start_index, int64_t end_index,
-                     KernelType &scanKernel, resultant &result) {
-    static_assert(std::is_pod<resultant>::value);
-    Kokkos::RangePolicy<Kokkos::IndexType<int64_t>> p(start_index, end_index);
-    Kokkos::parallel_scan(tag, p, scanKernel, result);
+    const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
+
+    MeshField::FieldElement f(meshInfo.numTri, field, shp, map);
+    auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
+    auto eval = MeshField::evaluate(f, localCoords, offsets);
+    return eval;
   }
-  // depending on size of dimensions, take variable number of arguements
-  // that give pairs of lower and upper bound for the multi-dim views.
 };
 
 } // namespace MeshField

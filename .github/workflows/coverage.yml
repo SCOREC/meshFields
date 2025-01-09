@@ -30,9 +30,9 @@ jobs:
 
     - name: Install additional dependencies
       run: |
-        sudo apt-get install doxygen
-        sudo apt-get install graphviz
-        sudo apt-get install libhdf5-mpi-dev
+        sudo apt-get install -yq doxygen
+        sudo apt-get install -yq graphviz
+        sudo apt-get install -yq libhdf5-mpi-dev
 
     ## Kokkos
     - name: Kokkos Checkout repo
@@ -108,7 +108,7 @@ jobs:
 
     - name: Install lcov 1.16
       shell: bash
-      run: sudo apt-get install lcov
+      run: sudo apt-get install -yq lcov
 
     - name: MeshFields Configure CMake
       shell: bash

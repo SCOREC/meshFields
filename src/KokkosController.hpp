@@ -11,13 +11,17 @@
 #include <vector>
 
 #include "MeshField_Macros.hpp"
-#include "MeshField_Utility.hpp"
 #include <Kokkos_Core.hpp>
 
-namespace Controller {
+namespace MeshField {
 
+/**
+ * @todo use a class; following
+ * https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c2-use-class-if-the-class-has-an-invariant-use-struct-if-the-data-members-can-vary-independently
+ */
 template <class SliceType, class T> struct KokkosSliceWrapper {
 
+  using ExecutionSpace = typename SliceType::memory_space::execution_space;
   SliceType slice;
   int dimensions[5];
   typedef T Type;
@@ -199,6 +203,11 @@ public:
 
   ~KokkosController() = default;
 
+  /**
+   * given a Controller w/ types Tx = <int*[2][3],double[1][2][3],char*>
+   * size(i,j) will return dimension size from Tx[i,j];
+   * So in the above 'Tx' example, size(0,2) == 3.
+   */
   int size(int type_index, int dimension_index) const {
     assert(type_index >= 0);
     assert(type_index < num_types);
@@ -214,27 +223,8 @@ public:
       slice_dims[i] = this->extent_sizes[index][i];
     return wrapper_slice_t<type>(std::get<index>(values_), slice_dims);
   }
-
-  template <typename FunctorType, class IS, class IE>
-  void parallel_for(const std::initializer_list<IS> &start,
-                    const std::initializer_list<IE> &end,
-                    FunctorType &vectorKernel, std::string tag) {
-    constexpr auto RANK = MeshFieldUtil::function_traits<FunctorType>::arity;
-    assert(RANK >= 1);
-    Kokkos::Array<int64_t, RANK> a_start =
-        MeshFieldUtil::to_kokkos_array<RANK>(start);
-    Kokkos::Array<int64_t, RANK> a_end =
-        MeshFieldUtil::to_kokkos_array<RANK>(end);
-    if constexpr (RANK == 1) {
-      Kokkos::RangePolicy<ExecutionSpace> p(a_start[0], a_end[0]);
-      Kokkos::parallel_for(tag, p, vectorKernel);
-    } else {
-      Kokkos::MDRangePolicy<Kokkos::Rank<RANK>, ExecutionSpace> policy(a_start,
-                                                                       a_end);
-      Kokkos::parallel_for(tag, policy, vectorKernel);
-    }
-  }
 };
-} // namespace Controller
+
+} // namespace MeshField
 
 #endif

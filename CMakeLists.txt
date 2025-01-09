@@ -20,23 +20,50 @@ set(MESHFIELD_HEADERS
   src/MeshField_Utility.hpp
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
+  src/MeshField_Element.hpp
+  src/MeshField_Shape.hpp
+  src/MeshField_Fail.hpp
+  src/MeshField_For.hpp
+  src/MeshField_Reduce.hpp
+  src/MeshField_Scan.hpp
+  src/MeshField_Field.hpp
   src/MeshField.hpp
+  "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
-
 if(MeshFields_USE_Cabana)
-  list(APPEND MESHFIELD_HEADERS src/CabanaController.hpp)
+  list(APPEND MESHFIELD_HEADERS 
+    src/CabanaController.hpp
+    src/MeshField_SimdFor.hpp)
 endif()
 
-#create header only library
-add_library(meshFields INTERFACE)
+set(MESHFIELD_SOURCES
+  src/MeshField_Fail.cpp
+)
+
+add_library(meshFields ${MESHFIELD_SOURCES})
+
 target_compile_features(meshFields INTERFACE cxx_std_17)
 target_include_directories(meshFields
-  INTERFACE
+  PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>" # for MeshField_Config.hpp
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
+target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
+if(Kokkos_ENABLE_CUDA)
+  target_compile_options(meshFields INTERFACE "--expt-relaxed-constexpr")
+endif()
+
+#enable/disable exceptions
+option(MeshFields_USE_EXCEPTIONS "Enable throwing exceptions" ON)
+message(STATUS "Exceptions: ${MeshFields_USE_EXCEPTIONS}")
+
+#pass cmake options to the source
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/MeshField_Config.hpp.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp")
+
 if(MeshFields_USE_Cabana)
-  message(STATUS "Cabana found")
   target_link_libraries(meshFields INTERFACE Cabana::Core)
   target_compile_definitions(meshFields INTERFACE MESHFIELDS_ENABLE_CABANA)
 endif()
@@ -52,6 +79,29 @@ if(MeshFields_USE_CTAGS)
             --exclude=.github .
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_dependencies(meshFields tags)
+endif()
+
+# Set options for doxygen documentation
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in
+  ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY
+)
+add_custom_target(doc
+  ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Generating API documentation with Doxygen" VERBATIM
+)
+configure_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile_internal.in
+  ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_internal @ONLY
+)
+add_custom_target(docInternal
+  ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile_internal
+  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  COMMENT "Generating Internal API documentation with Doxygen" VERBATIM
+)
 endif()
 
 #Settings options for testing
@@ -101,22 +151,35 @@ function(will_fail_valgrind_test_func TEST_NAME)
   endif()
 endfunction()
 
+function(meshfields_add_exe EXE_NAME EXE_SRC)
+  add_executable(${EXE_NAME} ${EXE_SRC})
+  target_link_libraries(${EXE_NAME} PRIVATE meshFields)
+endfunction()
 
 # Creating minimal reproduction of error
-add_executable(KokkosTests test/testKokkos.cpp)
-target_link_libraries(KokkosTests PRIVATE meshFields)
+meshfields_add_exe(KokkosTests test/testKokkos.cpp)
+meshfields_add_exe(SerializationTests test/testSerialize.cpp)
+meshfields_add_exe(ElementTests test/testElement.cpp)
+meshfields_add_exe(OmegahElementTests test/testOmegahElement.cpp)
+meshfields_add_exe(OmegahCoordFieldTest test/testOmegahCoordField.cpp)
+meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 
 if(MeshFields_USE_Cabana)
-  add_executable(CabanaTests test/testCabana.cpp)
-  target_link_libraries(CabanaTests PRIVATE meshFields)
+  meshfields_add_exe(CabanaTests test/testCabana.cpp)
   test_func(CabanaTests ./CabanaTests)
 endif()
 
-add_executable(SerializationTests test/testSerialize.cpp)
-target_link_libraries(SerializationTests PRIVATE meshFields)
-
 test_func(KokkosTests ./KokkosTests)
 test_func(SerializationTests ./SerializationTests)
+test_func(ElementTests ./ElementTests)
+test_func(OmegahElementTests ./OmegahElementTests)
+test_func(OmegahCoordFieldTest ./OmegahCoordFieldTest)
+if(MeshFields_USE_EXCEPTIONS)
+  # exception caught - no error
+  test_func(ExceptionTest ./ExceptionTest)
+else()
+  will_fail_test_func(ExceptionTest ./ExceptionTest)
+endif()
 
 #Code Coverage set up -------------------------------------------------------
 

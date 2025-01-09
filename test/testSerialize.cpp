@@ -1,5 +1,5 @@
 #include "KokkosController.hpp"
-#include "MeshField.hpp"
+#include "MeshField_Field.hpp"
 #include "MeshField_Macros.hpp"
 #include "MeshField_Utility.hpp"
 
@@ -12,21 +12,26 @@
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
-int main(int argc, char *argv[]) {
-  Kokkos::ScopeGuard scope_guard(argc, argv);
+void test_1_1_16() {
+  using kCon =
+      MeshField::KokkosController<MemorySpace, ExecutionSpace, int ***>;
+  kCon c1({1, 1, 16});
+  MeshField::Field field = MeshField::makeField<kCon, 0>(c1);
+  auto field_serialized = field.serialize();
+}
 
+void test_multi() {
   const int N = 10;
   using kok1 =
-      Controller::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
-                                   int ***, int ****, int *****>;
+      MeshField::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
+                                  int ***, int ****, int *****>;
   kok1 c1({N, N, N, N, N, N, N, N, N, N, N, N, N, N, N});
 
-  MeshField::MeshField mf(c1);
-  MeshField::Field field1 = mf.makeField<0>();
-  MeshField::Field field2 = mf.makeField<1>();
-  MeshField::Field field3 = mf.makeField<2>();
-  MeshField::Field field4 = mf.makeField<3>();
-  MeshField::Field field5 = mf.makeField<4>();
+  MeshField::Field field1 = MeshField::makeField<kok1, 0>(c1);
+  MeshField::Field field2 = MeshField::makeField<kok1, 1>(c1);
+  MeshField::Field field3 = MeshField::makeField<kok1, 2>(c1);
+  MeshField::Field field4 = MeshField::makeField<kok1, 3>(c1);
+  MeshField::Field field5 = MeshField::makeField<kok1, 4>(c1);
 
   Kokkos::View<int *> view1("1", N);
   Kokkos::View<int **> view2("2", N, N);
@@ -49,11 +54,11 @@ int main(int argc, char *argv[]) {
         view5(i, j, k, l, m) = i + j + k + l + m;
       });
 
-  mf.setField(field1, view1);
-  mf.setField(field2, view2);
-  mf.setField(field3, view3);
-  mf.setField(field4, view4);
-  mf.setField(field5, view5);
+  field1.set(view1);
+  field2.set(view2);
+  field3.set(view3);
+  field4.set(view4);
+  field5.set(view5);
 
   auto serialized1 = field1.serialize();
   auto serialized2 = field2.serialize();
@@ -77,5 +82,11 @@ int main(int argc, char *argv[]) {
         assert(view4(i, j, k, l) == field4(i, j, k, l));
         assert(view5(i, j, k, l, m) == field5(i, j, k, l, m));
       });
+}
+
+int main(int argc, char *argv[]) {
+  Kokkos::ScopeGuard scope_guard(argc, argv);
+  test_1_1_16();
+  test_multi();
   return 0;
 }
