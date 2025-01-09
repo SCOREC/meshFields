@@ -22,110 +22,74 @@ jobs:
       pull-requests: write
 
     steps:
-    - name: Install CMake
+    - name: Install dependencies
       run: |
         sudo apt-get update -yq
         sudo apt-get install -yq cmake
-        cmake --version
-
-    - name: Install additional dependencies
-      run: |
         sudo apt-get install -yq doxygen
         sudo apt-get install -yq graphviz
         sudo apt-get install -yq libhdf5-mpi-dev
+        sudo apt-get install -yq lcov
 
-    ## Kokkos
-    - name: Kokkos Checkout repo
-      uses: actions/checkout@v4
-      with:
-        repository: kokkos/kokkos
-        path: kokkos
-        ref: develop
-
-    - name: Kokkos Configure CMake
-      shell: bash
-      run: cmake -S $GITHUB_WORKSPACE/kokkos -B ${{runner.workspace}}/build-kokkos
-           -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
-           -DKokkos_ENABLE_SERIAL=ON 
-           -DKokkos_ENABLE_OPENMP=OFF
-           -DKokkos_ENABLE_DEBUG=ON
-           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-kokkos/install
-
-    - name: Kokkos Build
-      shell: bash
-      run: cmake --build ${{runner.workspace}}/build-kokkos --parallel 2 --target install
-
-    ## Omegah
-    - name: Omega_h Checkout repo
-      uses: actions/checkout@v4
-      with:
-        repository: sandialabs/omega_h
-        path: omegah
-
-    - name: Omega_h Configure CMake
-      shell: bash
-      run: cmake -S $GITHUB_WORKSPACE/omegah -B ${{runner.workspace}}/build-omegah
-           -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
-           -DBUILD_SHARED_LIBS=OFF
-           -DOmega_h_USE_Kokkos=ON
-           -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib/cmake
-           -DOmega_h_USE_MPI=OFF
-           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-omegah/install
-
-    - name: Omega_h Build
-      shell: bash
-      run: cmake --build ${{runner.workspace}}/build-omegah --parallel 2 --target install
-
-    ## Cabana
-    - name: Cabana Checkout repo
-      uses: actions/checkout@v4
-      with:
-        repository: ECP-copa/Cabana
-        path: cabana
-
-    - name: Cabana Configure CMake
-      shell: bash
-      run: cmake -S $GITHUB_WORKSPACE/cabana -B ${{runner.workspace}}/build-cabana
-           -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
-           -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
-           -DKokkos_DIR=${{runner.workspace}}/build-kokkos/install/lib/cmake/Kokkos
-           -DCabana_ENABLE_MPI=OFF
-           -DCabana_ENABLE_CAJITA=OFF
-           -DCabana_ENABLE_TESTING=OFF
-           -DCabana_ENABLE_EXAMPLES=OFF
-           -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-cabana/install
-
-    - name: Cabana Build
-      shell: bash
-      run: cmake --build ${{runner.workspace}}/build-cabana --parallel 2 --target install
-
-    ## MeshFields
-    - name: MeshFields Checkout repo
-      uses: actions/checkout@v4
-      with:
-        repository: SCOREC/meshFields
-        path: meshFields
-
-    - name: Install lcov 1.16
-      shell: bash
-      run: sudo apt-get install -yq lcov
-
-    - name: MeshFields Configure CMake
-      shell: bash
-      run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
-         -D meshFields_ENABLE_COVERAGE_BUILD=ON 
-         -D CMAKE_BUILD_TYPE=${{matrix.build_type}}
-         -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
-         -DCabana_ROOT=${{runner.workspace}}/build-cabana/install
-         -DOmega_h_ROOT=${{runner.workspace}}/build-omegah/install
-         -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
-         -DLCOV_SYSTEM_EXCLUDE_PATHS="/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/ompi/mpi/cxx/*\;/usr/include/*"
-
-    - name: Run MeshFields for coverage
-      working-directory: ${{runner.workspace}}/build-meshFields
+    ## Build
+    - name: build
+      id: build
       shell: bash
       run: |
-        make
+        echo "github.workspace ${{github.workspace}}"
+        
+        workDir=${{github.workspace}}/meshfields
+        mkdir -p $workDir
+        echo "MESHFIELDS_WORK_DIR=$(echo $workDir)" >> $GITHUB_ENV
+        echo "workDir $workDir"
+
+        # kokkos
+        git clone -b develop git@github.com:kokkos/kokkos.git ${workDir}/kokkos
+        kkbdir=${workDir}/build-kokkos
+        cmake -S ${workDir}/kokkos -B $kkbdir \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DKokkos_ENABLE_SERIAL=ON \
+          -DKokkos_ENABLE_OPENMP=off \
+          -DKokkos_ENABLE_DEBUG=on \
+          -DCMAKE_INSTALL_PREFIX=$kkbdir/install
+        cmake --build $kkbdir --target install -j
+
+        ##cabana
+        git clone git@github.com:ECP-copa/Cabana.git ${workDir}/cabana
+        cabbdir=${workDir}/build-cab
+        cmake -S ${workDir}/cabana -B $cabbdir \
+          -DCMAKE_BUILD_TYPE="Debug" \
+          -DCMAKE_CXX_COMPILER=g++ \
+          -DKokkos_ROOT=$kkbdir/install \
+          -DCabana_ENABLE_MPI=OFF \
+          -DCabana_ENABLE_CAJITA=OFF \
+          -DCabana_ENABLE_TESTING=OFF \
+          -DCabana_ENABLE_EXAMPLES=OFF \
+          -DCMAKE_INSTALL_PREFIX=$cabbdir/install
+        cmake --build $cabbdir -j --target install
+
+        # omegah
+        git clone git@github.com:SCOREC/omega_h.git ${workDir}/omegah
+        ohbdir=${workDir}/build-omegah
+        cmake -S ${workDir}/omegah -B $ohbdir \
+          -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DBUILD_TESTING=on \
+          -DOmega_h_USE_Kokkos=on \
+          -DKokkos_PREFIX=$kkbdir/install 
+        cmake --build $ohbdir -j --target install
+
+        #meshfields
+        mfbdir=${workDir}/build-meshfields
+        cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DOmega_h_ROOT=$ohbdir/install \
+          -DKokkos_ROOT=$kkbdir/install \
+          -DCabana_ROOT=$cabbdir/install \
+          -DmeshFields_ENABLE_COVERAGE_BUILD=ON 
+          -DLCOV_SYSTEM_EXCLUDE_PATHS="/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/ompi/mpi/cxx/*\;/usr/include/*"
+        pushd $mfbdir
         make coverage
 
      #Uploads coverage directory with lcov generated HTML
@@ -133,7 +97,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: coverage
-        path: ${{runner.workspace}}/build-meshFields/coverage
+        path: ${{workDir}}/build-meshFields/coverage
 
     
     # Generate a report readable from console -------------------------------------
