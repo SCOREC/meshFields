@@ -206,14 +206,23 @@ int main(int argc, char **argv) {
           doFail("quadratic", "quadratic", testCase.name);
       }
 
-      //{
-      // failed = omf.triangleLocalPointEval<LinearFunction,
-      //       ShapeOrder>(
-      //           mesh, testCase.coords, testCase.NumPtsPerElem,
-      //           LinearFunction{});
-      // if (failed)
-      //  doFail("quadratic", "linear", testCase.name);
-      //}
+      {
+        const auto ShapeOrder = 2;
+        auto field =
+            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+        auto func = LinearFunction();
+        setVertices(mesh, func, field);
+        setEdges(mesh, func, field);
+        using FieldType = decltype(field);
+        auto result =
+            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
+                field);
+        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                  LinearFunction{});
+        if (failed)
+          doFail("quadratic", "linear", testCase.name);
+      }
     }
   }
   Kokkos::finalize();
