@@ -9,6 +9,7 @@ on:
 
 jobs:
   runCoverage:
+
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
     strategy:
@@ -20,6 +21,7 @@ jobs:
     permissions:
       #security-events: write
       pull-requests: write
+
 
     steps:
     - name: Install dependencies
@@ -33,6 +35,8 @@ jobs:
 
     ## Build
     - name: build
+      env:
+        BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       id: build
       shell: bash
       run: |
@@ -44,7 +48,7 @@ jobs:
         echo "workDir $workDir"
 
         # kokkos
-        git clone -b develop git@github.com:kokkos/kokkos.git ${workDir}/kokkos
+        git clone -b develop https://github.com/kokkos/kokkos.git ${workDir}/kokkos
         kkbdir=${workDir}/build-kokkos
         cmake -S ${workDir}/kokkos -B $kkbdir \
           -DCMAKE_BUILD_TYPE=Debug \
@@ -56,7 +60,7 @@ jobs:
         cmake --build $kkbdir --target install -j
 
         # cabana
-        git clone git@github.com:ECP-copa/Cabana.git ${workDir}/cabana
+        git clone https://github.com/ECP-copa/Cabana.git ${workDir}/cabana
         cabbdir=${workDir}/build-cab
         cmake -S ${workDir}/cabana -B $cabbdir \
           -DCMAKE_BUILD_TYPE="Debug" \
@@ -70,7 +74,7 @@ jobs:
         cmake --build $cabbdir -j --target install
 
         # omegah
-        git clone git@github.com:SCOREC/omega_h.git ${workDir}/omegah
+        git clone https://github.com/SCOREC/omega_h.git ${workDir}/omegah
         ohbdir=${workDir}/build-omegah
         cmake -S ${workDir}/omegah -B $ohbdir \
           -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
@@ -81,6 +85,7 @@ jobs:
         cmake --build $ohbdir -j --target install
 
         # meshfields
+        git clone -b $BRANCH_NAME https://github.com/SCOREC/meshfields.git ${workDir}/meshfields
         mfbdir=${workDir}/build-meshfields
         cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
           -DCMAKE_BUILD_TYPE=Debug \
