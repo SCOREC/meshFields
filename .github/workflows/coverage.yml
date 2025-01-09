@@ -55,7 +55,7 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=$kkbdir/install
         cmake --build $kkbdir --target install -j
 
-        ##cabana
+        # cabana
         git clone git@github.com:ECP-copa/Cabana.git ${workDir}/cabana
         cabbdir=${workDir}/build-cab
         cmake -S ${workDir}/cabana -B $cabbdir \
@@ -80,7 +80,7 @@ jobs:
           -DKokkos_PREFIX=$kkbdir/install 
         cmake --build $ohbdir -j --target install
 
-        #meshfields
+        # meshfields
         mfbdir=${workDir}/build-meshfields
         cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
           -DCMAKE_BUILD_TYPE=Debug \
@@ -97,7 +97,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: coverage
-        path: ${{workDir}}/build-meshFields/coverage
+        path: ${{github.workspace}}/meshfields/build-meshFields/coverage
 
     
     # Generate a report readable from console -------------------------------------
@@ -110,7 +110,7 @@ jobs:
     - name: Convert Lcov to Cobertura
       run: |
         pip install lcov_cobertura
-        lcov_cobertura ${{runner.workspace}}/build-meshFields/coverage.info
+        lcov_cobertura ${{github.workspace}}/meshfields/build-meshFields/coverage.info
     
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.3.0
