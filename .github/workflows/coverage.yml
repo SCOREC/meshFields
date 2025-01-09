@@ -81,7 +81,7 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
           -DCMAKE_BUILD_TYPE=Debug \
           -DBUILD_SHARED_LIBS=OFF \
-          -DBUILD_TESTING=on \
+          -DBUILD_TESTING=off \
           -DOmega_h_USE_Kokkos=on \
           -DKokkos_PREFIX=$kkbdir/install 
         cmake --build $ohbdir -j ${PROCS} --target install
