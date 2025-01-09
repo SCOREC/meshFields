@@ -187,6 +187,7 @@ public:
 
   auto getCoordField() { return coordField; }
 
+  // FIXME support 2d and 3d and fields with order>1
   template <typename Field> void writeVtk(Field &field) {
     using FieldDataType = typename decltype(field.vtxField)::BaseType;
     // HACK assumes there is a vertex field.. in the Field Mixin object
@@ -219,10 +220,6 @@ public:
     if (ShapeOrder != 1 && ShapeOrder != 2) {
       MeshField::fail("input field order must be 1 or 2\n");
     }
-
-    //    if (ShapeOrder == 1) {
-    //      writeVtk(mesh, field);
-    //    }
 
     const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
 
