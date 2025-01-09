@@ -24,7 +24,7 @@ jobs:
 
 
     steps:
-    - name: Install dependencies
+    - name: Install system dependencies
       run: |
         sudo apt-get update -yq
         sudo apt-get install -yq cmake
@@ -34,9 +34,10 @@ jobs:
         sudo apt-get install -yq lcov
 
     ## Build
-    - name: build
+    - name: Build meshfields
       env:
         BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+        PROCS: 8
       id: build
       shell: bash
       run: |
@@ -57,7 +58,7 @@ jobs:
           -DKokkos_ENABLE_OPENMP=off \
           -DKokkos_ENABLE_DEBUG=on \
           -DCMAKE_INSTALL_PREFIX=$kkbdir/install
-        cmake --build $kkbdir --target install -j
+        cmake --build $kkbdir --target install -j ${PROCS}
 
         # cabana
         git clone https://github.com/ECP-copa/Cabana.git ${workDir}/cabana
@@ -71,7 +72,7 @@ jobs:
           -DCabana_ENABLE_TESTING=OFF \
           -DCabana_ENABLE_EXAMPLES=OFF \
           -DCMAKE_INSTALL_PREFIX=$cabbdir/install
-        cmake --build $cabbdir -j --target install
+        cmake --build $cabbdir -j ${PROCS} --target install
 
         # omegah
         git clone https://github.com/SCOREC/omega_h.git ${workDir}/omegah
@@ -79,23 +80,29 @@ jobs:
         cmake -S ${workDir}/omegah -B $ohbdir \
           -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
           -DCMAKE_BUILD_TYPE=Debug \
+          -DBUILD_SHARED_LIBS=OFF \
           -DBUILD_TESTING=on \
           -DOmega_h_USE_Kokkos=on \
           -DKokkos_PREFIX=$kkbdir/install 
-        cmake --build $ohbdir -j --target install
+        cmake --build $ohbdir -j ${PROCS} --target install
 
         # meshfields
         git clone -b $BRANCH_NAME https://github.com/SCOREC/meshfields.git ${workDir}/meshfields
         mfbdir=${workDir}/build-meshfields
-        cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
+        cmake -S ${workDir}/meshfields -B $mfbdir \
           -DCMAKE_BUILD_TYPE=Debug \
           -DOmega_h_ROOT=$ohbdir/install \
           -DKokkos_ROOT=$kkbdir/install \
           -DCabana_ROOT=$cabbdir/install \
-          -DmeshFields_ENABLE_COVERAGE_BUILD=ON 
+          -DmeshFields_ENABLE_COVERAGE_BUILD=ON  \
           -DLCOV_SYSTEM_EXCLUDE_PATHS="/usr/lib/x86_64-linux-gnu/openmpi/include/openmpi/ompi/mpi/cxx/*\;/usr/include/*"
         pushd $mfbdir
-        make coverage
+        make -j ${PROCS}
+        make coverage -j ${PROCS}
+
+        # convert lcov to cobertura
+        pip install lcov_cobertura
+        lcov_cobertura ${{github.workspace}}/meshfields/build-meshFields/coverage.info
 
      #Uploads coverage directory with lcov generated HTML
     - name: Upload lcov report
@@ -111,11 +118,6 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-    
-    - name: Convert Lcov to Cobertura
-      run: |
-        pip install lcov_cobertura
-        lcov_cobertura ${{github.workspace}}/meshfields/build-meshFields/coverage.info
     
     - name: Code Coverage Summary Report
       uses: irongut/CodeCoverageSummary@v1.3.0
