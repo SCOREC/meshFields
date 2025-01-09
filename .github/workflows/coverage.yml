@@ -101,6 +101,7 @@ jobs:
         make coverage -j ${PROCS}
 
         # convert lcov to cobertura
+        popd
         pip install lcov_cobertura
         lcov_cobertura ${mfbdir}/coverage.info
 
@@ -110,7 +111,6 @@ jobs:
       with:
         name: coverage
         path: ${{github.workspace}}/meshfields/build-meshFields/coverage
-
     
     # Generate a report readable from console -------------------------------------
     - name: Code Coverage Summary Report
