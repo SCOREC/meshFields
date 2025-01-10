@@ -126,3 +126,6 @@ jobs:
       with:
         recreate: true
         path: code-coverage-results.md
+
+    - name: Fail
+      run: exit 1
