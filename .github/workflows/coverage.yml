@@ -99,11 +99,11 @@ jobs:
         pushd $mfbdir
         make -j ${PROCS}
         make coverage -j ${PROCS}
-
-        # convert lcov to cobertura
         popd
+
+        # convert lcov to cobertura and exclude dependencies
         pip install lcov_cobertura
-        lcov_cobertura ${mfbdir}/coverage.info -e build-kokkos
+        lcov_cobertura ${mfbdir}/coverage.info -e meshfields.build-kokkos.install.include -e meshfields.build-omegah.install.include
 
      #Uploads coverage directory with lcov generated HTML
     - name: Upload lcov report
@@ -126,6 +126,3 @@ jobs:
       with:
         recreate: true
         path: code-coverage-results.md
-
-    - name: Fail
-      run: exit 1
