@@ -16,6 +16,11 @@ jobs:
       with:
         repository: SCOREC/meshFields
         path: meshFields
+
+    - name: Install clang-format-15
+      run: |
+        sudo apt-get update -yq
+        sudo apt-get install -yq clang-format-15
         
     - name: Format check
       working-directory: meshFields
