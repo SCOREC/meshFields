@@ -37,10 +37,11 @@ jobs:
     - name: Build meshfields
       env:
         BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-        PROCS: 8
+        PROCS: 4
       id: build
       shell: bash
       run: |
+        lcov --version
         echo "github.workspace ${{github.workspace}}"
         
         workDir=${{github.workspace}}/meshfields
