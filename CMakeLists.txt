@@ -202,7 +202,6 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
   endif()
 
   set(LCOV_SRC_EXCLUDE_PATHS
-      "/tmp/*"
       "${Kokkos_DIR}/*"
       "${Omega_h_DIR}/*"
       "${LCOV_SYSTEM_EXCLUDE_PATHS}"
