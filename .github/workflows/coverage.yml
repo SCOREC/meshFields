@@ -41,7 +41,9 @@ jobs:
       id: build
       shell: bash
       run: |
+        # debug info
         lcov --version
+        lsb_release -a
         echo "github.workspace ${{github.workspace}}"
         
         workDir=${{github.workspace}}/meshfields
