@@ -202,8 +202,8 @@ if(meshFields_ENABLE_COVERAGE_BUILD)
   endif()
 
   set(LCOV_SRC_EXCLUDE_PATHS
-      "${CMAKE_CURRENT_LIST_DIR}/docs/*"
-      "${CMAKE_CURRENT_LIST_DIR}/.github/*"
+      "docs/*"
+      ".github/*"
       "${CMAKE_CURRENT_BINARY_DIR}/nvcc_internal_extended_lambda_implementation"
       "/tmp/*"
       "${Kokkos_DIR}/*"
