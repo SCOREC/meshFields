@@ -2,6 +2,9 @@
 #define MESHFIELD_SHAPEFIELD_HPP
 
 #include "KokkosController.hpp"
+#ifdef MESHFIELDS_ENABLE_CABANA
+#include "CabanaController.hpp"
+#endif
 #include "MeshField_Field.hpp"
 #include "MeshField_Shape.hpp"
 #include <type_traits> //decltype
