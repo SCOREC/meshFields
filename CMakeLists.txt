@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.0)
 
-project(meshFields VERSION 0.1.0 LANGUAGES CXX)
+project(meshfields VERSION 0.1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -40,17 +40,17 @@ set(MESHFIELD_SOURCES
   src/MeshField_Fail.cpp
 )
 
-add_library(meshFields ${MESHFIELD_SOURCES})
+add_library(meshfields ${MESHFIELD_SOURCES})
 
-target_compile_features(meshFields INTERFACE cxx_std_17)
-target_include_directories(meshFields
+target_compile_features(meshfields INTERFACE cxx_std_17)
+target_include_directories(meshfields
   PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>" # for MeshField_Config.hpp
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
-target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
+target_link_libraries(meshfields INTERFACE Omega_h::omega_h)
 if(Kokkos_ENABLE_CUDA)
-  target_compile_options(meshFields INTERFACE "--expt-relaxed-constexpr")
+  target_compile_options(meshfields INTERFACE "--expt-relaxed-constexpr")
 endif()
 
 #enable/disable exceptions
@@ -63,8 +63,8 @@ configure_file(
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp")
 
 if(MeshFields_USE_Cabana)
-  target_link_libraries(meshFields INTERFACE Cabana::Core)
-  target_compile_definitions(meshFields INTERFACE MESHFIELDS_ENABLE_CABANA)
+  target_link_libraries(meshfields INTERFACE Cabana::Core)
+  target_compile_definitions(meshfields INTERFACE MESHFIELDS_ENABLE_CABANA)
 endif()
 
 #support ctags
@@ -77,7 +77,7 @@ if(MeshFields_USE_CTAGS)
             --exclude=docs --exclude=cmake --exclude=.git
             --exclude=.github .
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-  add_dependencies(meshFields tags)
+  add_dependencies(meshfields tags)
 endif()
 
 # Set options for doxygen documentation
@@ -152,7 +152,7 @@ endfunction()
 
 function(meshfields_add_exe EXE_NAME EXE_SRC)
   add_executable(${EXE_NAME} ${EXE_SRC})
-  target_link_libraries(${EXE_NAME} PRIVATE meshFields)
+  target_link_libraries(${EXE_NAME} PRIVATE meshfields)
 endfunction()
 
 # Creating minimal reproduction of error
@@ -182,8 +182,8 @@ endif()
 
 #Code Coverage set up -------------------------------------------------------
 
-option(meshFields_ENABLE_COVERAGE_BUILD "Do a coverage build" OFF)
-if(meshFields_ENABLE_COVERAGE_BUILD)
+option(meshfields_ENABLE_COVERAGE_BUILD "Do a coverage build" OFF)
+if(meshfields_ENABLE_COVERAGE_BUILD)
 
   list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
   include(CodeCoverage)
@@ -226,10 +226,10 @@ endif()
 
 
 ## export the library
-set_target_properties(meshFields PROPERTIES PUBLIC_HEADER "${MESHFIELD_HEADERS}")
+set_target_properties(meshfields PROPERTIES PUBLIC_HEADER "${MESHFIELD_HEADERS}")
 install(
-  TARGETS meshFields
-  EXPORT meshFields-targets
+  TARGETS meshfields
+  EXPORT meshfields-targets
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -239,7 +239,7 @@ install(
 configure_package_config_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/config.cmake.in"
   "${CMAKE_CURRENT_BINARY_DIR}/meshfields-config.cmake"
-  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields
+  INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshfields
 )
 write_basic_package_version_file(
   "${PROJECT_BINARY_DIR}/meshfields-config-version.cmake"
@@ -248,9 +248,9 @@ write_basic_package_version_file(
 install(FILES
   "${PROJECT_BINARY_DIR}/meshfields-config.cmake"
   "${PROJECT_BINARY_DIR}/meshfields-config-version.cmake"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields)
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshfields)
 
 install(
-  EXPORT meshFields-targets
-  NAMESPACE meshFields::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshFields)
+  EXPORT meshfields-targets
+  NAMESPACE meshfields::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/meshfields)
