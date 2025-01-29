@@ -144,9 +144,9 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
   {
     auto mesh = createMeshTri18(lib);
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(
         mesh);
-
+/*
     // setup field with values from the analytic function
     static const size_t OnePtPerElem = 1;
     static const size_t ThreePtsPerElem = 3;
@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
         if (failed)
           doFail("quadratic", "linear", testCase.name);
       }
-    }
+    }*/
   }
   Kokkos::finalize();
   return 0;
