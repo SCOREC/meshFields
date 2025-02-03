@@ -4,6 +4,9 @@
 #include "MeshField_Fail.hpp"       //remove?
 #include "MeshField_For.hpp"        //remove?
 #include "MeshField_ShapeField.hpp" //remove?
+#ifdef MESHFIELDS_ENABLE_CABANA
+#include "CabanaController.hpp"
+#endif
 #include "Omega_h_build.hpp"
 #include "Omega_h_file.hpp"
 #include "Omega_h_simplex.hpp"
@@ -140,8 +143,12 @@ void doFail(std::string_view order, std::string_view function,
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
-  auto lib = Omega_h::Library(&argc, &argv);
+  auto lib = Omega_h::Library(&argc, &argv);  
   MeshField::Debug = true;
+  {
+    auto mesh = createMeshTri18(lib);
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(mesh);
+  }
   {
     auto mesh = createMeshTri18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(

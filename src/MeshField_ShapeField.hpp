@@ -2,6 +2,9 @@
 #define MESHFIELD_SHAPEFIELD_HPP
 
 #include "KokkosController.hpp"
+#ifdef MESHFIELDS_ENABLE_CABANA
+#include "CabanaController.hpp"
+#endif
 #include "MeshField_Field.hpp"
 #include "MeshField_Shape.hpp"
 #include <type_traits> //decltype
@@ -221,6 +224,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
  * @param meshInfo defines on-process mesh metadata
  * @return a linear ShapeField
  */
+
+
 template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
 auto CreateCoordinateField(const MeshInfo &meshInfo) {
@@ -229,15 +234,22 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   }
   using DataType = Real;
   using MemorySpace = typename ExecutionSpace::memory_space;
-  using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
   const int numComp = meshInfo.dim;
-  Ctrlr kk_ctrl({/*field 0*/ 1, numComp, meshInfo.numVtx});
+  using Ctrlr = std::conditional_t<std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>, 
+	Controller<ExecutionSpace, MemorySpace, DataType>,
+	Controller<MemorySpace, ExecutionSpace, DataType ***>>;
+  auto createController = [](const int numComp, auto numVtx) 
+  	 {if constexpr (std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>) 
+  	 {return Ctrlr(numVtx);} 
+  	 else 
+	 {return Ctrlr({/*field 0*/ 1, numComp, numVtx});}};
+  Ctrlr kk_ctrl = createController(numComp, meshInfo.numVtx);
   auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   using LA = LinearAccessor<decltype(vtxField)>;
   using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
   LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
   return llsf;
-};
+  };
 
 } // namespace MeshField
 
