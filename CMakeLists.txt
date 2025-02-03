@@ -49,7 +49,6 @@ target_include_directories(meshFields
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshFields INTERFACE Omega_h::omega_h)
-target_compile_definitions(meshFields INTERFACE ENABLE_CABANA)
 if(Kokkos_ENABLE_CUDA)
   target_compile_options(meshFields INTERFACE "--expt-relaxed-constexpr")
 endif()

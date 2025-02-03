@@ -175,7 +175,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     }
     using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
     // 1 dof with 1 component per vtx
-    Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx});
+    Ctrlr kk_ctrl;
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
     using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
@@ -191,8 +191,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     using Ctrlr =
         Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>;
     // 1 dof with 1 comp per vtx/edge
-    Ctrlr kk_ctrl({/*field 0*/ 1, 1, meshInfo.numVtx,
-                   /*field 1*/ 1, 1, meshInfo.numEdge});
+    Ctrlr kk_ctrl;
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
