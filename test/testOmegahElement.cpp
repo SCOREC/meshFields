@@ -148,6 +148,44 @@ int main(int argc, char **argv) {
   {
     auto mesh = createMeshTri18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(mesh);
+
+    // setup field with values from the analytic function
+    static const size_t OnePtPerElem = 1;
+    static const size_t ThreePtsPerElem = 3;
+    auto centroids = createElmAreaCoords<OnePtPerElem>(
+        mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
+    auto interior =
+        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.1, 0.4, 0.5});
+    auto vertex =
+        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.0, 0.0, 1.0});
+    // clang-format off
+    auto allVertices = createElmAreaCoords<ThreePtsPerElem>(mesh.nfaces(),
+        {1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0});
+    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
+                        TestCoords{interior, OnePtPerElem, "interior"},
+                        TestCoords{vertex, OnePtPerElem, "vertex"},
+                        TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
+    // clang-format on
+
+    auto coords = mesh.coords();
+    const auto MeshDim = 2;
+    for (auto testCase : cases) {
+	using ViewType = decltype(testCase.coords);
+	{
+		const auto ShapeOrder = 1;
+		auto field = omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+		auto func = LinearFunction();
+		setVertices(mesh, func, field);
+		using FieldType = decltype(field);
+		//auto result = omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+		//		testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
+		//		field);
+
+
+	}
+    }
   }
   {
     auto mesh = createMeshTri18(lib);

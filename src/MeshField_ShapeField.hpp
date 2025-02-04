@@ -173,9 +173,16 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
     }
-    using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
+    using Ctrlr = std::conditional_t<std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>, 
+	Controller<ExecutionSpace, MemorySpace, DataType[5][5]/*temp value*/>,
+	Controller<MemorySpace, ExecutionSpace, DataType ***>>;
     // 1 dof with 1 component per vtx
-    Ctrlr kk_ctrl;
+    auto createController = [](const int numComp, auto numVtx) 
+  	 {if constexpr (std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>) 
+  	 {return Ctrlr(numVtx);} 
+  	 else 
+	 {return Ctrlr({/*field 0*/ 1, numComp, numVtx});}};
+    Ctrlr kk_ctrl = createController(1, meshInfo.numVtx);
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
     using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
@@ -188,10 +195,17 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     if (meshInfo.numEdge <= 0) {
       fail("mesh has no edges\n");
     }
-    using Ctrlr =
-        Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>;
+    using Ctrlr = std::conditional_t<std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>, 
+	Controller<ExecutionSpace, MemorySpace, DataType[5][5]/*temp value*/>,
+	Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>>;
     // 1 dof with 1 comp per vtx/edge
-    Ctrlr kk_ctrl;
+    auto createController = [](const int numComp, auto numVtx, auto numEdge) 
+  	 {if constexpr (std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>) 
+  	 {return Ctrlr(numVtx * numEdge);} 
+  	 else 
+	 {return Ctrlr({/*field 0*/ 1, numComp, numVtx,
+			/*field 1*/ 1, numComp, numEdge});}};
+    Ctrlr kk_ctrl = createController(1, meshInfo.numVtx, meshInfo.numEdge);
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
@@ -235,7 +249,7 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   using MemorySpace = typename ExecutionSpace::memory_space;
   const int numComp = meshInfo.dim;
   using Ctrlr = std::conditional_t<std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>, 
-	Controller<ExecutionSpace, MemorySpace, DataType>,
+	Controller<ExecutionSpace, MemorySpace, DataType[5][5]/*temp value*/>,
 	Controller<MemorySpace, ExecutionSpace, DataType ***>>;
   auto createController = [](const int numComp, auto numVtx) 
   	 {if constexpr (std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>) 
