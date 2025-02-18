@@ -152,8 +152,12 @@ struct FieldElement {
   KOKKOS_INLINE_FUNCTION Real
   getJacobian1d(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
     assert(ent < numMeshEnts);
-    const auto localGradients = shapeFn.getLocalGradients(localCoord);
+    const auto nodalGradients = shapeFn.getLocalGradients(localCoord);
     auto nodeValues = getNodeValues();
+    using Scalar = Kokkos::Array<Real, 1>;
+    auto g = tensorProduct(Scalar(nodalGradients[0]),nodeValues[0]);
+    for (int i=1; i < shapeFn.numNodes; ++i)
+        g = g + tensorProduct(Scalar(nodalGradients[i]),nodeValues[i]);
     return 0;
   }
 };
