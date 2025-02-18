@@ -52,10 +52,9 @@ struct LinearEdgeShape {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Vector2, numNodes> getLocalGradients() const {
+  Kokkos::Array<Real, numNodes> getLocalGradients() const {
     // clang-format off
-    return { -0.5,0,  //first vector
-              0.5,0}; //second vector
+    return {-0.5, 0.5};
     // clang-format on
   }
 };
