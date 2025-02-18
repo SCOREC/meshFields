@@ -29,6 +29,10 @@ KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi) {
 } // namespace
 
 namespace MeshField {
+
+using Vector2 = Kokkos::Array<Real,2>;
+using Vector3 = Kokkos::Array<Real,3>;
+
 struct LinearEdgeShape {
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, 2> getValues(Kokkos::Array<Real, 2> const &xi) const {
@@ -37,6 +41,12 @@ struct LinearEdgeShape {
     // clang-format off
     return {(1.0 - xi[0]) / 2.0,
             (1.0 + xi[0]) / 2.0};
+    // clang-format on
+  }
+  Kokkos::Array<Vector2, 2> getLocalGradients() const {
+    // clang-format off
+    return { -0.5,0,  //first vector
+              0.5,0}; //second vector
     // clang-format on
   }
   static const size_t numNodes = 2;
@@ -55,6 +65,13 @@ struct LinearTriangleShape {
     return {1 - xi[0] - xi[1],
             xi[0],
             xi[1]};
+    // clang-format on
+  }
+  Kokkos::Array<Vector2, 3> getLocalGradients() const {
+    // clang-format off
+    return { -1,-1,  //first vector
+              1, 0,
+              0, 1};
     // clang-format on
   }
   static const size_t order = 1;
@@ -99,6 +116,20 @@ struct QuadraticTriangleShape {
     // clang-format on
   }
 
+  Kokkos::Array<Vector2,6> getLocalGradients(Vector3 const& xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    const Real xi2 = 1-xi[0]-xi[1];
+    // clang-format off
+    return {-4*xi2+1,-4*xi2+1,
+             4*xi[0]-1,0,
+             0,4*xi[1]-1,
+             4*(xi2-xi[0]),-4*xi[0],
+             4*xi[1],4*xi[0],
+             -4*xi[1],4*(xi2-xi[1]) };
+    // clang-format on
+  }
+
   static const size_t numNodes = 6;
   static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 2;
@@ -124,6 +155,25 @@ struct QuadraticTetrahedronShape {
             4*xi[2]*xi3,
             4*xi[2]*xi[0],
             4*xi[1]*xi[2]};
+    // clang-format on
+  }
+
+  Kokkos::Array<Vector3,10> getLocalGradients(Kokkos::Array<Real, 4> const& xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    const Real xi3 = 1-xi[0]-xi[1]-xi[2];
+    const Real d3 = 1-4*xi3;
+    // clang-format off
+    return {d3,d3,d3,
+            4*xi[0]-1,0,0,
+            0,4*xi[1]-1,0,
+            0,0,4*xi[2]-1,
+            4*xi3-4*xi[0],-4*xi[0],-4*xi[0],
+            4*xi[1],4*xi[0],0,
+            -4*xi[1],4*xi3-4*xi[1],-4*xi[1],
+            -4*xi[2],-4*xi[2],4*xi3-4*xi[2],
+            4*xi[2],0,4*xi[0],
+            0,4*xi[2],4*xi[1]};
     // clang-format on
   }
 
