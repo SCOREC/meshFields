@@ -281,5 +281,27 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
   return evaluate(fes, localCoords, offsets);
 }
 
+/**
+ * @brief
+ * Given an array of parametric coordinates 'localCoords',
+ * with numPtsPerElement points per mesh element,
+ * compute the jacobian for each element at the specified point
+ *
+ * @param (in) numPtsPerElement
+ *
+ * @details
+ * see evaluate function accepting offsets
+ */
+template <typename FieldElement>
+Kokkos::View<Real *[FieldElement::NumComponents]> computeJacobians(
+    FieldElement &fes, Kokkos::View<Real **> localCoords,
+    size_t numPtsPerElement) {
+  Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
+  Kokkos::parallel_for(
+      fes.numMeshEnts + 1,
+      KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
+  return computeJacobians(fes, localCoords, offsets); //WIP HERE
+}
+
 } // namespace MeshField
 #endif
