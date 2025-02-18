@@ -50,6 +50,8 @@ struct LinearEdgeShape {
             (1.0 + xi[0]) / 2.0};
     // clang-format on
   }
+
+  KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients() const {
     // clang-format off
     return { -0.5,0,  //first vector
@@ -76,6 +78,8 @@ struct LinearTriangleShape {
             xi[1]};
     // clang-format on
   }
+
+  KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients() const {
     // clang-format off
     return { -1,-1,  //first vector
@@ -128,6 +132,7 @@ struct QuadraticTriangleShape {
     // clang-format on
   }
 
+  KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const& xi) const {
     assert(greaterThanOrEqualZero(xi));
     assert(sumsToOne(xi));
@@ -171,6 +176,7 @@ struct QuadraticTetrahedronShape {
     // clang-format on
   }
 
+  KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector3, numNodes> getLocalGradients(Vector4 const& xi) const {
     assert(greaterThanOrEqualZero(xi));
     assert(sumsToOne(xi));
