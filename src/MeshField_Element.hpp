@@ -8,6 +8,24 @@
 #include <MeshField_Utility.hpp> // getLastValue
 #include <iostream>
 
+namespace {
+  /** \brief tensor product of two vectors */
+  template <typename VecA, typename VecB>
+  KOKKOS_INLINE_FUNCTION
+  auto tensorProduct(VecA const& a, VecB const& b) {
+    const auto N = VecA::size();
+    const auto M = VecB::size();
+    static_assert(std::is_same_v< typename VecA::value_type, typename VecB::value_type >);
+    Kokkos::Array< Kokkos::Array< typename VecA::value_type, M>, N> matrix;
+    for (std::size_t i=0; i < M; ++i) {
+      for (std::size_t j=0; j < M; ++j) {
+        matrix[i][j] = b[j] * a[i];
+      }
+    }
+    return matrix;
+  }
+}
+
 namespace MeshField {
 
 /**
@@ -97,6 +115,46 @@ struct FieldElement {
       }
     }
     return c;
+  }
+
+  using NodeArray = Kokkos::Array< typename FieldAccessor::BaseType,
+                                   ShapeType::numNodes *
+                                   ShapeType::numComponentsPerDof >;
+  KOKKOS_INLINE_FUNCTION NodeArray
+  getNodeValues(int ent) const {
+    NodeArray c;
+    for (auto topo : elm2dof.getTopology()) { // element topology
+      for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
+        for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
+          auto map = elm2dof(ni, ci, ent, topo);
+          const auto fval =
+            field(map.node, map.component, map.entity, map.topo);
+          c[ni*shapeFn.numComponentsPerDof + ci] = fval;
+        }
+      }
+    }
+    return c;
+  }
+
+
+  /**
+   * @brief
+   * compute the Jacobian in the specified element at the specified
+   * parametric/local/area coordinate
+   *
+   * @details
+   * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
+   *
+   * @param ent the mesh entity index
+   * @param localCoord the parametric coordinate
+   * @return the result of evaluation
+   */
+  KOKKOS_INLINE_FUNCTION Real
+  getJacobian1d(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
+    assert(ent < numMeshEnts);
+    const auto localGradients = shapeFn.getLocalGradients(localCoord);
+    auto nodeValues = getNodeValues();
+    return 0;
   }
 };
 
