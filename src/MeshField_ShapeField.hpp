@@ -248,21 +248,45 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   using DataType = Real;
   using MemorySpace = typename ExecutionSpace::memory_space;
   const int numComp = meshInfo.dim;
-  using Ctrlr = std::conditional_t<std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>, 
-	Controller<ExecutionSpace, MemorySpace, DataType[1][3]>,
-	Controller<MemorySpace, ExecutionSpace, DataType ***>>;
-  auto createController = [](const int numComp, auto numVtx) 
-  	 {if constexpr (std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>) 
-  	 {return Ctrlr(numVtx);} 
-  	 else 
-	 {return Ctrlr({/*field 0*/ numVtx, 1, numComp});}};
-  Ctrlr kk_ctrl = createController(numComp, meshInfo.numVtx);
-  auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
-  using LA = LinearAccessor<decltype(vtxField)>;
-  using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
-  LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
-  return llsf;
-  };
+  if constexpr (std::is_same_v<Controller<ExecutionSpace, MemorySpace, DataType>, MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>) {
+    if (numComp == 1) {
+      using Ctrlr = Controller<ExecutionSpace, MemorySpace, DataType[1][1]>;
+      Ctrlr kk_ctrl(meshInfo.numVtx);
+      auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+      using LA = LinearAccessor<decltype(vtxField)>;
+      using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
+      LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
+      return llsf;
+    }
+    else if (numComp == 2) {
+      using Ctrlr = Controller<ExecutionSpace, MemorySpace, DataType[1][2]>;
+      Ctrlr kk_ctrl(meshInfo.numVtx);
+      auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+      using LA = LinearAccessor<decltype(vtxField)>;
+      using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
+      LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
+      return llsf;
+    }
+    else {
+      using Ctrlr = Controller<ExecutionSpace, MemorySpace, DataType[1][3]>;
+      Ctrlr kk_ctrl(meshInfo.numVtx);
+      auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+      using LA = LinearAccessor<decltype(vtxField)>;
+      using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
+      LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
+      return llsf;
+    }
+  }
+  else {
+    using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
+    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, numComp});
+    auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+    using LA = LinearAccessor<decltype(vtxField)>;
+    using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
+    LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
+    return llsf;
+  }
+};
 
 } // namespace MeshField
 
