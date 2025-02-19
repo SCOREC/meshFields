@@ -2,6 +2,7 @@
 #include "MeshField_Element.hpp"
 #include "MeshField_Field.hpp"
 #include "MeshField_ShapeField.hpp"
+#include "MeshField_For.hpp"
 #include <Kokkos_Core.hpp>
 #include <iostream>
 
@@ -30,6 +31,23 @@ struct LinearEdgeToVertexField {
   }
 };
 
+struct LinearFunction {
+  KOKKOS_INLINE_FUNCTION
+  MeshField::Real operator()(MeshField::Real x) const {
+    return 2.0 * x;
+  }
+};
+
+template <typename AnalyticFunction, typename ShapeField>
+void setVertices1d(size_t numVerts, AnalyticFunction func, ShapeField field) {
+  auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
+    const auto x = vtx*1.0;
+    field(0, 0, vtx, MeshField::Vertex) = func(x);
+  };
+  MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts},
+                          setFieldAtVertices, "setFieldAtVertices");
+}
+
 // evaluate a field at the specified local coordinate for each edge
 void edgeJacobian() {
   MeshField::MeshInfo meshInfo;
@@ -38,6 +56,8 @@ void edgeJacobian() {
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1>(
       meshInfo);
+  auto func = LinearFunction();
+  setVertices1d(meshInfo.numVtx, func, field);
 
   MeshField::FieldElement f(meshInfo.numEdge, field,
                             MeshField::LinearEdgeShape(),
@@ -46,7 +66,10 @@ void edgeJacobian() {
   Kokkos::View<MeshField::Real*[2]> lc("localCoords",1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
-  auto x = MeshField::getJacobians(f, lc, numPtsPerElement);
+  const auto x = MeshField::getJacobians(f, lc, numPtsPerElement);
+  const auto x_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),x);
+  assert(x_h.size() == 1);
+  std::cout << "edge jacobian " << x_h(0,0) << std::endl;
 }
 
 int main(int argc, char **argv) {
