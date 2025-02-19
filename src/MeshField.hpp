@@ -163,7 +163,8 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
 
 namespace MeshField {
 
-template <typename ExecutionSpace, template <typename...> typename Controller>
+template <typename ExecutionSpace, template <typename...> typename Controller =
+                                       MeshField::KokkosController>
 class OmegahMeshField {
 private:
   Omega_h::Mesh &mesh;
