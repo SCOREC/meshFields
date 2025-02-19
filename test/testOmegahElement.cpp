@@ -88,7 +88,7 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     // - TODO should be encoded in the field?
     const auto x = coords[vtx * MeshDim];
     const auto y = coords[vtx * MeshDim + 1];
-    field(0, 0, vtx, MeshField::Vertex) = func(x, y);
+    field(vtx, 0, 0, MeshField::Vertex) = func(x, y);
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
                           setFieldAtVertices, "setFieldAtVertices");
@@ -109,7 +109,7 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
     const auto y =
         (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
-    field(0, 0, edge, MeshField::Edge) = func(x, y);
+    field(edge, 0, 0, MeshField::Edge) = func(x, y);
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nedges()},
                           setFieldAtEdges, "setFieldAtEdges");
@@ -177,14 +177,53 @@ int main(int argc, char **argv) {
 		const auto ShapeOrder = 1;
 		auto field = omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
 		auto func = LinearFunction();
-		setVertices(mesh, func, field);
-		using FieldType = decltype(field);
-		//auto result = omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-		//		testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
-		//		field);
-
-
+    setVertices(mesh, func, field);
+    using FieldType = decltype(field);
+		auto result = omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+				testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
+				field);
+		auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                  LinearFunction{});
+        if (failed)
+          doFail("linear", "linear", testCase.name);
 	}
+  {
+        const auto ShapeOrder = 2;
+        auto field =
+            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+        auto func = QuadraticFunction();
+        setVertices(mesh, func, field);
+        setEdges(mesh, func, field);
+        using FieldType = decltype(field);
+        auto result =
+            omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{},
+                field);
+        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                  QuadraticFunction{});
+        if (failed)
+          doFail("quadratic", "quadratic", testCase.name);
+      }
+{
+        const auto ShapeOrder = 2;
+        auto field =
+            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+        auto func = LinearFunction();
+        auto coords = mesh.coords();
+        setVertices(mesh, func, field);
+        setEdges(mesh, func, field); 
+        using FieldType = decltype(field);
+        auto result =
+            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
+                field);
+        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                  LinearFunction{});
+        if (failed)
+          doFail("quadratic", "linear", testCase.name);
+      }
+
+
     }
   }
   {
