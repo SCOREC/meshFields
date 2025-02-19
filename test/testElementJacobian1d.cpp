@@ -31,10 +31,10 @@ struct LinearEdgeToVertexField {
   }
 };
 
-struct LinearFunction {
+struct Identity {
   KOKKOS_INLINE_FUNCTION
   MeshField::Real operator()(MeshField::Real x) const {
-    return 2.0 * x;
+    return x;
   }
 };
 
@@ -56,7 +56,7 @@ void edgeJacobian() {
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1>(
       meshInfo);
-  auto func = LinearFunction();
+  auto func = Identity();
   setVertices1d(meshInfo.numVtx, func, field);
 
   MeshField::FieldElement f(meshInfo.numEdge, field,
@@ -66,7 +66,7 @@ void edgeJacobian() {
   Kokkos::View<MeshField::Real*[2]> lc("localCoords",1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
-  const auto x = MeshField::getJacobians(f, lc, numPtsPerElement);
+  const auto x = MeshField::getJacobians(f, lc, numPtsPerElement); //FIXME - returns 0, should use coordinate field in call to getNodeValues
   const auto x_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),x);
   assert(x_h.size() == 1);
   std::cout << "edge jacobian " << x_h(0,0) << std::endl;
