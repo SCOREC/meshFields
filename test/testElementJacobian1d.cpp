@@ -24,14 +24,7 @@ struct LinearEdgeToVertexField {
     //      node
     // edge 0 1
     // 0    0 1
-    // 1    1 2
-    // 2    2 3
-    // 3    3 4
-    // 4    4 0
-    // 5    4 1
-    // 6    4 2
-    MeshField::LO edgeNode2Vtx[7][2] = {{0, 1}, {1, 2}, {2, 3}, {3, 4},
-                                        {4, 0}, {4, 1}, {4, 2}};
+    MeshField::LO edgeNode2Vtx[1][2] = {{0, 1}};
     const MeshField::LO vtx = edgeNode2Vtx[edge][edgeNodeIdx];
     return {0, 0, vtx, MeshField::Vertex};
   }
@@ -50,9 +43,10 @@ void edgeJacobian() {
                             MeshField::LinearEdgeShape(),
                             LinearEdgeToVertexField());
 
-  Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
+  Kokkos::View<MeshField::Real*[2]> lc("localCoords",1);
   Kokkos::deep_copy(lc, 1.0 / 2);
-  auto x = MeshField::getJacobian1d(f, lc);
+  const auto numPtsPerElement = 1;
+  auto x = MeshField::getJacobians(f, lc, numPtsPerElement);
 }
 
 int main(int argc, char **argv) {

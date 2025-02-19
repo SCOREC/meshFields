@@ -9,6 +9,7 @@
 #include <iostream>
 
 namespace {
+  //FIXME - tensorProduct(...) and add(...) need performance and type safety improvements
   /** \brief tensor product of two vectors */
   template <typename VecA, typename VecB>
   KOKKOS_INLINE_FUNCTION
@@ -17,9 +18,25 @@ namespace {
     const auto M = VecB::size();
     static_assert(std::is_same_v< typename VecA::value_type, typename VecB::value_type >);
     Kokkos::Array< Kokkos::Array< typename VecA::value_type, M>, N> matrix;
+    //FIXME - is there a better type for 'matrix'?
     for (std::size_t i=0; i < M; ++i) {
       for (std::size_t j=0; j < M; ++j) {
         matrix[i][j] = b[j] * a[i];
+      }
+    }
+    return matrix;
+  }
+
+  /** \brief sum two matrices */
+  template <typename MatrixA, typename MatrixB>
+  KOKKOS_INLINE_FUNCTION
+  MatrixA add(MatrixA const& a, MatrixB const& b) {
+    static_assert(std::is_same_v< MatrixA, MatrixB >);
+    //FIXME ensure that MatrixA is a Kokkos::Array<Kokkos::Array>
+    MatrixA matrix;
+    for (std::size_t i=0; i < a.size(); ++i) {
+      for (std::size_t j=0; j < a[i].size(); ++j) {
+        matrix[i][j] = a[i][j] + b[i][j];
       }
     }
     return matrix;
@@ -139,8 +156,7 @@ struct FieldElement {
 
   /**
    * @brief
-   * compute the Jacobian in the specified element at the specified
-   * parametric/local/area coordinate
+   * compute the Jacobian of an edge
    *
    * @details
    * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
@@ -150,14 +166,16 @@ struct FieldElement {
    * @return the result of evaluation
    */
   KOKKOS_INLINE_FUNCTION Real
-  getJacobian1d(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
+  getJacobian1d(int ent) const {
     assert(ent < numMeshEnts);
-    const auto nodalGradients = shapeFn.getLocalGradients(localCoord);
-    auto nodeValues = getNodeValues();
+    const auto nodalGradients = shapeFn.getLocalGradients();
+    auto nodeValues = getNodeValues(ent);
     using Scalar = Kokkos::Array<Real, 1>;
-    auto g = tensorProduct(Scalar(nodalGradients[0]),nodeValues[0]);
-    for (int i=1; i < shapeFn.numNodes; ++i)
-        g = g + tensorProduct(Scalar(nodalGradients[i]),nodeValues[i]);
+    auto g = tensorProduct(Scalar{nodalGradients[0]},Scalar{nodeValues[0]});
+    for (int i=1; i < shapeFn.numNodes; ++i) {
+        const auto prod = tensorProduct(Scalar{nodalGradients[i]},Scalar{nodeValues[i]});
+        g = add(g,prod);
+    }
     return 0;
   }
 };
@@ -170,8 +188,6 @@ struct FieldElement {
  * @todo add static asserts for values and functions provided by the templated
  * types
  * @todo consider making this a member function of FieldElement
- * @todo support passing a CSR for more than one point eval per element - SPR
- * needs this? - at least need uniform number of points for each element
  *
  * @tparam FieldElement see FieldElement struct
  *
@@ -283,6 +299,85 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
 
 /**
  * @brief
+ * Given an array of parametric coordinates 'localCoords', one per mesh element,
+ * compute the jacobian within each element.
+ *
+ * @todo add static asserts for values and functions provided by the templated
+ * types
+ * @todo consider making this a member function of FieldElement
+ *
+ * @tparam FieldElement see FieldElement struct
+ *
+ * @param fes see FieldElement
+ * @param localCoords 2D Kokkos::View containing the local/parametric/area
+ * coordinates for each element
+ * @param offsets 1D Kokkos::View containing the offsets into localCoords,
+ *                size = localCoords.extent(0)+1
+ * @return Kokkos::View containing the jacobian for all the mesh elements
+ */
+template <typename FieldElement>
+Kokkos::View<Real *[FieldElement::NumComponents]>
+getJacobians(FieldElement &fes, Kokkos::View<Real **> localCoords,
+         Kokkos::View<LO *> offsets) {
+  if (Debug) {
+    // check input parametric coords are positive and sum to one
+    LO numErrors = 0;
+    Kokkos::parallel_reduce(
+        "checkCoords", fes.numMeshEnts,
+        KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
+          Real sum = 0;
+          LO isError = 0;
+          for (int i = 0; i < localCoords.extent(1); i++) {
+            if (localCoords(ent, i) < 0)
+              isError++;
+            sum += localCoords(ent, i);
+          }
+          if (Kokkos::fabs(sum - 1) > MachinePrecision)
+            isError++;
+          lerrors += isError;
+        },
+        numErrors);
+    if (numErrors) {
+      fail("One or more of the parametric coordinates passed "
+           "to evaluate(...) were invalid\n");
+    }
+  }
+  if (localCoords.extent(0) < fes.numMeshEnts) {
+    fail("The size of dimension 0 of the local coordinates input array "
+         "must be at least %zu.\n",
+         fes.numMeshEnts);
+  }
+  if (localCoords.extent(1) != fes.MeshEntDim + 1) {
+    fail("Dimension 1 of the input array of local coordinates "
+         "must have size = %zu.\n",
+         fes.MeshEntDim + 1);
+  }
+  if (offsets.size() != fes.numMeshEnts + 1) {
+    fail("The input array of offsets must have size = %zu\n",
+         fes.numMeshEnts + 1);
+  }
+  if (fes.MeshEntDim != 1) {
+    fail("getJacobians only currently supports 1d meshes.  Input mesh has %zu dimensions.\n",
+         fes.numMeshEnts);
+  }
+  if (fes.MeshEntDim == 1) {
+    constexpr const auto numComponents = FieldElement::ValArray::size();
+    const auto numPts = MeshFieldUtil::getLastValue(offsets);
+    Kokkos::View<Real *[1]> res("result", numPts);
+    Kokkos::parallel_for(
+        fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+        // TODO use nested parallel for?
+        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+        const auto val = fes.getJacobian1d(ent);
+        res(pt,0) = val;
+        }
+        });
+    return res;
+  }
+}
+
+/**
+ * @brief
  * Given an array of parametric coordinates 'localCoords',
  * with numPtsPerElement points per mesh element,
  * compute the jacobian for each element at the specified point
@@ -293,14 +388,14 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
  * see evaluate function accepting offsets
  */
 template <typename FieldElement>
-Kokkos::View<Real *[FieldElement::NumComponents]> computeJacobians(
+Kokkos::View<Real *[FieldElement::NumComponents]> getJacobians(
     FieldElement &fes, Kokkos::View<Real **> localCoords,
     size_t numPtsPerElement) {
   Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
   Kokkos::parallel_for(
       fes.numMeshEnts + 1,
       KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
-  return computeJacobians(fes, localCoords, offsets); //WIP HERE
+  return getJacobians(fes, localCoords, offsets);
 }
 
 } // namespace MeshField
