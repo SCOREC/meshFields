@@ -169,7 +169,7 @@ struct FieldElement {
   getJacobian1d(int ent) const {
     assert(ent < numMeshEnts);
     const auto nodalGradients = shapeFn.getLocalGradients();
-    auto nodeValues = getNodeValues(ent); //FIXME - get cartesian coords of vertices
+    auto nodeValues = getNodeValues(ent);
     using Scalar = Kokkos::Array<Real, 1>;
     auto g = nodalGradients[0]*nodeValues[0];
     for (int i=1; i < shapeFn.numNodes; ++i) {

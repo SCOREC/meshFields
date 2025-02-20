@@ -31,18 +31,11 @@ struct LinearEdgeToVertexField {
   }
 };
 
-struct Identity {
-  KOKKOS_INLINE_FUNCTION
-  MeshField::Real operator()(MeshField::Real x) const {
-    return x;
-  }
-};
-
-template <typename AnalyticFunction, typename ShapeField>
-void setVertices1d(size_t numVerts, AnalyticFunction func, ShapeField field) {
+template <typename ShapeField>
+void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real*> coords, ShapeField field) {
+  assert(numVerts == coords.size());
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
-    const auto x = vtx*1.0;
-    field(0, 0, vtx, MeshField::Vertex) = func(x);
+    field(0, 0, vtx, MeshField::Vertex) = coords(vtx);
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts},
                           setFieldAtVertices, "setFieldAtVertices");
@@ -56,8 +49,11 @@ void edgeJacobian() {
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1>(
       meshInfo);
-  auto func = Identity();
-  setVertices1d(meshInfo.numVtx, func, field);
+  Kokkos::View<MeshField::Real*, Kokkos::HostSpace> coords_h("coords_h", 2);
+  coords_h[0] = -1;
+  coords_h[1] = 1;
+  auto coords = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), coords_h);
+  setEdgeCoords(meshInfo.numVtx, coords, field);
 
   MeshField::FieldElement f(meshInfo.numEdge, field,
                             MeshField::LinearEdgeShape(),
@@ -66,10 +62,12 @@ void edgeJacobian() {
   Kokkos::View<MeshField::Real*[2]> lc("localCoords",1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
-  const auto x = MeshField::getJacobians(f, lc, numPtsPerElement); //FIXME - returns 0, should use coordinate field in call to getNodeValues
+  const auto x = MeshField::getJacobians(f, lc, numPtsPerElement);
   const auto x_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),x);
   assert(x_h.size() == 1);
   std::cout << "edge jacobian " << x_h(0,0) << std::endl;
+  const auto expected = 1.0;
+  assert(std::fabs(x_h(0,0) - expected) <= MeshField::MachinePrecision);
 }
 
 int main(int argc, char **argv) {
