@@ -59,16 +59,15 @@ struct FieldElement {
                const ElementDofHolderAccessor elm2dofIn)
       : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn),
         elm2dof(elm2dofIn) {}
-  template <typename T>
-  struct baseType {
-      using type = T;
+  template <typename T> struct baseType {
+    using type = T;
   };
-  template <typename T, size_t N>
-  struct baseType<T[N]> {
-      using type = typename baseType<T>::type;
+  template <typename T, size_t N> struct baseType<T[N]> {
+    using type = typename baseType<T>::type;
   };
-  using ValArray = Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
-                                 ShapeType::numComponentsPerDof>;
+  using ValArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    ShapeType::numComponentsPerDof>;
   static const size_t NumComponents = ShapeType::numComponentsPerDof;
 
   /**
