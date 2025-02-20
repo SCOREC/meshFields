@@ -167,13 +167,37 @@ struct FieldElement {
   getJacobian1d(int ent) const {
     assert(ent < numMeshEnts);
     const auto nodalGradients = shapeFn.getLocalGradients();
-    auto nodeValues = getNodeValues(ent);
+    const auto nodeValues = getNodeValues(ent);
     auto g = nodalGradients[0]*nodeValues[0];
     for (int i=1; i < shapeFn.numNodes; ++i) {
       g = g + nodalGradients[i]*nodeValues[i];
     }
     return g;
   }
+
+  /**
+   * @brief
+   * compute the Jacobian of a triangle or quad
+   *
+   * @details
+   * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
+   *
+   * @param ent the mesh entity index
+   * @return the result of evaluation
+   */
+  KOKKOS_INLINE_FUNCTION Kokkos::Array< Kokkos::Array<Real,2>, 2>
+  getJacobian2d(int ent) const {
+    assert(ent < numMeshEnts);
+    const auto nodalGradients = shapeFn.getLocalGradients();
+    const auto nodeValues = getNodeValues(ent);
+    auto g = tensorProduct(nodalGradients[0], nodeValues[0]); //FIXME - wrong type
+    for (int i=1; i < shapeFn.numNodes; ++i) {
+      const auto prod = tensorProduct(nodalGradients[i], nodeValues[i]); //FIXME - wrong type
+      g = add(g, prod);
+    }
+    return g;
+  }
+
 };
 
 /**
@@ -311,8 +335,8 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
  *                size = localCoords.extent(0)+1
  * @return Kokkos::View containing the jacobian for all the mesh elements
  */
-template <typename FieldElement>
-Kokkos::View<Real *[FieldElement::NumComponents]>
+template <typename FieldElement, size_t MeshEntDim = FieldElement::MeshEntDim>
+Kokkos::View<Real*>
 getJacobians(FieldElement &fes, Kokkos::View<Real **> localCoords,
          Kokkos::View<LO *> offsets) {
   if (Debug) {
@@ -356,18 +380,34 @@ getJacobians(FieldElement &fes, Kokkos::View<Real **> localCoords,
     fail("getJacobians only currently supports 1d meshes.  Input mesh has %zu dimensions.\n",
          fes.numMeshEnts);
   }
-  if (fes.MeshEntDim == 1) {
+  if constexpr (MeshEntDim == 1) {
     constexpr const auto numComponents = FieldElement::ValArray::size();
     const auto numPts = MeshFieldUtil::getLastValue(offsets);
-    Kokkos::View<Real *[1]> res("result", numPts);
+    Kokkos::View<Real *> res("result", numPts);
     Kokkos::parallel_for(
         fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
         // TODO use nested parallel for?
         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-        const auto val = fes.getJacobian1d(ent);
-        res(pt,0) = val;
+          const auto val = fes.getJacobian1d(ent);
+          res(pt) = val;
         }
-        });
+    });
+    return res;
+  } else if constexpr (MeshEntDim == 2) {
+    constexpr const auto numComponents = FieldElement::ValArray::size();
+    const auto numPts = MeshFieldUtil::getLastValue(offsets);
+    Kokkos::View<Real *> res("result", numPts*4);
+    Kokkos::parallel_for(
+        fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+        // TODO use nested parallel for?
+        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+          const auto val = fes.getJacobian2d(ent);
+          res(pt*4 + 0) = val[0][0];
+          res(pt*4 + 1) = val[0][1];
+          res(pt*4 + 2) = val[1][0];
+          res(pt*4 + 3) = val[1][1];
+        }
+    });
     return res;
   }
 }
@@ -384,7 +424,7 @@ getJacobians(FieldElement &fes, Kokkos::View<Real **> localCoords,
  * see evaluate function accepting offsets
  */
 template <typename FieldElement>
-Kokkos::View<Real *[FieldElement::NumComponents]> getJacobians(
+Kokkos::View<Real *> getJacobians(
     FieldElement &fes, Kokkos::View<Real **> localCoords,
     size_t numPtsPerElement) {
   Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
