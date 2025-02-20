@@ -171,12 +171,11 @@ struct FieldElement {
     const auto nodalGradients = shapeFn.getLocalGradients();
     auto nodeValues = getNodeValues(ent); //FIXME - get cartesian coords of vertices
     using Scalar = Kokkos::Array<Real, 1>;
-    auto g = tensorProduct(Scalar{nodalGradients[0]},Scalar{nodeValues[0]});
+    auto g = nodalGradients[0]*nodeValues[0];
     for (int i=1; i < shapeFn.numNodes; ++i) {
-        const auto prod = tensorProduct(Scalar{nodalGradients[i]},Scalar{nodeValues[i]});
-        g = add(g,prod);
+      g = g + nodalGradients[i]*nodeValues[i];
     }
-    return 0;
+    return g;
   }
 };
 
