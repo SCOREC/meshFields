@@ -153,7 +153,6 @@ struct FieldElement {
     return c;
   }
 
-
   /**
    * @brief
    * compute the Jacobian of an edge
@@ -162,7 +161,6 @@ struct FieldElement {
    * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
    *
    * @param ent the mesh entity index
-   * @param localCoord the parametric coordinate
    * @return the result of evaluation
    */
   KOKKOS_INLINE_FUNCTION Real
@@ -170,7 +168,6 @@ struct FieldElement {
     assert(ent < numMeshEnts);
     const auto nodalGradients = shapeFn.getLocalGradients();
     auto nodeValues = getNodeValues(ent);
-    using Scalar = Kokkos::Array<Real, 1>;
     auto g = nodalGradients[0]*nodeValues[0];
     for (int i=1; i < shapeFn.numNodes; ++i) {
       g = g + nodalGradients[i]*nodeValues[i];
