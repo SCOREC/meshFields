@@ -64,9 +64,9 @@ void edgeJacobian() {
   const auto x = MeshField::getJacobians(f, lc, numPtsPerElement);
   const auto x_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),x);
   assert(x_h.size() == 1);
-  std::cout << "edge jacobian " << x_h(0) << std::endl;
+  std::cout << "edge jacobian " << x_h(0,0,0) << std::endl;
   const auto expected = 1.0;
-  assert(std::fabs(x_h(0) - expected) <= MeshField::MachinePrecision);
+  assert(std::fabs(x_h(0,0,0) - expected) <= MeshField::MachinePrecision);
 }
 
 int main(int argc, char **argv) {

@@ -7,40 +7,89 @@
 #include <MeshField_Shape.hpp>
 #include <MeshField_Utility.hpp> // getLastValue
 #include <iostream>
+#include <type_traits> // has_static_size helper
 
 namespace {
-  //FIXME - tensorProduct(...) and add(...) need performance and type safety improvements
+
+  //chatgpt prompt 2/20/2025:
+  // c++ static assert that checks that a type
+  // provides a function named size
+  template <typename T>
+  class has_size_method {
+    private:
+      template <typename U>
+        static auto test(int) -> decltype(std::declval<U>().size(), std::true_type());
+      template <typename>
+        static std::false_type test(...);
+    public:
+      static constexpr bool value = decltype(test<T>(0))::value;
+  };
+
+  template <typename T>
+  class has_static_rank {
+    private:
+      template <typename U>
+        static auto test(int) -> decltype(U::rank(), std::true_type());
+      template <typename>
+        static std::false_type test(...);
+    public:
+      static constexpr bool value = decltype(test<T>(0))::value;
+  };
+
+  template <typename T>
+  class has_extent_method {
+    private:
+      template <typename U>
+        static auto test(int) -> decltype(std::declval<U>().extent(std::declval<std::size_t>()), std::true_type());
+      template <typename>
+        static std::false_type test(...);
+    public:
+      static constexpr bool value = decltype(test<T>(0))::value;
+  };
+
+  //FIXME - addTensorProduct(...) likely needs performance improvements
   /** \brief tensor product of two vectors */
-  template <typename VecA, typename VecB>
+  template <typename VecA, typename VecB, typename Matrix>
   KOKKOS_INLINE_FUNCTION
-  auto tensorProduct(VecA const& a, VecB const& b) {
-    const auto N = VecA::size();
-    const auto M = VecB::size();
+  auto addTensorProduct(VecA const& a, VecB const& b, Matrix& A) {
+    static_assert(has_size_method<VecA>::value, "VecA must have a size() method.");
+    static_assert(has_size_method<VecB>::value, "VecB must have a size() method.");
+    static_assert(has_static_rank<VecA>::value, "VecA must have a static rank() method.");
+    static_assert(has_static_rank<VecB>::value, "VecB must have a static rank() method.");
     static_assert(std::is_same_v< typename VecA::value_type, typename VecB::value_type >);
-    Kokkos::Array< Kokkos::Array< typename VecA::value_type, M>, N> matrix;
-    //FIXME - is there a better type for 'matrix'?
+    static_assert(VecA::rank() == 1);
+    static_assert(VecB::rank() == 1);
+    static_assert(has_extent_method<Matrix>::value, "Matrix must have an extent(size_t) method.");
+    const auto M = a.size();
+    const auto N = b.size();
     for (std::size_t i=0; i < M; ++i) {
-      for (std::size_t j=0; j < M; ++j) {
-        matrix[i][j] = b[j] * a[i];
+      for (std::size_t j=0; j < N; ++j) {
+        A(i,j) += b[j] * a[i];
       }
     }
-    return matrix;
   }
 
-  /** \brief sum two matrices */
-  template <typename MatrixA, typename MatrixB>
-  KOKKOS_INLINE_FUNCTION
-  MatrixA add(MatrixA const& a, MatrixB const& b) {
-    static_assert(std::is_same_v< MatrixA, MatrixB >);
-    //FIXME ensure that MatrixA is a Kokkos::Array<Kokkos::Array>
-    MatrixA matrix;
-    for (std::size_t i=0; i < a.size(); ++i) {
-      for (std::size_t j=0; j < a[i].size(); ++j) {
-        matrix[i][j] = a[i][j] + b[i][j];
-      }
-    }
-    return matrix;
-  }
+//  /** \brief sum two matrices */
+//  template <typename MatrixA, typename MatrixB>
+//  KOKKOS_INLINE_FUNCTION
+//  MatrixA add(MatrixA const& a, MatrixB const& b) {
+//    static_assert(has_static_extent<MatrixA>::value, "MatrixA must have a static extent() method.");
+//    static_assert(has_static_extent<MatrixB>::value, "MatrixB must have a static extent() method.");
+//    static_assert(has_static_rank<MatrixA>::value, "MatrixA must have a static rank() method.");
+//    static_assert(has_static_rank<MatrixB>::value, "MatrixB must have a static rank() method.");
+//    static_assert(std::is_same_v< typename MatrixA::value_type, typename MatrixB::value_type >);
+//    static_assert(MatrixA::rank() == 2);
+//    static_assert(MatrixB::rank() == 2);
+//    static_assert(MatrixA::extent(0) == MatrixB::extent(0));
+//    static_assert(MatrixA::extent(1) == MatrixB::extent(1));
+//    MatrixA matrix;
+//    for (std::size_t i=0; i < MatrixA::extent(0); ++i) {
+//      for (std::size_t j=0; j < MatrixA::extent(1); ++j) {
+//        matrix(i,j) = a(i,j) + b(i,j);
+//      }
+//    }
+//    return matrix;
+//  }
 }
 
 namespace MeshField {
@@ -135,18 +184,18 @@ struct FieldElement {
   }
 
   using NodeArray = Kokkos::Array< typename FieldAccessor::BaseType,
-                                   ShapeType::numNodes *
-                                   ShapeType::numComponentsPerDof >;
+                                   ShapeType::meshEntDim *
+                                   ShapeType::numNodes >;
   KOKKOS_INLINE_FUNCTION NodeArray
   getNodeValues(int ent) const {
     NodeArray c;
     for (auto topo : elm2dof.getTopology()) { // element topology
-      for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
-          auto map = elm2dof(ni, ci, ent, topo);
+      for (int ni = 0; ni < ShapeType::numNodes; ++ni) {
+        for (int d = 0; d < ShapeType::meshEntDim; ++d) {
+          auto map = elm2dof(ni, d, ent, topo);
           const auto fval =
             field(map.node, map.component, map.entity, map.topo);
-          c[ni*shapeFn.numComponentsPerDof + ci] = fval;
+          c[ni*ShapeType::numNodes + d] = fval;
         }
       }
     }
@@ -185,17 +234,128 @@ struct FieldElement {
    * @param ent the mesh entity index
    * @return the result of evaluation
    */
-  KOKKOS_INLINE_FUNCTION Kokkos::Array< Kokkos::Array<Real,2>, 2>
-  getJacobian2d(int ent) const {
-    assert(ent < numMeshEnts);
-    const auto nodalGradients = shapeFn.getLocalGradients();
-    const auto nodeValues = getNodeValues(ent);
-    auto g = tensorProduct(nodalGradients[0], nodeValues[0]); //FIXME - wrong type
-    for (int i=1; i < shapeFn.numNodes; ++i) {
-      const auto prod = tensorProduct(nodalGradients[i], nodeValues[i]); //FIXME - wrong type
-      g = add(g, prod);
+//  KOKKOS_INLINE_FUNCTION Kokkos::View< Real[2][2] >
+//  getJacobian2d() const {
+//    Kokkos::View<Real[2][2]> foo({1,1});
+//    auto g = tensorProduct(nodalGradients[0], nodeValues[0]); //FIXME - wrong type
+//    for (int i=1; i < shapeFn.numNodes; ++i) {
+//      const auto prod = tensorProduct(nodalGradients[i], nodeValues[i]); //FIXME - wrong type
+//      g = add(g, prod);
+//    }
+//    return g;
+//  }
+
+
+  /**
+   * @brief
+   * Given an array of parametric coordinates 'localCoords', one per mesh element,
+   * compute the jacobian within each element.
+   *
+   * @todo add static asserts for values and functions provided by the templated
+   * types
+   * @todo consider making this a member function of FieldElement
+   *
+   * @param localCoords 2D Kokkos::View containing the local/parametric/area
+   * coordinates for each element
+   * @param offsets 1D Kokkos::View containing the offsets into localCoords,
+   *                size = localCoords.extent(0)+1
+   * @return Kokkos::View containing the jacobian for all the mesh elements
+   */
+  Kokkos::View<Real***>
+  getJacobians(Kokkos::View<Real **> localCoords, Kokkos::View<LO *> offsets) {
+    if (Debug) {
+      // check input parametric coords are positive and sum to one
+      LO numErrors = 0;
+      Kokkos::parallel_reduce(
+          "checkCoords", numMeshEnts,
+          KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
+            Real sum = 0;
+            LO isError = 0;
+            for (int i = 0; i < localCoords.extent(1); i++) {
+              if (localCoords(ent, i) < 0)
+                isError++;
+              sum += localCoords(ent, i);
+            }
+            if (Kokkos::fabs(sum - 1) > MachinePrecision)
+              isError++;
+            lerrors += isError;
+          },
+          numErrors);
+      if (numErrors) {
+        fail("One or more of the parametric coordinates passed "
+             "to evaluate(...) were invalid\n");
+      }
     }
-    return g;
+    if (localCoords.extent(0) < numMeshEnts) {
+      fail("The size of dimension 0 of the local coordinates input array "
+           "must be at least %zu.\n",
+           numMeshEnts);
+    }
+    if (localCoords.extent(1) != MeshEntDim + 1) {
+      fail("Dimension 1 of the input array of local coordinates "
+           "must have size = %zu.\n",
+           MeshEntDim + 1);
+    }
+    if (offsets.size() != numMeshEnts + 1) {
+      fail("The input array of offsets must have size = %zu\n",
+           numMeshEnts + 1);
+    }
+    if (MeshEntDim != 1) {
+      fail("getJacobians only currently supports 1d meshes.  Input mesh has %zu dimensions.\n",
+           numMeshEnts);
+    }
+    if constexpr (MeshEntDim == 1) {
+      const auto numPts = MeshFieldUtil::getLastValue(offsets);
+      Kokkos::View<Real ***> res("result", numPts, 1, 1);
+      Kokkos::parallel_for(
+          numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+          // TODO use nested parallel for?
+          for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+            const auto val = getJacobian1d(ent);
+            res(pt,0,0) = val;
+          }
+      });
+      return res;
+    } else if constexpr (MeshEntDim == 2) {
+      const auto numPts = MeshFieldUtil::getLastValue(offsets);
+      //one matrix per point
+      Kokkos::View<Real ***> res("result", numPts, MeshEntDim, MeshEntDim);
+      Kokkos::deep_copy(res,0.0); //initialize all entries to zero
+  
+      //fill the views of node coordinates and node gradients
+      Kokkos::View<Real *[ShapeType::numNodes][MeshEntDim]> nodeCoords("nodeCoords", numPts);
+      Kokkos::View<Real *[ShapeType::numNodes][MeshEntDim]> nodalGradients("nodalGradients", numPts);
+      const auto grad = shapeFn.getLocalGradients();
+      Kokkos::parallel_for(
+          numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+          const auto vals = getNodeValues(ent);
+          assert(vals.size() == MeshEntDim*ShapeType::numNodes);
+          for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+            for(size_t node=0; node<ShapeType::numNodes; node++) {
+               for(size_t d=0; d<MeshEntDim; d++) {
+                nodeCoords(pt,node,d) = vals[node*MeshEntDim + d];
+                nodalGradients(pt,node,d) = grad[node*MeshEntDim + d];
+              }
+            }
+          }
+      });
+  
+      Kokkos::parallel_for(
+          numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+          // TODO use nested parallel for?
+          for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+            auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
+            for(size_t node=1; node<ShapeType::numNodes; node++) {
+              auto a = Kokkos::subview(nodeCoords, pt, node, Kokkos::ALL());
+              auto b = Kokkos::subview(nodalGradients, pt, node, Kokkos::ALL());
+              for (int i=1; i < shapeFn.numNodes; ++i) {
+                addTensorProduct(a, b, A);
+              }
+            }
+          }
+      });
+      return res;
+    }
   }
 
 };
@@ -317,100 +477,7 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
   return evaluate(fes, localCoords, offsets);
 }
 
-/**
- * @brief
- * Given an array of parametric coordinates 'localCoords', one per mesh element,
- * compute the jacobian within each element.
- *
- * @todo add static asserts for values and functions provided by the templated
- * types
- * @todo consider making this a member function of FieldElement
- *
- * @tparam FieldElement see FieldElement struct
- *
- * @param fes see FieldElement
- * @param localCoords 2D Kokkos::View containing the local/parametric/area
- * coordinates for each element
- * @param offsets 1D Kokkos::View containing the offsets into localCoords,
- *                size = localCoords.extent(0)+1
- * @return Kokkos::View containing the jacobian for all the mesh elements
- */
-template <typename FieldElement, size_t MeshEntDim = FieldElement::MeshEntDim>
-Kokkos::View<Real*>
-getJacobians(FieldElement &fes, Kokkos::View<Real **> localCoords,
-         Kokkos::View<LO *> offsets) {
-  if (Debug) {
-    // check input parametric coords are positive and sum to one
-    LO numErrors = 0;
-    Kokkos::parallel_reduce(
-        "checkCoords", fes.numMeshEnts,
-        KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
-          Real sum = 0;
-          LO isError = 0;
-          for (int i = 0; i < localCoords.extent(1); i++) {
-            if (localCoords(ent, i) < 0)
-              isError++;
-            sum += localCoords(ent, i);
-          }
-          if (Kokkos::fabs(sum - 1) > MachinePrecision)
-            isError++;
-          lerrors += isError;
-        },
-        numErrors);
-    if (numErrors) {
-      fail("One or more of the parametric coordinates passed "
-           "to evaluate(...) were invalid\n");
-    }
-  }
-  if (localCoords.extent(0) < fes.numMeshEnts) {
-    fail("The size of dimension 0 of the local coordinates input array "
-         "must be at least %zu.\n",
-         fes.numMeshEnts);
-  }
-  if (localCoords.extent(1) != fes.MeshEntDim + 1) {
-    fail("Dimension 1 of the input array of local coordinates "
-         "must have size = %zu.\n",
-         fes.MeshEntDim + 1);
-  }
-  if (offsets.size() != fes.numMeshEnts + 1) {
-    fail("The input array of offsets must have size = %zu\n",
-         fes.numMeshEnts + 1);
-  }
-  if (fes.MeshEntDim != 1) {
-    fail("getJacobians only currently supports 1d meshes.  Input mesh has %zu dimensions.\n",
-         fes.numMeshEnts);
-  }
-  if constexpr (MeshEntDim == 1) {
-    constexpr const auto numComponents = FieldElement::ValArray::size();
-    const auto numPts = MeshFieldUtil::getLastValue(offsets);
-    Kokkos::View<Real *> res("result", numPts);
-    Kokkos::parallel_for(
-        fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-        // TODO use nested parallel for?
-        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-          const auto val = fes.getJacobian1d(ent);
-          res(pt) = val;
-        }
-    });
-    return res;
-  } else if constexpr (MeshEntDim == 2) {
-    constexpr const auto numComponents = FieldElement::ValArray::size();
-    const auto numPts = MeshFieldUtil::getLastValue(offsets);
-    Kokkos::View<Real *> res("result", numPts*4);
-    Kokkos::parallel_for(
-        fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-        // TODO use nested parallel for?
-        for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-          const auto val = fes.getJacobian2d(ent);
-          res(pt*4 + 0) = val[0][0];
-          res(pt*4 + 1) = val[0][1];
-          res(pt*4 + 2) = val[1][0];
-          res(pt*4 + 3) = val[1][1];
-        }
-    });
-    return res;
-  }
-}
+
 
 /**
  * @brief
@@ -420,18 +487,21 @@ getJacobians(FieldElement &fes, Kokkos::View<Real **> localCoords,
  *
  * @param (in) numPtsPerElement
  *
- * @details
- * see evaluate function accepting offsets
+ * @return an array of rank2 matrices stored in a Kokkos 3d View.  The dimension
+ * are sized (from left to right):
+ *  - number of points where the jacobian is evaluated
+ *  - number of rows in each rank2 matrix
+ *  - number of columns in each rank2 matrix
  */
 template <typename FieldElement>
-Kokkos::View<Real *> getJacobians(
+Kokkos::View<Real ***> getJacobians(
     FieldElement &fes, Kokkos::View<Real **> localCoords,
     size_t numPtsPerElement) {
   Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
   Kokkos::parallel_for(
       fes.numMeshEnts + 1,
       KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
-  return getJacobians(fes, localCoords, offsets);
+  return fes.getJacobians(localCoords, offsets);
 }
 
 } // namespace MeshField
