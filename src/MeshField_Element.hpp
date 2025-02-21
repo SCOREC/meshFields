@@ -231,18 +231,32 @@ struct FieldElement {
             J.extent(0), J.extent(1));
     } 
     if (dimension == 2) {
+      if (J.extent(1) != 2) {
+        fail("getJacobianDeterminant only supports 2x2 matrices in 2d.  "
+              "The given matrices have dimension %d x %d \n",
+              J.extent(1), J.extent(2));
+      }
       /* |\frac{\partial x}{\partial s}\times
          \frac{\partial x}{\partial t}|,
          the area spanned by the tangent vectors
          at this point, surface integral. */
-      return Kokkos::View<Real*>("foo", J.extent(0)); //FIXME cross(J[0],J[1]).getLength();
+      Kokkos::View<Real*> determinants("2dJacobianDeterminants", J.extent(0));
+      //compute the cross product of the 2x2 jacobian matrix
+      Kokkos::parallel_for( J.extent(0), KOKKOS_LAMBDA(const int i) {
+        // TODO use nested parallel for?
+        auto Ji = Kokkos::subview(J, i, Kokkos::ALL(), Kokkos::ALL());
+        const auto cross = Ji(0,0)*Ji(1,1) - Ji(1,0)*Ji(0,1);
+        const auto magnitude = Kokkos::fabs(cross);
+        determinants(i) = magnitude;
+      });
+      return determinants;
     }
     // assuming at this point dimension=1
     /* \|\vec{x}_{,\xi}\| the length
        of the tangent vector at this point.
        line integral:
        ds = sqrt(dx^2 + dy^2 + dz^2) */
-    return Kokkos::View<Real*>("foo", J.extent(0)); //FIXME J[0].getLength();
+    return Kokkos::View<Real*>("foo", J.extent(0)); //FIXME J[0].getLength(); // J is a 3x3 with only one non-zero component at J(0,0)
   }
 
   /**

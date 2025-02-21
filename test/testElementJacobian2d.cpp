@@ -82,6 +82,11 @@ void triJacobian() {
   assert(std::fabs(J_h(0,1,0) - 0.0) <= MeshField::MachinePrecision);
   assert(std::fabs(J_h(0,1,1) - 1.0) <= MeshField::MachinePrecision);
   const auto determinants = MeshField::getJacobianDeterminants(f, J);
+  const auto determinants_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),determinants);
+  assert(determinants.rank() == 1);
+  assert(determinants.extent(0) == 1);
+  std::cout << "tri jacobian determinant " << determinants_h(0) << "\n";
+  assert(std::fabs(determinants_h(0) - 1.0) <= MeshField::MachinePrecision);
 }
 
 int main(int argc, char **argv) {
