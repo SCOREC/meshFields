@@ -345,12 +345,10 @@ struct FieldElement {
           // TODO use nested parallel for?
           for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
             auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
-            for(size_t node=1; node<ShapeType::numNodes; node++) {
+            for(size_t node=0; node<ShapeType::numNodes; node++) {
               auto a = Kokkos::subview(nodeCoords, pt, node, Kokkos::ALL());
               auto b = Kokkos::subview(nodalGradients, pt, node, Kokkos::ALL());
-              for (int i=1; i < shapeFn.numNodes; ++i) {
-                addTensorProduct(a, b, A);
-              }
+              addTensorProduct(a, b, A);
             }
           }
       });
