@@ -300,8 +300,8 @@ struct FieldElement {
       fail("The input array of offsets must have size = %zu\n",
            numMeshEnts + 1);
     }
-    if (MeshEntDim != 1) {
-      fail("getJacobians only currently supports 1d meshes.  Input mesh has %zu dimensions.\n",
+    if (MeshEntDim != 1 && MeshEntDim != 2) {
+      fail("getJacobians only currently supports 1d and 2d meshes.  Input mesh has %zu dimensions.\n",
            numMeshEnts);
     }
     if constexpr (MeshEntDim == 1) {
