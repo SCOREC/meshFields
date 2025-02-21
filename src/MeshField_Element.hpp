@@ -184,6 +184,8 @@ struct FieldElement {
    * @brief
    * compute the Jacobian of an edge
    *
+   * @TODO use the same approach taken for 2d
+   *
    * @details
    * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
    *
@@ -200,6 +202,47 @@ struct FieldElement {
       g = g + nodalGradients[i]*nodeValues[i];
     }
     return g;
+  }
+
+  /**
+   * @details
+   * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
+   */
+  template <typename Matrices>
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::View<Real*>
+  getJacobianDeterminants(Matrices const& J) {
+    static_assert(has_static_rank<Matrices>::value, "Matrices must have a static rank() method.");
+    static_assert(has_extent_method<Matrices>::value, "Matrices must have an extent(size_t) method.");
+    static_assert(Matrices::rank() == 3); //array of rank two matrices
+    if (J.extent(1) != J.extent(2)) {
+      fail("getJacobianDeterminant only supports square matrices.  "
+            "The given matrices have dimension %d x %d \n",
+            J.extent(1), J.extent(2));
+    }
+    const auto dimension = J.extent(1);
+    if (dimension == 3) {
+      /* det(J) is also the triple product of the
+         "tangent vectors" in 3D, the volume of their
+         parallelpiped, which is the differential volume
+         of the coordinate field */
+      fail("getJacobianDeterminant doesn't yet support 3d.  "
+            "The given matrices have dimension %d x %d \n",
+            J.extent(0), J.extent(1));
+    } 
+    if (dimension == 2) {
+      /* |\frac{\partial x}{\partial s}\times
+         \frac{\partial x}{\partial t}|,
+         the area spanned by the tangent vectors
+         at this point, surface integral. */
+      return Kokkos::View<Real*>("foo", J.extent(0)); //FIXME cross(J[0],J[1]).getLength();
+    }
+    // assuming at this point dimension=1
+    /* \|\vec{x}_{,\xi}\| the length
+       of the tangent vector at this point.
+       line integral:
+       ds = sqrt(dx^2 + dy^2 + dz^2) */
+    return Kokkos::View<Real*>("foo", J.extent(0)); //FIXME J[0].getLength();
   }
 
   /**
@@ -454,6 +497,22 @@ Kokkos::View<Real ***> getJacobians(
       fes.numMeshEnts + 1,
       KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
   return fes.getJacobians(localCoords, offsets);
+}
+
+/**
+ * @brief
+ * Given an array of Jacobian matrices
+ * compute the determinant for each
+ *
+ * @param (in) array of Jacobian matrices
+ *
+ * @return an array of scalars that are the jacobian determinant for each
+ * input Jacobian matrix
+ */
+template <typename FieldElement, typename Matrices>
+Kokkos::View<Real *> getJacobianDeterminants(
+    FieldElement &fes, Matrices J) {
+  return fes.getJacobianDeterminants(J);
 }
 
 } // namespace MeshField
