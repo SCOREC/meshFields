@@ -39,9 +39,12 @@ struct LinearTriangleToVertexField {
 template <typename ShapeField>
 void setVtxCoords(size_t numVerts, size_t meshDim, ShapeField field) {
   Kokkos::View<MeshField::Real*, Kokkos::HostSpace> coords_h("coords_h", numVerts*meshDim);
+//  coords_h[0] = 0; coords_h[1] = 0;
+//  coords_h[2] = 1; coords_h[3] = 0;
+//  coords_h[4] = 0; coords_h[5] = 1;
   coords_h[0] = 0; coords_h[1] = 0;
-  coords_h[2] = 1; coords_h[3] = 0;
-  coords_h[4] = 0; coords_h[5] = 1;
+  coords_h[2] = 5; coords_h[3] = 1;
+  coords_h[4] = 3; coords_h[5] = 4;
   auto coords = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), coords_h);
   auto setCoordField = KOKKOS_LAMBDA(const int &vtx) {
     field(0, 0, vtx, MeshField::Vertex) = coords(vtx * meshDim);
@@ -68,7 +71,7 @@ void triJacobian() {
   Kokkos::View<MeshField::Real*[3]> lc("localCoords",1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
-  const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);
+  const auto J = MeshField::getJacobians(f, lc, numPtsPerElement); //FIXME - appears to in column major order??? array index math error?
   const auto J_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),J);
   assert(J_h.rank() == 3);
   assert(J_h.extent(0) == 1);
@@ -77,15 +80,15 @@ void triJacobian() {
   std::cout << "tri jacobian\n" 
             << J_h(0,0,0) << " " << J_h(0,0,1) << "\n"
             << J_h(0,1,0) << " " << J_h(0,1,1) << "\n";
+  const auto determinants = MeshField::getJacobianDeterminants(f, J);
+  const auto determinants_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),determinants);
+  std::cout << "tri jacobian determinant " << determinants_h(0) << "\n";
   assert(std::fabs(J_h(0,0,0) - 1.0) <= MeshField::MachinePrecision);
   assert(std::fabs(J_h(0,0,1) - 0.0) <= MeshField::MachinePrecision);
   assert(std::fabs(J_h(0,1,0) - 0.0) <= MeshField::MachinePrecision);
   assert(std::fabs(J_h(0,1,1) - 1.0) <= MeshField::MachinePrecision);
-  const auto determinants = MeshField::getJacobianDeterminants(f, J);
-  const auto determinants_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),determinants);
   assert(determinants.rank() == 1);
   assert(determinants.extent(0) == 1);
-  std::cout << "tri jacobian determinant " << determinants_h(0) << "\n";
   assert(std::fabs(determinants_h(0) - 1.0) <= MeshField::MachinePrecision);
 }
 
