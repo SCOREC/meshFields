@@ -195,7 +195,7 @@ struct FieldElement {
           auto map = elm2dof(ni, d, ent, topo);
           const auto fval =
             field(map.node, map.component, map.entity, map.topo);
-          c[ni*ShapeType::numNodes + d] = fval;
+          c[ni*ShapeType::meshEntDim + d] = fval;
         }
       }
     }
