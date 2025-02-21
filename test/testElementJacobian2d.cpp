@@ -65,12 +65,15 @@ void triJacobian() {
                             MeshField::LinearTriangleShape(),
                             LinearTriangleToVertexField());
 
-  Kokkos::View<MeshField::Real*[2]> lc("localCoords",1);
+  Kokkos::View<MeshField::Real*[3]> lc("localCoords",1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
   const auto x = MeshField::getJacobians(f, lc, numPtsPerElement);
   const auto x_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),x);
-  assert(x_h.size() == 1);
+  assert(x_h.rank() == 3);
+  assert(x_h.extent(0) == 1);
+  assert(x_h.extent(1) == 2);
+  assert(x_h.extent(2) == 2);
   std::cout << "tri jacobian\n" 
             << x_h(0,0,0) << " " << x_h(0,0,1) << "\n"
             << x_h(0,1,0) << " " << x_h(0,1,1) << "\n";
