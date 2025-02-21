@@ -32,7 +32,7 @@ struct LinearTriangleToVertexField {
     // 0   0 1 2
     MeshField::LO triNode2Vtx[1][3] = {{0, 1, 2}};
     const MeshField::LO vtx = triNode2Vtx[tri][triNodeIdx];
-    return {0, 0, vtx, MeshField::Vertex};
+    return {0, triCompIdx, vtx, MeshField::Vertex};
   }
 };
 
