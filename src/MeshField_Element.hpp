@@ -68,28 +68,6 @@ namespace {
       }
     }
   }
-
-//  /** \brief sum two matrices */
-//  template <typename MatrixA, typename MatrixB>
-//  KOKKOS_INLINE_FUNCTION
-//  MatrixA add(MatrixA const& a, MatrixB const& b) {
-//    static_assert(has_static_extent<MatrixA>::value, "MatrixA must have a static extent() method.");
-//    static_assert(has_static_extent<MatrixB>::value, "MatrixB must have a static extent() method.");
-//    static_assert(has_static_rank<MatrixA>::value, "MatrixA must have a static rank() method.");
-//    static_assert(has_static_rank<MatrixB>::value, "MatrixB must have a static rank() method.");
-//    static_assert(std::is_same_v< typename MatrixA::value_type, typename MatrixB::value_type >);
-//    static_assert(MatrixA::rank() == 2);
-//    static_assert(MatrixB::rank() == 2);
-//    static_assert(MatrixA::extent(0) == MatrixB::extent(0));
-//    static_assert(MatrixA::extent(1) == MatrixB::extent(1));
-//    MatrixA matrix;
-//    for (std::size_t i=0; i < MatrixA::extent(0); ++i) {
-//      for (std::size_t j=0; j < MatrixA::extent(1); ++j) {
-//        matrix(i,j) = a(i,j) + b(i,j);
-//      }
-//    }
-//    return matrix;
-//  }
 }
 
 namespace MeshField {
@@ -223,28 +201,6 @@ struct FieldElement {
     }
     return g;
   }
-
-  /**
-   * @brief
-   * compute the Jacobian of a triangle or quad
-   *
-   * @details
-   * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
-   *
-   * @param ent the mesh entity index
-   * @return the result of evaluation
-   */
-//  KOKKOS_INLINE_FUNCTION Kokkos::View< Real[2][2] >
-//  getJacobian2d() const {
-//    Kokkos::View<Real[2][2]> foo({1,1});
-//    auto g = tensorProduct(nodalGradients[0], nodeValues[0]); //FIXME - wrong type
-//    for (int i=1; i < shapeFn.numNodes; ++i) {
-//      const auto prod = tensorProduct(nodalGradients[i], nodeValues[i]); //FIXME - wrong type
-//      g = add(g, prod);
-//    }
-//    return g;
-//  }
-
 
   /**
    * @brief
@@ -474,8 +430,6 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
       KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
   return evaluate(fes, localCoords, offsets);
 }
-
-
 
 /**
  * @brief
