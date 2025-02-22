@@ -251,6 +251,9 @@ struct FieldElement {
       });
       return determinants;
     }
+    fail("getJacobianDeterminant doesn't yet support 1d.  "
+          "The given matrices have dimension %d x %d \n",
+          J.extent(0), J.extent(1));
     // assuming at this point dimension=1
     /* \|\vec{x}_{,\xi}\| the length
        of the tangent vector at this point.
