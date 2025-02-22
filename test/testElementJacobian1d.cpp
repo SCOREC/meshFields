@@ -67,7 +67,6 @@ void edgeJacobian() {
   std::cout << "edge jacobian " << J_h(0,0,0) << std::endl;
   const auto expected = 1.0;
   assert(std::fabs(J_h(0,0,0) - expected) <= MeshField::MachinePrecision);
-  const auto determinants = MeshField::getJacobianDeterminants(f, J);
 }
 
 int main(int argc, char **argv) {
