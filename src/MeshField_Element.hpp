@@ -209,7 +209,6 @@ struct FieldElement {
    * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
    */
   template <typename Matrices>
-  KOKKOS_INLINE_FUNCTION
   Kokkos::View<Real*>
   getJacobianDeterminants(Matrices const& J) {
     static_assert(has_static_rank<Matrices>::value, "Matrices must have a static rank() method.");
