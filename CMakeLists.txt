@@ -21,6 +21,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
   src/MeshField_Element.hpp
+  src/MeshField_Integrate.hpp
   src/MeshField_Shape.hpp
   src/MeshField_Fail.hpp
   src/MeshField_For.hpp
