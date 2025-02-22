@@ -90,7 +90,7 @@ namespace MeshField {
     public:
       virtual ~Integration() {}
       virtual int countPoints() const = 0;
-      virtual IntegrationPoint const* getPoint(int i) const = 0;
+      virtual std::vector<IntegrationPoint> getPoint() const = 0;
       virtual int getAccuracy() const = 0;
   };
 
@@ -111,24 +111,20 @@ namespace MeshField {
       class N1 : public Integration {
         public:
           virtual int countPoints() const {return 1;}
-          virtual IntegrationPoint const* getPoint(int) const
+          virtual std::vector<IntegrationPoint> getPoint() const
           {
-            static IntegrationPoint point(
-                Vector3(1./3.,1./3.,0),1.0/2.0);
-            return &point;
+            return {IntegrationPoint point(Vector3(1./3.,1./3.,0),1.0/2.0)};
           }
           virtual int getAccuracy() const {return 1;}
       }; //end N1
       class N2 : public Integration {
         public:
           virtual int countPoints() const {return 3;}
-          virtual IntegrationPoint const* getPoint(int i) const
+          virtual std::vector<IntegrationPoint> getPoints() const
           {
-            static IntegrationPoint points[3]=
-            { IntegrationPoint(Vector3(0.666666666666667,0.166666666666667,0),1./3./2.0),
-              IntegrationPoint(Vector3(0.166666666666667,0.666666666666667,0),1./3./2.0),
-              IntegrationPoint(Vector3(0.166666666666667,0.166666666666667,0),1./3./2.0), };
-            return points+i;
+            return { IntegrationPoint(Vector3(0.666666666666667,0.166666666666667,0),1./3./2.0),
+                     IntegrationPoint(Vector3(0.166666666666667,0.666666666666667,0),1./3./2.0),
+                     IntegrationPoint(Vector3(0.166666666666667,0.166666666666667,0),1./3./2.0) };
           }
           virtual int getAccuracy() const {return 2;}
       }; //end N2

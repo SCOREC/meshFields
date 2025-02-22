@@ -6,28 +6,62 @@
 
 namespace MeshField {
 
-void getIntPoint(MeshElement* e, int order, int point, Vector3& param)
+EntityIntegration const* getIntegration(Mesh_Topology topo)
 {
-  IntegrationPoint const* p = 
-    getIntegration(e->getType())->getAccurate(order)->getPoint(point);
-  param = p->param;
+  if(topo != Triangle) {
+    fail("getIntegration only supports triangles (Mesh_Topology::Triangle)\n");
+  }
+  return TriangleIntegration(); //I don't think this will work...
 }
 
-double getIntWeight(MeshElement* e, int order, int point)
+Integration const* EntityIntegration::getAccurate(int minimumAccuracy) const
 {
-  IntegrationPoint const* p = 
+  int n = countIntegrations();
+  for (int i=0; i < n; ++i) {
+    Integration const* integration = getIntegration(i);
+    if (integration->getAccuracy() >= minimumAccuracy)
+      return integration;
+  }
+  return NULL;
+}
+
+std::vector<IntegrationPoint> getIntegrationPoints(Mesh_Topology topo, int order) {
+  auto ip = getIntegration(topo)->getAccurate(order)->getPoints();
+  return ip;
+}
+
+double getIntegrationPointWeights(MeshElement* e, int order, int point)
+{
+  IntegrationPoint const* p =
     getIntegration(e->getType())->getAccurate(order)->getPoint(point);
   return p->weight;
 }
 
-double getDV(MeshElement* e, Vector3 const& param)
-{
-  return e->getDV(param); //FIXME return determinant of Jacobian - for linear triangles the paramteric coord ('param') is ignored
+template <typename FieldElement>
+auto getJacobianDeterminants(FieldElement& fes, std::vector<IntegrationPoint> ip) {
+  const auto numPtsPerElm = ip.size();
+  const auto numMeshEnts = fes.numMeshEnts;
+  const auto meshEntDim = fes.MeshEntDim;
+  Kokkos::View<Real **> localCoords(numMeshEnts*numPtsPerElm, meshEntDim);
+  //broadcast the points into the view - FIXME this is an inefficient use of memory
+  for(size_t pt=0; pt < numPtsPerElm; pt++) {
+    const auto point = ip.at(pt);
+    const auto param = point.param;
+    Kokkos::parallel_for(numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+        for(size_t i=0; i<param.size(); i++) {
+          for(size_t d=0; i<meshEntDim; d++) {
+            localCoords(ent*numPtsPerElm+pt,d) = param[d];
+          }
+        }
+    });
+  }
+  auto J = getJacobians(fes, localCoords, ip.size());
+  auto dV = getJacobianDeterminants(fes, J);
+  return dV;
 }
 
 Integrator::Integrator(int o):
   order(o),
-  ipnode(0)
 {
 }
 
@@ -35,50 +69,25 @@ Integrator::~Integrator()
 {
 }
 
-void Integrator::inElement(MeshElement*)
+void Integrator::inElements()
 {
 }
 
-void Integrator::outElement()
+void Integrator::outElements()
 {
 }
 
-void Integrator::parallelReduce(pcu::PCU*)
+template <typename FieldElement>
+void Integrator::process(FieldElement &fes)
 {
-}
-
-void Integrator::process(Mesh* m, int d) //FIXME needs to take FieldElement
-{
-  if(d<0)
-    d = m->getDimension();
-  PCU_DEBUG_ASSERT(d<=m->getDimension());
-  MeshEntity* entity;
-  MeshIterator* elements = m->begin(d);
-  while ((entity = m->iterate(elements)))
-  {
-    if ( ! m->isOwned(entity)) continue;
-    MeshElement* e = createMeshElement(m,entity);
-    this->process(e);
-    destroyMeshElement(e);
-  }
-  m->end(elements);
-  this->parallelReduce(m->getPCU());
-}
-
-void Integrator::process(MeshElement* e) //FIXME move this into process? hard to see how this will work as a user function
-{
-  this->inElement(e);
-  int np = countIntPoints(e,this->order);
-  for (int p=0; p < np; ++p)
-  {
-    ipnode = p;
-    Vector3 point;
-    getIntPoint(e,this->order,p,point); //IntegrationPoint[p].param
-    double w = getIntWeight(e,this->order,p); //IntegrationPoint[p].weight
-    double dV = getDV(e,point); //determinant of jacobian
-    this->atPoint(point,w,dV); //callback/functor
-  }
-  this->outElement();
+  //TODO add check to only support triangles
+  inElements();
+  const auto topo = fes.elm2dof.getTopology();
+  auto ip = getIntegrationPoints(topo,order);
+  auto dV = getJacobianDeterminants(fes,ip);
+  atPoints(fes,ip,dV);
+  outElements();
+  //TODO support distributed meshes by running a parallel reduction with user functor
 }
 
 } // namespace MeshField
