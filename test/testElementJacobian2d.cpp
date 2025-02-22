@@ -71,7 +71,7 @@ void triJacobian() {
   Kokkos::View<MeshField::Real*[3]> lc("localCoords",1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
-  const auto J = MeshField::getJacobians(f, lc, numPtsPerElement); //FIXME - appears to in column major order??? array index math error?
+  const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);
   const auto J_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),J);
   assert(J_h.rank() == 3);
   assert(J_h.extent(0) == 1);
