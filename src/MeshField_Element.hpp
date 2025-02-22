@@ -359,8 +359,8 @@ struct FieldElement {
           for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
             auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
             for(size_t node=0; node<ShapeType::numNodes; node++) {
-              auto a = Kokkos::subview(nodeCoords, pt, node, Kokkos::ALL());
-              auto b = Kokkos::subview(nodalGradients, pt, node, Kokkos::ALL());
+              auto a = Kokkos::subview(nodalGradients, pt, node, Kokkos::ALL());
+              auto b = Kokkos::subview(nodeCoords, pt, node, Kokkos::ALL());
               addTensorProduct(a, b, A);
             }
           }
