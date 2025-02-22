@@ -324,7 +324,7 @@ struct FieldElement {
       const auto numPts = MeshFieldUtil::getLastValue(offsets);
       Kokkos::View<Real ***> res("result", numPts, 1, 1);
       Kokkos::parallel_for(
-          numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+          numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
           // TODO use nested parallel for?
           for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
             const auto val = getJacobian1d(ent);
@@ -343,7 +343,7 @@ struct FieldElement {
       Kokkos::View<Real *[ShapeType::numNodes][MeshEntDim]> nodalGradients("nodalGradients", numPts);
       const auto grad = shapeFn.getLocalGradients();
       Kokkos::parallel_for(
-          numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+          numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
           const auto vals = getNodeValues(ent);
           assert(vals.size() == MeshEntDim*ShapeType::numNodes);
           for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
