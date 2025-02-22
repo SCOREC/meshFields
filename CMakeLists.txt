@@ -39,6 +39,7 @@ endif()
 
 set(MESHFIELD_SOURCES
   src/MeshField_Fail.cpp
+  src/MeshField_Integrate.cpp
 )
 
 add_library(meshfields ${MESHFIELD_SOURCES})
