@@ -47,7 +47,7 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
   const auto numPtsPerElem = testCase.NumPtsPerElem;
   MeshField::FieldElement fcoords(mesh.nfaces(), coordField,
                                   MeshField::LinearTriangleCoordinateShape(),
-                                  LinearTriangleToVertexField(mesh));
+                                  MeshField::Omegah::LinearTriangleToVertexField(mesh));
   auto globalCoords =
       MeshField::evaluate(fcoords, testCase.coords, numPtsPerElem);
 

@@ -7,6 +7,7 @@ include(CMakePackageConfigHelpers)
 
 option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 
+find_package(Kokkos REQUIRED)
 find_package(Omega_h REQUIRED)
 #Clear the omegah compilation flags that it passes to cuda.  Using the
 # kokkos target, and nvcc_wrapper, provide sufficient flags.
@@ -39,7 +40,6 @@ endif()
 
 set(MESHFIELD_SOURCES
   src/MeshField_Fail.cpp
-  src/MeshField_Integrate.cpp
 )
 
 add_library(meshfields ${MESHFIELD_SOURCES})
@@ -50,6 +50,7 @@ target_include_directories(meshfields
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>" # for MeshField_Config.hpp
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
+target_link_libraries(meshfields INTERFACE Kokkos::kokkos)
 target_link_libraries(meshfields INTERFACE Omega_h::omega_h)
 if(Kokkos_ENABLE_CUDA)
   target_compile_options(meshfields INTERFACE "--expt-relaxed-constexpr")
@@ -163,6 +164,7 @@ meshfields_add_exe(SerializationTests test/testSerialize.cpp)
 meshfields_add_exe(ElementTests test/testElement.cpp)
 meshfields_add_exe(ElementJacobian1d test/testElementJacobian1d.cpp)
 meshfields_add_exe(ElementJacobian2d test/testElementJacobian2d.cpp)
+meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
 meshfields_add_exe(OmegahElementTests test/testOmegahElement.cpp)
 meshfields_add_exe(OmegahCoordFieldTest test/testOmegahCoordField.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
@@ -177,6 +179,7 @@ test_func(SerializationTests ./SerializationTests)
 test_func(ElementTests ./ElementTests)
 test_func(ElementJacobian1d ./ElementJacobian1d)
 test_func(ElementJacobian2d ./ElementJacobian2d)
+test_func(CountIntegrator ./CountIntegrator)
 test_func(OmegahElementTests ./OmegahElementTests)
 test_func(OmegahCoordFieldTest ./OmegahCoordFieldTest)
 if(MeshFields_USE_EXCEPTIONS)

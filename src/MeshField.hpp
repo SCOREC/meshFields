@@ -49,6 +49,11 @@ createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
   return coordField;
 }
 
+} // anonymous namespace
+
+namespace MeshField {
+
+namespace Omegah {
 struct LinearTriangleToVertexField {
   Omega_h::LOs triVerts;
   LinearTriangleToVertexField(Omega_h::Mesh &mesh)
@@ -159,9 +164,8 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   }
 }
 
-} // namespace
+} //end Omegah namespace
 
-namespace MeshField {
 
 template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
@@ -221,7 +225,7 @@ public:
       MeshField::fail("input field order must be 1 or 2\n");
     }
 
-    const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
+    const auto [shp, map] = Omegah::getTriangleElement<ShapeOrder>(mesh);
 
     MeshField::FieldElement f(meshInfo.numTri, field, shp, map);
     auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);

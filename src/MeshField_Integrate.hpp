@@ -1,7 +1,6 @@
 #ifndef MESHFIELD_INTEGRATE_H
 #define MESHFIELD_INTEGRATE_H
 
-#include <Kokkos_Core.hpp>
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
 #include <MeshField_Shape.hpp>
@@ -9,72 +8,7 @@
 #include <iostream>
 #include <type_traits> // has_static_size helper
 
-namespace MeshField {
-  /** \brief A virtual base for user-defined integrators.
-   * directly copied from SCOREC/core @ 7cd76473 apf/apf.h
-   *
-   * \details Users of APF can define an Integrator object to handle
-   * integrating expressions over elements and over meshes.
-   * Users specify the accuracy of the integration and provide
-   * accumulation callbacks which APF uses at each integration
-   * point. The APF-provided process functions will perform the
-   * integration over an element or mesh using the callbacks.
-   * In parallel, users must provide a reduction callback
-   * to turn locally accumulated values into a globally integrated
-   * value.
-   */
-  class Integrator
-  {
-    public:
-      /** \brief Construct an Integrator given an order of accuracy. */
-      Integrator(int o);
-      virtual ~Integrator();
-      /** \brief Run the Integrator over the local Mesh.
-       * \param m mesh to integrate over
-       * \param dim optional dimension to integrate over. This defaults to
-       * integration over the mesh dimesion which may not be correct e.g. in the case
-       * of a 1D element embeded in 3D space.
-       * */
-      void process(Mesh* m, int dim=-1);
-      /** \brief Run the Integrator over a Mesh Element. */
-      void process(MeshElement* e);
-      /** \brief User callback: element entry.
-       *
-       * \details APF will call this function every time the
-       * Integrator begins operating over a new element.
-       * Users can then construct Field Elements, for example.
-       */
-      virtual void inElement(MeshElement*);
-      /** \brief User callback: element exit.
-       *
-       * \details APF will call this function once an Integrator
-       * is done operating over an element. This can be used
-       * to destroy Field Elements, for example.
-       */
-      virtual void outElement();
-      /** \brief User callback: accumulation.
-       *
-       * \details APF will call this function at each integration
-       * point. Users should evaluate their expression and accumulate
-       * the value.
-       *
-       * \param p The local coordinates of the point.
-       * \param w The integration weight of the point.
-       * \param dV The differential volume at that point.
-       */
-      virtual void atPoint(Vector3 const& p, double w, double dV) = 0;
-      /** \brief User callback: parallel reduction.
-       *
-       * \details This function should use communication to reduce
-       * process-local integrations into a global mesh integration,
-       * if that is the user's goal.
-       */
-      virtual void parallelReduce(pcu::PCU*);
-    protected:
-      int order;
-      int ipnode;
-  };
-
+namespace MeshField { //FIXME move some of the helper funcs to anonymous namespace
   // directly copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.[h|cc]
   struct IntegrationPoint
   {
@@ -90,7 +24,7 @@ namespace MeshField {
     public:
       virtual ~Integration() {}
       virtual int countPoints() const = 0;
-      virtual std::vector<IntegrationPoint> getPoint() const = 0;
+      virtual std::vector<IntegrationPoint> getPoints() const = 0;
       virtual int getAccuracy() const = 0;
   };
 
@@ -98,12 +32,18 @@ namespace MeshField {
   {
     public:
       virtual ~EntityIntegration() {}
-      Integration const* getAccurate(int minimumAccuracy) const;
+      Integration const* getAccurate(int minimumAccuracy) const {
+        int n = countIntegrations();
+        for (int i=0; i < n; ++i) {
+          Integration const* integration = getIntegration(i);
+          if (integration->getAccuracy() >= minimumAccuracy)
+            return integration;
+        }
+        return NULL;
+      }
       virtual int countIntegrations() const = 0;
       virtual Integration const* getIntegration(int i) const = 0;
   };
-
-  EntityIntegration const* getIntegration(int meshEntityType);
 
   class TriangleIntegration : public EntityIntegration
   {
@@ -111,9 +51,9 @@ namespace MeshField {
       class N1 : public Integration {
         public:
           virtual int countPoints() const {return 1;}
-          virtual std::vector<IntegrationPoint> getPoint() const
+          virtual std::vector<IntegrationPoint> getPoints() const
           {
-            return {IntegrationPoint point(Vector3(1./3.,1./3.,0),1.0/2.0)};
+            return {IntegrationPoint(Vector3{1./3.,1./3.,0},1.0/2.0)};
           }
           virtual int getAccuracy() const {return 1;}
       }; //end N1
@@ -122,9 +62,9 @@ namespace MeshField {
           virtual int countPoints() const {return 3;}
           virtual std::vector<IntegrationPoint> getPoints() const
           {
-            return { IntegrationPoint(Vector3(0.666666666666667,0.166666666666667,0),1./3./2.0),
-                     IntegrationPoint(Vector3(0.166666666666667,0.666666666666667,0),1./3./2.0),
-                     IntegrationPoint(Vector3(0.166666666666667,0.166666666666667,0),1./3./2.0) };
+            return { IntegrationPoint(Vector3{0.666666666666667,0.166666666666667,0},1./3./2.0),
+                     IntegrationPoint(Vector3{0.166666666666667,0.666666666666667,0},1./3./2.0),
+                     IntegrationPoint(Vector3{0.166666666666667,0.166666666666667,0},1./3./2.0) };
           }
           virtual int getAccuracy() const {return 2;}
       }; //end N2
@@ -137,5 +77,120 @@ namespace MeshField {
         return integrations[i];
       }
   };
+
+  EntityIntegration const* getIntegration(Mesh_Topology topo)
+  {
+    if(topo != Triangle) {
+      fail("getIntegration only supports triangles (Mesh_Topology::Triangle)\n");
+    }
+    return new TriangleIntegration();
+  }
+
+  std::vector<IntegrationPoint> getIntegrationPoints(Mesh_Topology topo, int order) {
+    auto ip = getIntegration(topo)->getAccurate(order)->getPoints();
+    return ip;
+  }
+
+  template <typename FieldElement>
+  auto getIntegrationPointLocalCoords(FieldElement& fes, std::vector<IntegrationPoint> ip) {
+    const auto numPtsPerElm = ip.size();
+    const auto numMeshEnts = fes.numMeshEnts;
+    const auto meshEntDim = fes.MeshEntDim;
+    Kokkos::View<MeshField::Real **> localCoords("localCoords", numMeshEnts*numPtsPerElm, meshEntDim);
+    //broadcast the points into the view - FIXME this is an inefficient use of memory
+    for(size_t pt=0; pt < numPtsPerElm; pt++) {
+      const auto point = ip.at(pt);
+      const auto param = point.param;
+      Kokkos::parallel_for(numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+          for(size_t i=0; i<param.size(); i++) {
+            for(size_t d=0; i<meshEntDim; d++) {
+              localCoords(ent*numPtsPerElm+pt,d) = param[d];
+            }
+          }
+      });
+    }
+    return localCoords;
+  }
+
+  template <typename FieldElement>
+  auto getIntegrationPointWeights(FieldElement& fes, std::vector<IntegrationPoint> ip) {
+    const auto numPtsPerElm = ip.size();
+    const auto numMeshEnts = fes.numMeshEnts;
+    const auto meshEntDim = fes.MeshEntDim;
+    Kokkos::View<Real *> weights("weights", numMeshEnts*numPtsPerElm);
+    //broadcast the points into the view - FIXME this is an inefficient use of memory
+    for(size_t pt=0; pt < numPtsPerElm; pt++) {
+      const auto point = ip.at(pt);
+      const auto w = point.weight;
+      Kokkos::parallel_for(numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+          weights(ent*numPtsPerElm+pt) = w;
+      });
+    }
+    return weights;
+  }
+
+  template <typename FieldElement>
+  auto getJacobianDeterminants(FieldElement& fes, Kokkos::View<Real **> localCoords,
+      size_t numIntegrationPoints) {
+    auto J = getJacobians(fes, localCoords, numIntegrationPoints);
+    auto dV = getJacobianDeterminants(fes, J);
+    return dV;
+  }
+
+  /** \brief A virtual base for user-defined integrators.
+   * directly copied from SCOREC/core @ 7cd76473 apf/apf.h
+   *
+   * FIXME add documentation
+   */
+  class Integrator
+  {
+    public:
+      /** \brief Construct an Integrator given an order of accuracy. */
+      Integrator(int o): order(o) {}
+      virtual ~Integrator() {};
+      /** \brief User callback: process entry
+       *
+       * \details do something at the start of the process call
+       */
+      virtual void pre() {}
+      /** \brief User callback: process exit
+       *
+       * \details do something at the end of the process call
+       */
+      virtual void post() {}
+      /** \brief User callback: accumulation.
+       *
+       * \details called for all integration points
+       * Users should evaluate their expression and accumulate
+       * the value.
+       *
+       * \param p The local coordinates of integration points
+       * \param w The integration weight of the points.
+       * \param dV The differential volume at that points.
+       */
+      virtual void atPoints(Kokkos::View<Real**> p, Kokkos::View<Real*> w, Kokkos::View<Real*> dV) = 0;
+      /** \brief Run the Integrator over the local field elements.
+       * \param fes FieldElement
+       * FIXME make the sensible
+       * */
+      template <typename FieldElement>
+      void process(FieldElement &fes)
+      {
+        //TODO add check to only support triangles
+        pre();
+        const auto topo = fes.elm2dof.getTopology();
+        auto ip = getIntegrationPoints(topo[0],order);
+        auto localCoords = getIntegrationPointLocalCoords(fes,ip);
+        auto weights = getIntegrationPointWeights(fes,ip);
+        auto dV = getJacobianDeterminants(fes,localCoords,ip.size());
+        atPoints(localCoords,weights,dV);
+        post();
+        //TODO support distributed meshes by running a parallel reduction with user functor
+      }
+    protected:
+      int order;
+  };
+
 } // namespace MeshField
 
+#endif
