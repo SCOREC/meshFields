@@ -103,7 +103,7 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
       const auto param = point.param;
       Kokkos::parallel_for(numMeshEnts, KOKKOS_LAMBDA(const int ent) {
           for(size_t i=0; i<param.size(); i++) {
-            for(size_t d=0; i<meshEntDim; d++) {
+            for(size_t d=0; d<meshEntDim; d++) {
               localCoords(ent*numPtsPerElm+pt,d) = param[d];
             }
           }
@@ -133,7 +133,7 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
   auto getJacobianDeterminants(FieldElement& fes, Kokkos::View<Real **> localCoords,
       size_t numIntegrationPoints) {
     auto J = getJacobians(fes, localCoords, numIntegrationPoints);
-    auto dV = getJacobianDeterminants(fes, J);
+    auto dV = getJacobianDeterminants(fes, J); //FIXME fails here
     return dV;
   }
 
