@@ -58,12 +58,10 @@ int main(int argc, char ** argv) {
   MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
         mesh);
 
-  const auto NumTriangles = 18;
   const auto ShapeOrder = 1;
-  const auto MeshDim = 2;
   auto field = omf.getCoordField();
   const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
-  MeshField::FieldElement fes(NumTriangles, field, shp, map);
+  MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 
   CountIntegrator countInt(fes);
   countInt.process(fes);

@@ -92,7 +92,8 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
   }
 
   template <typename FieldElement>
-  auto getIntegrationPointLocalCoords(FieldElement& fes, std::vector<IntegrationPoint> ip) {
+  Kokkos::View<MeshField::Real **>
+  getIntegrationPointLocalCoords(FieldElement& fes, std::vector<IntegrationPoint> ip) {
     const auto numPtsPerElm = ip.size();
     const auto numMeshEnts = fes.numMeshEnts;
     const auto meshEntDim = fes.MeshEntDim;
@@ -114,7 +115,8 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
   }
 
   template <typename FieldElement>
-  auto getIntegrationPointWeights(FieldElement& fes, std::vector<IntegrationPoint> ip) {
+  Kokkos::View<Real *>
+  getIntegrationPointWeights(FieldElement& fes, std::vector<IntegrationPoint> ip) {
     const auto numPtsPerElm = ip.size();
     const auto numMeshEnts = fes.numMeshEnts;
     const auto meshEntDim = fes.MeshEntDim;
