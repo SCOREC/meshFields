@@ -96,14 +96,15 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
     const auto numPtsPerElm = ip.size();
     const auto numMeshEnts = fes.numMeshEnts;
     const auto meshEntDim = fes.MeshEntDim;
-    Kokkos::View<MeshField::Real **> localCoords("localCoords", numMeshEnts*numPtsPerElm, meshEntDim);
+    const auto numParametricCoords = meshEntDim+1;
+    Kokkos::View<MeshField::Real **> localCoords("localCoords", numMeshEnts*numPtsPerElm, numParametricCoords);
     //broadcast the points into the view - FIXME this is an inefficient use of memory
     for(size_t pt=0; pt < numPtsPerElm; pt++) {
       const auto point = ip.at(pt);
       const auto param = point.param;
       Kokkos::parallel_for(numMeshEnts, KOKKOS_LAMBDA(const int ent) {
           for(size_t i=0; i<param.size(); i++) {
-            for(size_t d=0; d<meshEntDim; d++) {
+            for(size_t d=0; d<numParametricCoords; d++) {
               localCoords(ent*numPtsPerElm+pt,d) = param[d];
             }
           }
