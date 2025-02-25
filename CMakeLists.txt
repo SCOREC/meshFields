@@ -25,6 +25,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Element.hpp
   src/MeshField_Integrate.hpp
   src/MeshField_Shape.hpp
+  src/MeshField_ShapeField.hpp
   src/MeshField_Fail.hpp
   src/MeshField_For.hpp
   src/MeshField_Reduce.hpp
