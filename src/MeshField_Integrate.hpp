@@ -53,7 +53,7 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
           virtual int countPoints() const {return 1;}
           virtual std::vector<IntegrationPoint> getPoints() const
           {
-            return {IntegrationPoint(Vector3{1./3.,1./3.,0},1.0/2.0)};
+            return {IntegrationPoint(Vector3{1./3.,1./3.,1./3.},1.0/2.0)};
           }
           virtual int getAccuracy() const {return 1;}
       }; //end N1
@@ -62,9 +62,9 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
           virtual int countPoints() const {return 3;}
           virtual std::vector<IntegrationPoint> getPoints() const
           {
-            return { IntegrationPoint(Vector3{0.666666666666667,0.166666666666667,0},1./3./2.0),
-                     IntegrationPoint(Vector3{0.166666666666667,0.666666666666667,0},1./3./2.0),
-                     IntegrationPoint(Vector3{0.166666666666667,0.166666666666667,0},1./3./2.0) };
+            return { IntegrationPoint(Vector3{0.666666666666667,0.166666666666667,0.166666666666667},1./3./2.0),
+                     IntegrationPoint(Vector3{0.166666666666667,0.666666666666667,0.166666666666667},1./3./2.0),
+                     IntegrationPoint(Vector3{0.166666666666667,0.166666666666667,0.666666666666667},1./3./2.0) };
           }
           virtual int getAccuracy() const {return 2;}
       }; //end N2
