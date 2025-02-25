@@ -18,6 +18,7 @@ if(MeshFields_USE_Cabana)
 endif()
 
 set(MESHFIELD_HEADERS
+  src/MeshField_Defines.hpp
   src/MeshField_Utility.hpp
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
