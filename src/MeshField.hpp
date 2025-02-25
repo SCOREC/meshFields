@@ -213,9 +213,8 @@ public:
   }
 
   // evaluate a field at the specified local coordinate for each triangle
-  template <typename AnalyticFunction, typename ViewType, typename ShapeField>
-  auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                              AnalyticFunction func, ShapeField field) {
+  template <typename ViewType, typename ShapeField>
+  auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem, ShapeField field) {
     const auto MeshDim = 2;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");

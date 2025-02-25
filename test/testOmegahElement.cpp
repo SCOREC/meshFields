@@ -179,9 +179,8 @@ int main(int argc, char **argv) {
         setVertices(mesh, func, field);
         using FieldType = decltype(field);
         auto result =
-            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
-                field);
+            omf.triangleLocalPointEval<ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, field);
         auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                   LinearFunction{});
         if (failed)
@@ -197,9 +196,8 @@ int main(int argc, char **argv) {
         setEdges(mesh, func, field);
         using FieldType = decltype(field);
         auto result =
-            omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{},
-                field);
+            omf.triangleLocalPointEval<ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, field);
         auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                   QuadraticFunction{});
         if (failed)
@@ -215,9 +213,8 @@ int main(int argc, char **argv) {
         setEdges(mesh, func, field);
         using FieldType = decltype(field);
         auto result =
-            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
-                field);
+            omf.triangleLocalPointEval<ViewType, FieldType>(
+                testCase.coords, testCase.NumPtsPerElem, field);
         auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                   LinearFunction{});
         if (failed)
