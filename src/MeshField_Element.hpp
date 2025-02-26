@@ -59,9 +59,20 @@ struct FieldElement {
                const ElementDofHolderAccessor elm2dofIn)
       : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn),
         elm2dof(elm2dofIn) {}
-
-  using ValArray = Kokkos::Array<typename FieldAccessor::BaseType,
-                                 ShapeType::numComponentsPerDof>;
+  /* general template for baseType which simply sets type
+   */
+  template <typename T> struct baseType {
+    using type = T;
+  };
+  /* template specialization to recursively strip type to get base type
+   * Example: int[5][6] => int[6] => int
+   */
+  template <typename T, size_t N> struct baseType<T[N]> {
+    using type = typename baseType<T>::type;
+  };
+  using ValArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    ShapeType::numComponentsPerDof>;
   static const size_t NumComponents = ShapeType::numComponentsPerDof;
 
   /**
@@ -91,7 +102,7 @@ struct FieldElement {
         for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
           const auto fval =
-              field(map.node, map.component, map.entity, map.topo);
+              field(map.entity, map.node, map.component, map.topo);
           c[ci] += fval * shapeValues[ni];
         }
       }
