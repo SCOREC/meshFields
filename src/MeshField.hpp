@@ -180,6 +180,7 @@ public:
             getMeshInfo(mesh_in), mesh_in.coords())) {}
 
   template <typename DataType, size_t order, size_t dim>
+  // Ordering of field indexing changed to 'entity, node, component'
   auto CreateLagrangeField() {
     return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
                                           order, dim>(meshInfo);
