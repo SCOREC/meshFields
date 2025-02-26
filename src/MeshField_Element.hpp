@@ -59,9 +59,14 @@ struct FieldElement {
                const ElementDofHolderAccessor elm2dofIn)
       : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn),
         elm2dof(elm2dofIn) {}
+  /* general template for baseType which simply sets type
+   */
   template <typename T> struct baseType {
     using type = T;
   };
+  /* template specialization to recursively strip type to get base type
+   * Example: int[5][6] => int[6] => int
+   */
   template <typename T, size_t N> struct baseType<T[N]> {
     using type = typename baseType<T>::type;
   };
