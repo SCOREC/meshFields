@@ -10,6 +10,15 @@
 #include <type_traits> // has_static_size helper
 
 namespace {
+  Kokkos::View<MeshField::LO*> getOffsets(MeshField::LO numItems, MeshField::LO numEntriesPerItem) {
+    Kokkos::View<MeshField::LO*> offsets("offsets", numItems+1);
+    auto first = Kokkos::subview(offsets, 0);
+    Kokkos::deep_copy(first, 0); //write 0 to the first item
+    Kokkos::parallel_for(numItems, KOKKOS_LAMBDA(const int i) {
+        offsets(i+1) = (i+1)*numEntriesPerItem;
+    });
+    return offsets;
+  }
 
   //chatgpt prompt 2/20/2025:
   // c++ static assert that checks that a type
@@ -461,11 +470,8 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
 template <typename FieldElement>
 Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
     FieldElement &fes, Kokkos::View<Real **> localCoords) {
-  Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
-  Kokkos::parallel_for(
-      fes.numMeshEnts + 1,
-      KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent; });
-  return evaluate(fes, localCoords, offsets);
+  const auto numPtsPerElement = 1;
+  return evaluate(fes, localCoords, numPtsPerElement);
 }
 
 /**
@@ -483,10 +489,7 @@ template <typename FieldElement>
 Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
     FieldElement &fes, Kokkos::View<Real **> localCoords,
     size_t numPtsPerElement) {
-  Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
-  Kokkos::parallel_for(
-      fes.numMeshEnts + 1,
-      KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
+  const auto offsets = getOffsets(fes.numMeshEnts, numPtsPerElement);
   return evaluate(fes, localCoords, offsets);
 }
 
@@ -508,10 +511,7 @@ template <typename FieldElement>
 Kokkos::View<Real ***> getJacobians(
     FieldElement &fes, Kokkos::View<Real **> localCoords,
     size_t numPtsPerElement) {
-  Kokkos::View<LO *> offsets("offsets", fes.numMeshEnts + 1);
-  Kokkos::parallel_for(
-      fes.numMeshEnts + 1,
-      KOKKOS_LAMBDA(const int ent) { offsets(ent) = ent * numPtsPerElement; });
+  const auto offsets = getOffsets(fes.numMeshEnts, numPtsPerElement);
   return fes.getJacobians(localCoords, offsets);
 }
 
