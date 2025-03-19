@@ -145,6 +145,7 @@ int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
   MeshField::Debug = true;
+#ifdef MESHFIELDS_ENABLE_CABANA
   {
     auto mesh = createMeshTri18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(
@@ -227,6 +228,7 @@ int main(int argc, char **argv) {
       }
     }
   }
+#endif
   {
     auto mesh = createMeshTri18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
