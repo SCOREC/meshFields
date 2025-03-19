@@ -231,6 +231,43 @@ void testCabanaFieldSize() {
       assert(field0.size(i) == 0);
     }
   }
+  multi diffc2({a, a + 1, a + 2});
+  varied diffc3({a, a + 3, a + 4, a + 5});
+  {
+    auto field0 = MeshField::makeField<multi, 0>(diffc2);
+    auto field1 = MeshField::makeField<multi, 1>(diffc2);
+    auto field2 = MeshField::makeField<multi, 2>(diffc2);
+    assert(field0.size(0) == a);
+    assert(field1.size(0) == a + 1);
+    assert(field2.size(0) == a + 2);
+    for (int i = 1; i < MAX_RANK; ++i) {
+      assert(field0.size(i) == psi[i]);
+      assert(field1.size(i) == psi[i]);
+      assert(field2.size(i) == psi[i]);
+    }
+  }
+  {
+    auto field0 = MeshField::makeField<varied, 0>(diffc3);
+    auto field1 = MeshField::makeField<varied, 1>(diffc3);
+    auto field2 = MeshField::makeField<varied, 2>(diffc3);
+    auto field3 = MeshField::makeField<varied, 3>(diffc3);
+    assert(field0.size(0) == a);
+    assert(field1.size(0) == a + 3);
+    assert(field2.size(0) == a + 4);
+    assert(field3.size(0) == a + 5);
+    for (int i = 1; i < 3; i++) {
+      assert(field0.size(i) == psi[i]);
+    }
+    for (int i = 1; i < 1; i++) {
+      assert(field1.size(i) == psi[i]);
+    }
+    for (int i = 1; i < 4; i++) {
+      assert(field2.size(i) == psi[i]);
+    }
+    for (int i = 1; i < 2; i++) {
+      assert(field3.size(i) == psi[i]);
+    }
+  }
   printf("== END testCabanaFieldSize ==\n");
 }
 
