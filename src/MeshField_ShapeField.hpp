@@ -1,7 +1,9 @@
 #ifndef MESHFIELD_SHAPEFIELD_HPP
 #define MESHFIELD_SHAPEFIELD_HPP
 
+#ifdef MESHFIELDS_ENABLE_CABANA
 #include "CabanaController.hpp"
+#endif
 #include "KokkosController.hpp"
 #include "MeshField_Field.hpp"
 #include "MeshField_Shape.hpp"
@@ -171,6 +173,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
     }
+#ifdef MESHFIELDS_ENABLE_CABANA
     using Ctrlr = std::conditional_t<
         std::is_same_v<
             Controller<ExecutionSpace, MemorySpace, DataType>,
@@ -189,6 +192,10 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
       }
     };
     Ctrlr kk_ctrl = createController(1, meshInfo.numVtx);
+#else
+    using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
+    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, 1});
+#endif
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
     using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
@@ -201,6 +208,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     if (meshInfo.numEdge <= 0) {
       fail("mesh has no edges\n");
     }
+#ifdef MESHFIELDS_ENABLE_CABANA
     using Ctrlr = std::conditional_t<
         std::is_same_v<
             Controller<ExecutionSpace, MemorySpace, DataType>,
@@ -220,6 +228,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
       }
     };
     Ctrlr kk_ctrl = createController(1, meshInfo.numVtx, meshInfo.numEdge);
+#else
+    using Ctrlr =
+        Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>;
+    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, 1,
+                   /*field 1*/ meshInfo.numEdge, 1, 1});
+#endif
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
@@ -261,7 +275,8 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   using DataType = Real;
   using MemorySpace = typename ExecutionSpace::memory_space;
   const int numComp = meshInfo.dim;
-  // FIXME Oversized cabana datatypes when numComp = 1|2
+// FIXME Oversized cabana datatypes when numComp = 1|2
+#ifdef MESHFIELDS_ENABLE_CABANA
   using Ctrlr = std::conditional_t<
       std::is_same_v<
           Controller<ExecutionSpace, MemorySpace, DataType>,
@@ -279,6 +294,10 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
     }
   };
   Ctrlr kk_ctrl = createController(numComp, meshInfo.numVtx);
+#else
+  using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
+  Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, numComp});
+#endif
   auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   using LA = LinearAccessor<decltype(vtxField)>;
   using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
