@@ -164,6 +164,29 @@ void testCabanaControllerSize() {
   for (int i = 0; i < 4; i++) {
     assert(c4.size(0, i) == 0);
   }
+
+  multi diffc2({a, b, c});
+  assert(diffc2.size(0, 0) == psi[0]);
+  assert(diffc2.size(1, 0) == psi[1]);
+  assert(diffc2.size(2, 0) == psi[2]);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 1; j < 4; j++) {
+      assert(c2.size(i, j) == psi[j]);
+    }
+  }
+
+  varied diffc3({a, b, c, d});
+  assert(diffc3.size(0, 0) == psi[0]);
+  assert(diffc3.size(1, 0) == psi[1]);
+  assert(diffc3.size(2, 0) == psi[2]);
+  assert(diffc3.size(3, 0) == psi[3]);
+  for (int i = 1; i < 3; i++)
+    assert(diffc3.size(0, i) == psi[i]);
+  for (int i = 1; i < 4; i++)
+    assert(diffc3.size(2, i) == psi[i]);
+  for (int i = 1; i < 2; i++)
+    assert(diffc3.size(3, i) == psi[i]);
+
   printf("== END testCabanaControllerSize ==\n");
 }
 
@@ -313,6 +336,45 @@ void testCabanaParallelFor() {
     MeshField::simd_parallel_for(c1, {0, 0, 0, 0}, {x, y, z, a}, vectorKernel4,
                                  "simple_loop");
   }
+  {
+    using simd_ctrlr =
+        MeshField::CabanaController<ExecutionSpace, MemorySpace, int, int[y],
+                                    int[y][z], int[y][z][a]>;
+    simd_ctrlr c1({x, x + 1, x + 2, x + 3});
+    auto field0 = MeshField::makeField<simd_ctrlr, 0>(c1);
+    auto field1 = MeshField::makeField<simd_ctrlr, 1>(c1);
+    auto field2 = MeshField::makeField<simd_ctrlr, 2>(c1);
+    auto field3 = MeshField::makeField<simd_ctrlr, 3>(c1);
+
+    auto vectorKernel = KOKKOS_LAMBDA(const int &i) {
+      field0(i) = i;
+      assert(field0(i) == i);
+    };
+    MeshField::simd_parallel_for(c1, {0}, {x}, vectorKernel, "simple_loop");
+
+    auto vectorKernel2 = KOKKOS_LAMBDA(const int &i, const int &j) {
+      field1(i, j) = i + j;
+      assert(field1(i, j) == i + j);
+    };
+    MeshField::simd_parallel_for(c1, {0, 0}, {x + 1, y}, vectorKernel2,
+                                 "simple_loop");
+
+    auto vectorKernel3 =
+        KOKKOS_LAMBDA(const int &i, const int &j, const int &k) {
+      field2(i, j, k) = i + j + k;
+      assert(field2(i, j, k) == i + j + k);
+    };
+    MeshField::simd_parallel_for(c1, {0, 0, 0}, {x + 2, y, z}, vectorKernel3,
+                                 "simple_loop");
+
+    auto vectorKernel4 =
+        KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
+      field3(i, j, k, l) = i + j + k + l;
+      assert(field3(i, j, k, l) == i + j + k + l);
+    };
+    MeshField::simd_parallel_for(c1, {0, 0, 0, 0}, {x + 3, y, z, a},
+                                 vectorKernel4, "simple_loop");
+  }
 
   printf("== END testCabanaParallelFor() ==\n");
 }
@@ -349,43 +411,91 @@ void testSetField() {
   const int N = 10;
   using cab1 = MeshField::CabanaController<ExecutionSpace, MemorySpace, int,
                                            int[N], int[N][N], int[N][N][N]>;
-  cab1 c1({N, N, N, N});
-  auto f1 = MeshField::makeField<cab1, 0>(c1);
-  auto f2 = MeshField::makeField<cab1, 1>(c1);
-  auto f3 = MeshField::makeField<cab1, 2>(c1);
-  auto f4 = MeshField::makeField<cab1, 3>(c1);
+  {
+    cab1 c1({N, N, N, N});
+    auto f1 = MeshField::makeField<cab1, 0>(c1);
+    auto f2 = MeshField::makeField<cab1, 1>(c1);
+    auto f3 = MeshField::makeField<cab1, 2>(c1);
+    auto f4 = MeshField::makeField<cab1, 3>(c1);
 
-  Kokkos::View<int *> v1("1", N);
-  Kokkos::View<int **> v2("2", N, N);
-  Kokkos::View<int ***> v3("3", N, N, N);
-  Kokkos::View<int ****> v4("4", N, N, N, N);
+    Kokkos::View<int *> v1("1", N);
+    Kokkos::View<int **> v2("2", N, N);
+    Kokkos::View<int ***> v3("3", N, N, N);
+    Kokkos::View<int ****> v4("4", N, N, N, N);
 
-  Kokkos::Array start = MeshFieldUtil::to_kokkos_array<4>({0, 0, 0, 0});
-  Kokkos::Array end = MeshFieldUtil::to_kokkos_array<4>({N, N, N, N});
-  Kokkos::MDRangePolicy<Kokkos::Rank<4>> p(start, end);
+    Kokkos::Array start = MeshFieldUtil::to_kokkos_array<4>({0, 0, 0, 0});
+    Kokkos::Array end = MeshFieldUtil::to_kokkos_array<4>({N, N, N, N});
+    Kokkos::MDRangePolicy<Kokkos::Rank<4>> p(start, end);
 
-  Kokkos::parallel_for(
-      "", p,
-      KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
-        v1(i) += i;
-        v2(i, j) += i + j;
-        v3(i, j, k) += i + j + k;
-        v4(i, j, k, l) += i + j + k + l;
-      });
+    Kokkos::parallel_for(
+        "", p,
+        KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
+          v1(i) += i;
+          v2(i, j) += i + j;
+          v3(i, j, k) += i + j + k;
+          v4(i, j, k, l) += i + j + k + l;
+        });
 
-  f1.set(v1);
-  f2.set(v2);
-  f3.set(v3);
-  f4.set(v4);
+    f1.set(v1);
+    f2.set(v2);
+    f3.set(v3);
+    f4.set(v4);
 
-  Kokkos::parallel_for(
-      "", p,
-      KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
-        assert(f1(i) == v1(i));
-        assert(f2(i, j) == v2(i, j));
-        assert(f3(i, j, k) == v3(i, j, k));
-        assert(f4(i, j, k, l) == v4(i, j, k, l));
-      });
+    Kokkos::parallel_for(
+        "", p,
+        KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
+          assert(f1(i) == v1(i));
+          assert(f2(i, j) == v2(i, j));
+          assert(f3(i, j, k) == v3(i, j, k));
+          assert(f4(i, j, k, l) == v4(i, j, k, l));
+        });
+  }
+  {
+    cab1 diffc1({N, N + 1, N + 2, N + 3});
+    auto f1 = MeshField::makeField<cab1, 0>(diffc1);
+    auto f2 = MeshField::makeField<cab1, 1>(diffc1);
+    auto f3 = MeshField::makeField<cab1, 2>(diffc1);
+    auto f4 = MeshField::makeField<cab1, 3>(diffc1);
+
+    Kokkos::View<int *> v1("1", N);
+    Kokkos::View<int **> v2("2", N + 1, N);
+    Kokkos::View<int ***> v3("3", N + 2, N, N);
+    Kokkos::View<int ****> v4("4", N + 3, N, N, N);
+
+    Kokkos::Array start = MeshFieldUtil::to_kokkos_array<4>({0, 0, 0, 0});
+    Kokkos::Array end = MeshFieldUtil::to_kokkos_array<4>({N + 3, N, N, N});
+    Kokkos::MDRangePolicy<Kokkos::Rank<4>> p(start, end);
+    Kokkos::parallel_for(
+        "", p,
+        KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
+          if (i < N)
+            v1(i) += i;
+          if (i < N + 1)
+            v2(i, j) += i + j;
+          if (i < N + 2)
+            v3(i, j, k) += i + j + k;
+          if (i < N + 3)
+            v4(i, j, k, l) += i + j + k + l;
+        });
+
+    f1.set(v1);
+    f2.set(v2);
+    f3.set(v3);
+    f4.set(v4);
+
+    Kokkos::parallel_for(
+        "", p,
+        KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
+          if (i < N)
+            assert(f1(i) == v1(i));
+          if (i < N + 1)
+            assert(f2(i, j) == v2(i, j));
+          if (i < N + 2)
+            assert(f3(i, j, k) == v3(i, j, k));
+          if (i < N + 3)
+            assert(f4(i, j, k, l) == v4(i, j, k, l));
+        });
+  }
   printf("== END testSetField ==\n");
 }
 
