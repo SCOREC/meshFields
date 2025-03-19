@@ -185,7 +185,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                         Controller<ExecutionSpace, MemorySpace, DataType>,
                         MeshField::CabanaController<ExecutionSpace, MemorySpace,
                                                     DataType>>) {
-        return Ctrlr(numVtx);
+        return Ctrlr({numVtx});
       } else {
         return Ctrlr({/*field 0*/ numVtx, 1, numComp});
       }
@@ -215,7 +215,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                         Controller<ExecutionSpace, MemorySpace, DataType>,
                         MeshField::CabanaController<ExecutionSpace, MemorySpace,
                                                     DataType>>) {
-        return Ctrlr(std::max(numVtx, numEdge));
+        return Ctrlr({numVtx, numEdge});
       } else {
         return Ctrlr({/*field 0*/ numVtx, 1, numComp,
                       /*field 1*/ numEdge, 1, numComp});
@@ -275,7 +275,7 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
                       Controller<ExecutionSpace, MemorySpace, DataType>,
                       MeshField::CabanaController<ExecutionSpace, MemorySpace,
                                                   DataType>>) {
-      return Ctrlr(numVtx);
+      return Ctrlr({numVtx});
     } else {
       return Ctrlr({/*field 0*/ numVtx, 1, numComp});
     }

@@ -36,7 +36,7 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 void testMakeSliceCabana(int num_tuples) {
   printf("== START testMakeSliceCabana ==\n");
   using Ctrl = MeshField::CabanaController<ExecutionSpace, MemorySpace, double>;
-  Ctrl c(num_tuples);
+  Ctrl c({num_tuples});
 
   auto field0 = MeshField::makeField<Ctrl, 0>(c);
 
@@ -54,7 +54,7 @@ void testParallelReduceCabana() {
   printf("== START testParallelReduceCabana ==\n");
   using Ctrl = MeshField::CabanaController<ExecutionSpace, MemorySpace, int>;
   const int N = 9;
-  Ctrl c(N);
+  Ctrl c({N});
 
   {
     double result = 0, verify = 0;
@@ -132,7 +132,7 @@ void testCabanaControllerSize() {
 
   using simple =
       MeshField::CabanaController<ExecutionSpace, MemorySpace, int[b]>;
-  simple c1(a);
+  simple c1({a});
   for (int i = 0; i < 2; i++) {
     assert(c1.size(0, i) == psi[i]);
   }
@@ -140,7 +140,7 @@ void testCabanaControllerSize() {
   using multi =
       MeshField::CabanaController<ExecutionSpace, MemorySpace, int[b][c][d],
                                   char[b][c][d], bool[b][c][d]>;
-  multi c2(a);
+  multi c2({a, a, a});
   for (int i = 0; i < 3; i++) {
     for (int j = 0; j < 4; j++) {
       assert(c2.size(i, j) == psi[j]);
@@ -150,7 +150,7 @@ void testCabanaControllerSize() {
   using varied =
       MeshField::CabanaController<ExecutionSpace, MemorySpace, double[b][c],
                                   int, float[b][c][d], char[b]>;
-  varied c3(a);
+  varied c3({a, a, a, a});
   for (int i = 0; i < 3; i++)
     assert(c3.size(0, i) == psi[i]);
   assert(c3.size(1, 0) == psi[0]);
@@ -182,9 +182,9 @@ void testCabanaFieldSize() {
       MeshField::CabanaController<ExecutionSpace, MemorySpace, double[b][c],
                                   int, float[b][c][d], char[b]>;
   using empty = MeshField::CabanaController<ExecutionSpace, MemorySpace, int>;
-  simple c1(a);
-  multi c2(a);
-  varied c3(a);
+  simple c1({a});
+  multi c2({a, a, a});
+  varied c3({a, a, a, a});
   empty c4;
 
   const int MAX_RANK = 4;
@@ -241,7 +241,7 @@ void testCabanaParallelFor() {
     using simd_ctrlr =
         MeshField::CabanaController<ExecutionSpace, MemorySpace, int, int[y],
                                     int[y][z], int[y][z][a]>;
-    simd_ctrlr c1(x);
+    simd_ctrlr c1({x, x, x, x});
     auto field0 = MeshField::makeField<simd_ctrlr, 0>(c1);
     auto field1 = MeshField::makeField<simd_ctrlr, 1>(c1);
     auto field2 = MeshField::makeField<simd_ctrlr, 2>(c1);
@@ -285,7 +285,7 @@ void testParallelScan() {
   printf("== START testParallelScan ==\n");
   using s_cab =
       MeshField::CabanaController<ExecutionSpace, MemorySpace, int, int>;
-  s_cab c1(N);
+  s_cab c1({N, N});
   auto pre = MeshField::makeField<s_cab, 0>(c1);
   auto post = MeshField::makeField<s_cab, 1>(c1);
 
@@ -312,7 +312,7 @@ void testSetField() {
   const int N = 10;
   using cab1 = MeshField::CabanaController<ExecutionSpace, MemorySpace, int,
                                            int[N], int[N][N], int[N][N][N]>;
-  cab1 c1(N);
+  cab1 c1({N, N, N, N});
   auto f1 = MeshField::makeField<cab1, 0>(c1);
   auto f2 = MeshField::makeField<cab1, 1>(c1);
   auto f3 = MeshField::makeField<cab1, 2>(c1);
