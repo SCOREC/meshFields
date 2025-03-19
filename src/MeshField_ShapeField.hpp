@@ -1,8 +1,8 @@
 #ifndef MESHFIELD_SHAPEFIELD_HPP
 #define MESHFIELD_SHAPEFIELD_HPP
 
-#include "KokkosController.hpp"
 #include "CabanaController.hpp"
+#include "KokkosController.hpp"
 #include "MeshField_Field.hpp"
 #include "MeshField_Shape.hpp"
 #include <type_traits> //decltype
