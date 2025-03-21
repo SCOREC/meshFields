@@ -78,12 +78,12 @@ namespace MeshField { //FIXME move some of the helper funcs to anonymous namespa
       }
   };
 
-  EntityIntegration const* getIntegration(Mesh_Topology topo)
+  std::shared_ptr<EntityIntegration> const getIntegration(Mesh_Topology topo)
   {
     if(topo != Triangle) {
       fail("getIntegration only supports triangles (Mesh_Topology::Triangle)\n");
     }
-    return new TriangleIntegration();
+    return std::make_shared<TriangleIntegration>();
   }
 
   std::vector<IntegrationPoint> getIntegrationPoints(Mesh_Topology topo, int order) {
