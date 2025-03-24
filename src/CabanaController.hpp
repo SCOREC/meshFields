@@ -150,7 +150,6 @@ private:
   // member vaiables
   std::tuple<Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>
       aosoa;
-  // Cabana::AoSoA<DataTypes, MemorySpace, vecLen> aosoa;
   int num_tuples[sizeof...(Ts)];
   unsigned short theta = 0;
   int extent_sizes[sizeof...(Ts)][MAX_RANK];
