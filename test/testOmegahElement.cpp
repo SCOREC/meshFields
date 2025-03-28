@@ -142,8 +142,8 @@ void doFail(std::string_view order, std::string_view function,
 }
 
 template <template <typename...> typename Controller>
-void doRun(Omega_h::Mesh mesh,
-           MeshField::OmegahMeshField<ExecutionSpace, Controller> omf) {
+void doRun(Omega_h::Mesh &mesh,
+           MeshField::OmegahMeshField<ExecutionSpace, Controller> &omf) {
 
   // setup field with values from the analytic function
   static const size_t OnePtPerElem = 1;
