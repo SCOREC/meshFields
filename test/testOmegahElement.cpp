@@ -141,6 +141,131 @@ void doFail(std::string_view order, std::string_view function,
   MeshField::fail(msg);
 }
 
+#ifdef MESHFIELDS_ENABLE_CABANA
+template <size_t ShapeOrder, size_t MeshDim>
+auto makeLagrangeField(
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController>
+        omf) {
+  return omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+}
+#endif
+template <size_t ShapeOrder, size_t MeshDim>
+auto makeLagrangeField(
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController>
+        omf) {
+  return omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
+}
+#ifdef MESHFIELDS_ENABLE_CABANA
+template <typename ViewType, typename FieldType>
+auto doTrianglePoint(
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf,
+    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
+    LinearFunction LinFunc, FieldType field) {
+  return omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+      coords, NumPtsPerElem, LinFunc, field);
+}
+#endif
+template <typename ViewType, typename FieldType>
+auto doTrianglePoint(
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf,
+    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
+    LinearFunction LinFunc, FieldType field) {
+  return omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
+      coords, NumPtsPerElem, LinFunc, field);
+}
+#ifdef MESHFIELDS_ENABLE_CABANA
+template <typename ViewType, typename FieldType>
+auto doTrianglePoint(
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf,
+    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
+    QuadraticFunction QuadFunc, FieldType field) {
+  return omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
+      coords, NumPtsPerElem, QuadFunc, field);
+}
+#endif
+template <typename ViewType, typename FieldType>
+auto doTrianglePoint(
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf,
+    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
+    QuadraticFunction QuadFunc, FieldType field) {
+  return omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
+      coords, NumPtsPerElem, QuadFunc, field);
+}
+
+template <template <typename...> typename Controller>
+void doRun(Omega_h::Mesh mesh,
+           MeshField::OmegahMeshField<ExecutionSpace, Controller> omf) {
+
+  // setup field with values from the analytic function
+  static const size_t OnePtPerElem = 1;
+  static const size_t ThreePtsPerElem = 3;
+  auto centroids = createElmAreaCoords<OnePtPerElem>(
+      mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
+  auto interior =
+      createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.1, 0.4, 0.5});
+  auto vertex =
+      createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.0, 0.0, 1.0});
+  // clang-format off
+    auto allVertices = createElmAreaCoords<ThreePtsPerElem>(mesh.nfaces(),
+        {1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0});
+    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
+                        TestCoords{interior, OnePtPerElem, "interior"},
+                        TestCoords{vertex, OnePtPerElem, "vertex"},
+                        TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
+  // clang-format on
+
+  auto coords = mesh.coords();
+  const auto MeshDim = 2;
+  for (auto testCase : cases) {
+    using ViewType = decltype(testCase.coords);
+    {
+      const auto ShapeOrder = 1;
+      auto field = makeLagrangeField<ShapeOrder, MeshDim>(omf);
+      LinearFunction func = LinearFunction();
+      setVertices(mesh, func, field);
+      using FieldType = decltype(field);
+      auto result = doTrianglePoint<ViewType, FieldType>(
+          omf, testCase.coords, testCase.NumPtsPerElem, func, field);
+      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                LinearFunction{});
+      if (failed)
+        doFail("linear", "linear", testCase.name);
+    }
+
+    {
+      const auto ShapeOrder = 2;
+      auto field = makeLagrangeField<ShapeOrder, MeshDim>(omf);
+      auto func = QuadraticFunction();
+      setVertices(mesh, func, field);
+      setEdges(mesh, func, field);
+      using FieldType = decltype(field);
+      auto result = doTrianglePoint<ViewType, FieldType>(
+          omf, testCase.coords, testCase.NumPtsPerElem, func, field);
+      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                QuadraticFunction{});
+      if (failed)
+        doFail("quadratic", "quadratic", testCase.name);
+    }
+
+    {
+      const auto ShapeOrder = 2;
+      auto field = makeLagrangeField<ShapeOrder, MeshDim>(omf);
+      auto func = LinearFunction();
+      setVertices(mesh, func, field);
+      setEdges(mesh, func, field);
+      using FieldType = decltype(field);
+      auto result = doTrianglePoint<ViewType, FieldType>(
+          omf, testCase.coords, testCase.NumPtsPerElem, func, field);
+      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                LinearFunction{});
+      if (failed)
+        doFail("quadratic", "linear", testCase.name);
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
@@ -150,167 +275,14 @@ int main(int argc, char **argv) {
     auto mesh = createMeshTri18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(
         mesh);
-
-    // setup field with values from the analytic function
-    static const size_t OnePtPerElem = 1;
-    static const size_t ThreePtsPerElem = 3;
-    auto centroids = createElmAreaCoords<OnePtPerElem>(
-        mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
-    auto interior =
-        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.1, 0.4, 0.5});
-    auto vertex =
-        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.0, 0.0, 1.0});
-    // clang-format off
-    auto allVertices = createElmAreaCoords<ThreePtsPerElem>(mesh.nfaces(),
-        {1.0, 0.0, 0.0,
-         0.0, 1.0, 0.0,
-         0.0, 0.0, 1.0});
-    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
-                        TestCoords{interior, OnePtPerElem, "interior"},
-                        TestCoords{vertex, OnePtPerElem, "vertex"},
-                        TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
-    // clang-format on
-
-    auto coords = mesh.coords();
-    const auto MeshDim = 2;
-    for (auto testCase : cases) {
-      using ViewType = decltype(testCase.coords);
-      {
-        const auto ShapeOrder = 1;
-        auto field =
-            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-        auto func = LinearFunction();
-        setVertices(mesh, func, field);
-        using FieldType = decltype(field);
-        auto result =
-            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
-                field);
-        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                  LinearFunction{});
-        if (failed)
-          doFail("linear", "linear", testCase.name);
-      }
-      {
-        const auto ShapeOrder = 2;
-        auto field =
-            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-        auto func = QuadraticFunction();
-        setVertices(mesh, func, field);
-        setEdges(mesh, func, field);
-        using FieldType = decltype(field);
-        auto result =
-            omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{},
-                field);
-        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                  QuadraticFunction{});
-        if (failed)
-          doFail("quadratic", "quadratic", testCase.name);
-      }
-      {
-        const auto ShapeOrder = 2;
-        auto field =
-            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-        auto func = LinearFunction();
-        auto coords = mesh.coords();
-        setVertices(mesh, func, field);
-        setEdges(mesh, func, field);
-        using FieldType = decltype(field);
-        auto result =
-            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
-                field);
-        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                  LinearFunction{});
-        if (failed)
-          doFail("quadratic", "linear", testCase.name);
-      }
-    }
+    doRun<MeshField::CabanaController>(mesh, omf);
   }
 #endif
   {
     auto mesh = createMeshTri18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
         mesh);
-
-    // setup field with values from the analytic function
-    static const size_t OnePtPerElem = 1;
-    static const size_t ThreePtsPerElem = 3;
-    auto centroids = createElmAreaCoords<OnePtPerElem>(
-        mesh.nfaces(), {1 / 3.0, 1 / 3.0, 1 / 3.0});
-    auto interior =
-        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.1, 0.4, 0.5});
-    auto vertex =
-        createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.0, 0.0, 1.0});
-    // clang-format off
-    auto allVertices = createElmAreaCoords<ThreePtsPerElem>(mesh.nfaces(),
-        {1.0, 0.0, 0.0,
-         0.0, 1.0, 0.0,
-         0.0, 0.0, 1.0});
-    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
-                        TestCoords{interior, OnePtPerElem, "interior"},
-                        TestCoords{vertex, OnePtPerElem, "vertex"},
-                        TestCoords{allVertices, ThreePtsPerElem, "allVertices"}};
-    // clang-format on
-
-    auto coords = mesh.coords();
-    const auto MeshDim = 2;
-    for (auto testCase : cases) {
-      using ViewType = decltype(testCase.coords);
-      {
-        const auto ShapeOrder = 1;
-        auto field =
-            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-        auto func = LinearFunction();
-        setVertices(mesh, func, field);
-        using FieldType = decltype(field);
-        auto result =
-            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
-                field);
-        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                  LinearFunction{});
-        if (failed)
-          doFail("linear", "linear", testCase.name);
-      }
-
-      {
-        const auto ShapeOrder = 2;
-        auto field =
-            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-        auto func = QuadraticFunction();
-        setVertices(mesh, func, field);
-        setEdges(mesh, func, field);
-        using FieldType = decltype(field);
-        auto result =
-            omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, QuadraticFunction{},
-                field);
-        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                  QuadraticFunction{});
-        if (failed)
-          doFail("quadratic", "quadratic", testCase.name);
-      }
-
-      {
-        const auto ShapeOrder = 2;
-        auto field =
-            omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
-        auto func = LinearFunction();
-        setVertices(mesh, func, field);
-        setEdges(mesh, func, field);
-        using FieldType = decltype(field);
-        auto result =
-            omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-                testCase.coords, testCase.NumPtsPerElem, LinearFunction{},
-                field);
-        auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                  LinearFunction{});
-        if (failed)
-          doFail("quadratic", "linear", testCase.name);
-      }
-    }
+    doRun<MeshField::KokkosController>(mesh, omf);
   }
   Kokkos::finalize();
   return 0;
