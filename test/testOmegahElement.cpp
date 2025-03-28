@@ -156,42 +156,23 @@ auto makeLagrangeField(
   return omf.CreateLagrangeField<MeshField::Real, ShapeOrder, MeshDim>();
 }
 #ifdef MESHFIELDS_ENABLE_CABANA
-template <typename ViewType, typename FieldType>
+template <typename Func, typename ViewType, typename FieldType>
 auto doTrianglePoint(
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf,
-    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
-    LinearFunction LinFunc, FieldType field) {
-  return omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-      coords, NumPtsPerElem, LinFunc, field);
+    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem, Func func,
+    FieldType field) {
+  return omf.triangleLocalPointEval<Func, ViewType, FieldType>(
+      coords, NumPtsPerElem, func, field);
 }
 #endif
-template <typename ViewType, typename FieldType>
+template <typename Func, typename ViewType, typename FieldType>
 auto doTrianglePoint(
     MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf,
-    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
-    LinearFunction LinFunc, FieldType field) {
-  return omf.triangleLocalPointEval<LinearFunction, ViewType, FieldType>(
-      coords, NumPtsPerElem, LinFunc, field);
+    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem, Func func,
+    FieldType field) {
+  return omf.triangleLocalPointEval<Func, ViewType, FieldType>(
+      coords, NumPtsPerElem, func, field);
 }
-#ifdef MESHFIELDS_ENABLE_CABANA
-template <typename ViewType, typename FieldType>
-auto doTrianglePoint(
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf,
-    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
-    QuadraticFunction QuadFunc, FieldType field) {
-  return omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
-      coords, NumPtsPerElem, QuadFunc, field);
-}
-#endif
-template <typename ViewType, typename FieldType>
-auto doTrianglePoint(
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf,
-    Kokkos::View<MeshField::Real *[3]> coords, int NumPtsPerElem,
-    QuadraticFunction QuadFunc, FieldType field) {
-  return omf.triangleLocalPointEval<QuadraticFunction, ViewType, FieldType>(
-      coords, NumPtsPerElem, QuadFunc, field);
-}
-
 template <template <typename...> typename Controller>
 void doRun(Omega_h::Mesh mesh,
            MeshField::OmegahMeshField<ExecutionSpace, Controller> omf) {
@@ -226,7 +207,7 @@ void doRun(Omega_h::Mesh mesh,
       LinearFunction func = LinearFunction();
       setVertices(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = doTrianglePoint<ViewType, FieldType>(
+      auto result = doTrianglePoint<LinearFunction, ViewType, FieldType>(
           omf, testCase.coords, testCase.NumPtsPerElem, func, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 LinearFunction{});
@@ -241,7 +222,7 @@ void doRun(Omega_h::Mesh mesh,
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = doTrianglePoint<ViewType, FieldType>(
+      auto result = doTrianglePoint<QuadraticFunction, ViewType, FieldType>(
           omf, testCase.coords, testCase.NumPtsPerElem, func, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 QuadraticFunction{});
@@ -256,7 +237,7 @@ void doRun(Omega_h::Mesh mesh,
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = doTrianglePoint<ViewType, FieldType>(
+      auto result = doTrianglePoint<LinearFunction, ViewType, FieldType>(
           omf, testCase.coords, testCase.NumPtsPerElem, func, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 LinearFunction{});
