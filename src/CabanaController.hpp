@@ -94,8 +94,6 @@ public:
 private:
   // all the type defenitions that are needed us to get the type of the slice
   // returned by the underlying AoSoA
-  using soa_t = Cabana::SoA<DataTypes, vecLen>;
-
   template <std::size_t index>
   using member_data_t =
       typename Cabana::MemberTypeAtIndex<index, DataTypes>::type;
@@ -111,6 +109,15 @@ private:
 
   template <class T, int stride>
   using wrapper_slice_t = CabanaSliceWrapper<member_slice_t<T, stride>, T>;
+
+  template <size_t... I>
+  static auto construct(std::integer_sequence<size_t, I...>,
+                        std::vector<int> &obj) {
+    return std::tuple<
+        Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>{
+        Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>(
+            "sliceAoSoA", obj[I])...};
+  }
 
   template <typename T1, typename... Tx> void construct_sizes() {
     // There are no dynamic ranks w/ cabana controller.
@@ -134,26 +141,34 @@ private:
       }
       break;
     }
-    extent_sizes[theta][0] = num_tuples;
+    extent_sizes[theta][0] = num_tuples[this->theta];
     this->theta += 1;
     if constexpr (sizeof...(Tx) != 0)
       construct_sizes<Tx...>();
   }
 
   // member vaiables
-  Cabana::AoSoA<DataTypes, MemorySpace, vecLen> aosoa;
-  const int num_tuples;
+  std::tuple<Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>
+      aosoa;
+  int num_tuples[sizeof...(Ts)];
   unsigned short theta = 0;
   int extent_sizes[sizeof...(Ts)][MAX_RANK];
 
 public:
-  CabanaController() : num_tuples(0) {
+  CabanaController() {
     static_assert(sizeof...(Ts) != 0);
+    for (int i = 0; i < sizeof...(Ts); ++i) {
+      num_tuples[i] = 0;
+    }
     construct_sizes<Ts...>();
   }
-
-  CabanaController(int n) : aosoa("sliceAoSoA", n), num_tuples(n) {
+  CabanaController(const std::initializer_list<int> items) {
     static_assert(sizeof...(Ts) != 0);
+    std::vector<int> obj(items);
+    for (std::size_t i = 0; i < obj.size(); ++i) {
+      num_tuples[i] = obj[i];
+    }
+    aosoa = construct(std::make_integer_sequence<size_t, sizeof...(Ts)>{}, obj);
     construct_sizes<Ts...>();
   }
 
@@ -162,18 +177,19 @@ public:
     assert(j >= 0);
     assert(j <= MAX_RANK);
     if (j == 0)
-      return this->tuples();
+      return this->tuples(i);
     else
       return extent_sizes[i][j];
   }
 
-  int tuples() const { return num_tuples; }
+  int tuples(int i) const { return num_tuples[i]; }
 
   template <std::size_t index> auto makeSlice() {
     // Creates wrapper object w/ meta data about the slice.
     using type = std::tuple_element_t<index, TypeTuple>;
-    const int stride = sizeof(soa_t) / sizeof(member_value_t<index>);
-    auto slice = Cabana::slice<index>(aosoa);
+    const int stride = sizeof(Cabana::SoA<Cabana::MemberTypes<type>, vecLen>) /
+                       sizeof(member_value_t<index>);
+    auto slice = Cabana::slice<0>(std::get<index>(aosoa));
     int sizes[MAX_RANK];
     for (int i = 0; i < MAX_RANK; i++)
       sizes[i] = this->size(index, i);
