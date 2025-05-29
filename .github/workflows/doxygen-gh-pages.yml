@@ -20,7 +20,7 @@ jobs:
       - name: Install dependencies
         run: |
               sudo apt update
-              sudo apt install g++- cmake doxygen
+              sudo apt install g++ cmake doxygen
 
       - name: Kokkos Checkout repo
         uses: actions/checkout@v4
@@ -31,7 +31,7 @@ jobs:
       - name: Kokkos Configure CMake
         shell: bash
         run: cmake -S $GITHUB_WORKSPACE/kokkos -B ${{runner.workspace}}/build-kokkos
-            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+            -DCMAKE_CXX_COMPILER=g++
             -DKokkos_ENABLE_SERIAL=ON 
             -DKokkos_ENABLE_OPENMP=OFF
             -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-kokkos/install
@@ -50,8 +50,8 @@ jobs:
       - name: Omega_h Configure CMake
         shell: bash
         run: cmake -S $GITHUB_WORKSPACE/omegah -B ${{runner.workspace}}/build-omegah
-            -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
-            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_COMPILER=g++
             -DBUILD_SHARED_LIBS=OFF
             -DOmega_h_USE_Kokkos=ON
             -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib/cmake
@@ -72,7 +72,7 @@ jobs:
       - name: MeshFields Configure CMake
         shell: bash
         run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
-            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+            -DCMAKE_CXX_COMPILER=g++
             -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
             -DMeshFields_USE_Cabana=OFF
             -DOmega_h_ROOT=${{runner.workspace}}/build-omegah/install
