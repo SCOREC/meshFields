@@ -19,13 +19,12 @@ jobs:
     # I think this is the minimal set needed for a public repo (https://github.com/github/codeql-action/pull/689).
     permissions:
       security-events: write
-      contents: write
 
     steps:
-    - name: Install Dependencies
+    - name: Install CMake
       run: |
         sudo apt-get update -yq
-        sudo apt-get install -yq cmake doxygen
+        sudo apt-get install -yq cmake
         cmake --version
 
     ## Kokkos
@@ -130,18 +129,3 @@ jobs:
       # only need to scan with a single build config if the installed cmake config files work
       if: matrix.compiler == 'g++' && matrix.build_type == 'Release'
       uses: github/codeql-action/analyze@v3
-
-    - name: Generate Doc
-      if: matrix.compiler == 'g++' && matrix.build_type == 'Release'
-      run: doxygen ${{github.workspace}}/build-meshFields/Doxyfile
-    
-    - name: Upload artifact
-      if: matrix.compiler == 'g++' && matrix.build_type == 'Release'
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: ./docs/html
-
-    - name: Deploy to GitHub Pages
-      if: matrix.compiler == 'g++' && matrix.build_type == 'Release'
-      id: deployment
-      uses: actions/deploy-pages@v4
