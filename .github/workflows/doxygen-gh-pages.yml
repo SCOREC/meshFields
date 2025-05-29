@@ -1,0 +1,91 @@
+name: Doxygen GitHub Pages Deploy Action
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+              sudo apt update
+              sudo apt install g++- cmake doxygen
+
+      - name: Kokkos Checkout repo
+        uses: actions/checkout@v4
+        with:
+            repository: kokkos/kokkos
+            path: kokkos
+
+      - name: Kokkos Configure CMake
+        shell: bash
+        run: cmake -S $GITHUB_WORKSPACE/kokkos -B ${{runner.workspace}}/build-kokkos
+            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+            -DKokkos_ENABLE_SERIAL=ON 
+            -DKokkos_ENABLE_OPENMP=OFF
+            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-kokkos/install
+
+      - name: Kokkos Build
+        shell: bash
+        run: cmake --build ${{runner.workspace}}/build-kokkos --parallel 2 --target install
+
+        ## Omegah
+      - name: Omega_h Checkout repo
+        uses: actions/checkout@v4
+        with:
+            repository: sandialabs/omega_h
+            path: omegah
+
+      - name: Omega_h Configure CMake
+        shell: bash
+        run: cmake -S $GITHUB_WORKSPACE/omegah -B ${{runner.workspace}}/build-omegah
+            -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
+            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+            -DBUILD_SHARED_LIBS=OFF
+            -DOmega_h_USE_Kokkos=ON
+            -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib/cmake
+            -DOmega_h_USE_MPI=OFF
+            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-omegah/install
+
+      - name: Omega_h Build
+        shell: bash
+        run: cmake --build ${{runner.workspace}}/build-omegah --parallel 2 --target install
+    
+      ## MeshFields
+      - name: MeshFields Checkout repo
+        uses: actions/checkout@v4
+        with:
+            repository: SCOREC/meshFields
+            path: meshFields
+
+      - name: MeshFields Configure CMake
+        shell: bash
+        run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
+            -DCMAKE_CXX_COMPILER=${{matrix.compiler}}
+            -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
+            -DMeshFields_USE_Cabana=OFF
+            -DOmega_h_ROOT=${{runner.workspace}}/build-omegah/install
+            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
+      
+      - name: Generate Doc
+        run: doxygen ${{runner.workspace}}/build-meshFields/Doxyfile
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./docs/html
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
