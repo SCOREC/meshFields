@@ -1,9 +1,9 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_For.hpp"
-#include "MeshField_SimdFor.hpp"
 #ifdef MESHFIELDS_ENABLE_CABANA
 #include "CabanaController.hpp"
+#include "MeshField_SimdFor.hpp"
 #endif
 #include <Kokkos_Core.hpp>
 #include <chrono>
