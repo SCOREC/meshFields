@@ -19,10 +19,16 @@ using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 #define DIM2 3
 #endif
 int main(int argc, char **argv) {
-  int n = atoi(argv[1]), runs = atoi(argv[2]);
+  int n = 1000, runs = 10;
+  bool which = true;
+  if (argc == 4) {
+    n = atoi(argv[1]);
+    runs = atoi(argv[2]);
+    which = atoi(argv[3]);
+  }
   Kokkos::initialize(argc, argv);
 #ifdef MESHFIELDS_ENABLE_CABANA
-  if (atoi(argv[3])) {
+  if (which) {
     double avg = 0;
     using cab = MeshField::CabanaController<ExecutionSpace, MemorySpace,
                                             int[DIM1][DIM2]>;
@@ -61,8 +67,7 @@ int main(int argc, char **argv) {
     avg = avg / runs;
     std::cout << std::fixed << std::setprecision(1) << avg << std::endl;
   }
-
-  Kokkos::finalize();
 #endif
+  Kokkos::finalize();
   return 0;
 }
