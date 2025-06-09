@@ -1,10 +1,8 @@
+#include "CabanaController.hpp"
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_For.hpp"
-#ifdef MESHFIELDS_ENABLE_CABANA
-#include "CabanaController.hpp"
 #include "MeshField_SimdFor.hpp"
-#endif
 #include <Kokkos_Core.hpp>
 #include <chrono>
 #include <iomanip>
@@ -27,7 +25,6 @@ int main(int argc, char **argv) {
     which = atoi(argv[3]);
   }
   Kokkos::initialize(argc, argv);
-#ifdef MESHFIELDS_ENABLE_CABANA
   if (which) {
     double avg = 0;
     using cab = MeshField::CabanaController<ExecutionSpace, MemorySpace,
@@ -67,7 +64,6 @@ int main(int argc, char **argv) {
     avg = avg / runs;
     std::cout << std::fixed << std::setprecision(1) << avg << std::endl;
   }
-#endif
   Kokkos::finalize();
   return 0;
 }
