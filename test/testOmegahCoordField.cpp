@@ -79,8 +79,8 @@ bool triangleLocalToGlobal(Omega_h::Mesh mesh) {
       MeshField::CreateCoordinateField<ExecutionSpace,
                                        MeshField::KokkosController>(meshInfo);
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
-    coordField(0, 0, i, MeshField::Vertex) = coords[i * MeshDim];
-    coordField(0, 1, i, MeshField::Vertex) = coords[i * MeshDim + 1];
+    coordField(i, 0, 0, MeshField::Vertex) = coords[i * MeshDim];
+    coordField(i, 0, 1, MeshField::Vertex) = coords[i * MeshDim + 1];
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx},
                           setCoordField, "setCoordField");

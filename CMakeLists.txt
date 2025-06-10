@@ -172,8 +172,10 @@ meshfields_add_exe(OmegahCoordFieldTest test/testOmegahCoordField.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 
 if(MeshFields_USE_Cabana)
+  meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
   meshfields_add_exe(CabanaTests test/testCabana.cpp)
   test_func(CabanaTests ./CabanaTests)
+  test_func(ControllerPerformance ./ControllerPerformance)
 endif()
 
 test_func(KokkosTests ./KokkosTests)

@@ -41,8 +41,8 @@ createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
   auto coordField =
       MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
-    coordField(0, 0, i, MeshField::Vertex) = coords[i * meshDim];
-    coordField(0, 1, i, MeshField::Vertex) = coords[i * meshDim + 1];
+    coordField(i, 0, 0, MeshField::Vertex) = coords[i * meshDim];
+    coordField(i, 0, 1, MeshField::Vertex) = coords[i * meshDim + 1];
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
                           setCoordField, "setCoordField");
@@ -184,6 +184,7 @@ public:
             getMeshInfo(mesh_in), mesh_in.coords())) {}
 
   template <typename DataType, size_t order, size_t dim>
+  // Ordering of field indexing changed to 'entity, node, component'
   auto CreateLagrangeField() {
     return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
                                           order, dim>(meshInfo);
