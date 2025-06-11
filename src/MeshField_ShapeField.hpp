@@ -276,7 +276,7 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   using DataType = Real;
   using MemorySpace = typename ExecutionSpace::memory_space;
   const int numComp = meshInfo.dim;
-// FIXME Oversized cabana datatypes when numComp = 1|2
+// FIXME Oversized cabana datatypes when numComp = 1|2, specialize controller template for dimension? //HERE
 #ifdef MESHFIELDS_ENABLE_CABANA
   using Ctrlr = std::conditional_t<
       std::is_same_v<
