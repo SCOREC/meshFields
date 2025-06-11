@@ -36,7 +36,7 @@ template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
 decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller>(
     MeshField::MeshInfo()))
-createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
+createCoordinateField(const MeshField::MeshInfo& mesh_info, Omega_h::Reals coords) {
   const auto meshDim = mesh_info.dim;
   auto coordField =
       MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
