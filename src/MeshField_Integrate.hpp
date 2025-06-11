@@ -145,9 +145,23 @@ auto getJacobianDeterminants(FieldElement &fes,
 }
 
 /** \brief A virtual base for user-defined integrators.
- * directly copied from SCOREC/core @ 7cd76473 apf/apf.h
  *
- * FIXME add documentation
+ * The `Integrator` class provides an interface for implementing custom
+ * integration routines over elements. Users can define specific behavior
+ * for integration points, weights, and differential volumes.
+ *
+ * This class is directly adapted from SCOREC/core @ 7cd76473 apf/apf.h.
+ *
+ * \details
+ * The `Integrator` class operates on elements and provides hooks
+ * for user-defined callbacks:
+ * - `pre`: Called before the integration process begins.
+ * - `post`: Called after the integration process ends.
+ * - `atPoints`: Called for each integration point to perform user-defined
+ *   computations.
+ *
+ * To use this class, derive from it and implement the `atPoints` method.
+ * Optionally, override `pre` and `post` for additional setup or cleanup.
  */
 class Integrator {
 public:
