@@ -8,8 +8,7 @@
 #include <iostream>
 #include <type_traits> // has_static_size helper
 
-namespace MeshField { // FIXME move some of the helper funcs to anonymous
-                      // namespace
+namespace MeshField {
 // directly copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.[h|cc]
 struct IntegrationPoint {
   IntegrationPoint(Vector3 const &p, double w) : param(p), weight(w) {}
