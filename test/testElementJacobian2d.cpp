@@ -69,7 +69,6 @@ void setVtxCoords(size_t numVerts, size_t meshDim, TriangleTestCase testTri,
                           "setCoordField");
 }
 
-// evaluate a field at the specified local coordinate for each edge
 void triJacobian() {
   const MeshField::MeshInfo meshInfo{
       .numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
