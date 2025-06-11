@@ -15,7 +15,7 @@ namespace MeshField {
  * @brief
  * On-process mesh metadata
  */
-struct MeshInfo { // FIXME should be a class with ctors that prevent bad state
+struct MeshInfo {
   int numVtx;     // entDim = 0
   int numEdge;    // entDim = 1
   int numTri;     // entDim = 2
@@ -59,9 +59,9 @@ template <typename MeshFieldType, typename Shape, typename... Mixins>
 struct ShapeField : public Mixins... {
   MeshFieldType meshField;
   Shape shape;
-  MeshInfo meshInfo;
+  const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
-  ShapeField(MeshFieldType &meshFieldIn, MeshInfo meshInfoIn, Mixins... mixins)
+  ShapeField(MeshFieldType &meshFieldIn, const MeshInfo& meshInfoIn, Mixins... mixins)
       : meshField(meshFieldIn), meshInfo(meshInfoIn), Mixins(mixins)... {};
 };
 

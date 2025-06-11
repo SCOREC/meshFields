@@ -44,10 +44,10 @@ void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real *> coords,
 
 // evaluate a field at the specified local coordinate for each edge
 void edgeJacobian() {
-  MeshField::MeshInfo meshInfo;
-  meshInfo.dim = 1;
-  meshInfo.numVtx = 2;
-  meshInfo.numEdge = 1;
+  const MeshField::MeshInfo meshInfo{
+    .numVtx = 2,
+    .numEdge = 1,
+    .dim = 1};
   auto coordField =
       MeshField::CreateCoordinateField<ExecutionSpace,
                                        MeshField::KokkosController>(meshInfo);

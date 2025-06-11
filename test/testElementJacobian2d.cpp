@@ -71,11 +71,11 @@ void setVtxCoords(size_t numVerts, size_t meshDim, TriangleTestCase testTri,
 
 // evaluate a field at the specified local coordinate for each edge
 void triJacobian() {
-  MeshField::MeshInfo meshInfo;
-  meshInfo.dim = 2;
-  meshInfo.numVtx = 3;
-  meshInfo.numEdge = 3;
-  meshInfo.numTri = 1;
+  const MeshField::MeshInfo meshInfo{
+    .numVtx = 3,
+    .numEdge = 3,
+    .numTri = 1,
+    .dim = 2};
   auto coordField =
       MeshField::CreateCoordinateField<ExecutionSpace,
                                        MeshField::KokkosController>(meshInfo);

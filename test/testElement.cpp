@@ -39,9 +39,7 @@ struct LinearTriangleToVertexField {
 // evaluate a field at the specified local coordinate for each triangle
 void triangleLocalPointEval() {
   const auto numElms = 3; // provided by the mesh
-  MeshField::MeshInfo meshInfo;
-  meshInfo.numVtx = 5;
-  meshInfo.numTri = 3;
+  const MeshField::MeshInfo meshInfo{.numVtx = 5, .numTri = 3};
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 2>(
       meshInfo);
@@ -85,9 +83,7 @@ struct LinearEdgeToVertexField {
 
 // evaluate a field at the specified local coordinate for each edge
 void edgeLocalPointEval() {
-  MeshField::MeshInfo meshInfo;
-  meshInfo.numVtx = 5;
-  meshInfo.numEdge = 7;
+  const MeshField::MeshInfo meshInfo{.numVtx = 5, .numEdge = 7, .dim = 1};
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1>(
       meshInfo);
@@ -138,10 +134,7 @@ struct QuadraticTriangleToField {
 // evaluate a field at the specified local coordinate for one triangle using
 // quadratic shape functions
 void quadraticTriangleLocalPointEval() {
-  MeshField::MeshInfo meshInfo;
-  meshInfo.numVtx = 3;
-  meshInfo.numEdge = 3;
-  meshInfo.numTri = 1;
+  const MeshField::MeshInfo meshInfo{.numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 2>(
       meshInfo);
@@ -193,12 +186,12 @@ struct QuadraticTetrahedronToField {
 void quadraticTetrahedronLocalPointEval() {
   const int MeshDim = 3;
   const int ShapeOrder = 2;
-  MeshField::MeshInfo meshInfo;
-  meshInfo.numVtx = 4;
-  meshInfo.numEdge = 6;
-  meshInfo.numTri = 4;
-  meshInfo.numTet = 1;
-  meshInfo.dim = MeshDim;
+  const MeshField::MeshInfo meshInfo{
+    .numVtx = 4,
+    .numEdge = 6,
+    .numTri = 4,
+    .numTet = 1,
+    .dim = MeshDim};
   auto field =
       MeshField::CreateLagrangeField<ExecutionSpace,
                                      MeshField::KokkosController,

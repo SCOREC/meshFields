@@ -46,7 +46,7 @@ set(MESHFIELD_SOURCES
 
 add_library(meshfields ${MESHFIELD_SOURCES})
 
-target_compile_features(meshfields INTERFACE cxx_std_17)
+target_compile_features(meshfields INTERFACE cxx_std_20)
 target_include_directories(meshfields
   PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>" # for MeshField_Config.hpp
