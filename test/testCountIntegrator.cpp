@@ -31,7 +31,7 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     // - TODO should be encoded in the field?
     const auto x = coords[vtx * MeshDim];
     const auto y = coords[vtx * MeshDim + 1];
-    field(0, 0, vtx, MeshField::Vertex) = func(x, y);
+    field(vtx, 0, 0, MeshField::Vertex) = func(x, y);
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
                           setFieldAtVertices, "setFieldAtVertices");
@@ -56,13 +56,10 @@ public:
     count = fes.numMeshEnts;
   }
 };
-int main(int argc, char **argv) {
-  Kokkos::initialize(argc, argv);
-  auto lib = Omega_h::Library(&argc, &argv);
-  auto mesh = createMeshTri18(lib);
-  MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
-      mesh);
 
+template <template <typename...> typename Controller>
+void doRun(Omega_h::Mesh &mesh,
+           MeshField::OmegahMeshField<ExecutionSpace, Controller> &omf) {
   const auto ShapeOrder = 1;
   auto field = omf.getCoordField();
   const auto [shp, map] =
@@ -72,5 +69,23 @@ int main(int argc, char **argv) {
   CountIntegrator countInt(fes);
   countInt.process(fes);
   assert(mesh.nelems() == countInt.getCount());
+}
+
+int main(int argc, char **argv) {
+  Kokkos::initialize(argc, argv);
+  auto lib = Omega_h::Library(&argc, &argv);
+  auto mesh = createMeshTri18(lib);
+#ifdef MESHFIELDS_ENABLE_CABANA
+  {
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(
+        mesh);
+    doRun<MeshField::CabanaController>(mesh, omf);
+  }
+#endif
+  {
+    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
+      mesh);
+    doRun<MeshField::KokkosController>(mesh, omf);
+  }
   return 0;
 }
