@@ -35,7 +35,7 @@ template <typename ShapeField>
 void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real*> coords, ShapeField field) {
   assert(numVerts == coords.size());
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
-    field(0, 0, vtx, MeshField::Vertex) = coords(vtx);
+    field(vtx, 0, 0, MeshField::Vertex) = coords(vtx);
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts},
                           setFieldAtVertices, "setFieldAtVertices");

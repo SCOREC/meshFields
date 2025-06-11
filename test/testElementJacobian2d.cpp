@@ -63,8 +63,8 @@ void setVtxCoords(size_t numVerts, size_t meshDim, TriangleTestCase testTri, Sha
     coords_h[i] = testTri.coords.at(i);
   auto coords = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), coords_h);
   auto setCoordField = KOKKOS_LAMBDA(const int &vtx) {
-    field(0, 0, vtx, MeshField::Vertex) = coords(vtx * meshDim);
-    field(0, 1, vtx, MeshField::Vertex) = coords(vtx * meshDim + 1);
+    field(vtx, 0, 0, MeshField::Vertex) = coords(vtx * meshDim);
+    field(vtx, 0, 1, MeshField::Vertex) = coords(vtx * meshDim + 1);
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts},
                           setCoordField, "setCoordField");

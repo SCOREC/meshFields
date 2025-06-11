@@ -124,9 +124,9 @@ template <typename VtxAccessor> struct LinearAccessor {
   using BaseType = typename VtxAccessor::BaseType;
 
   KOKKOS_FUNCTION
-  auto &operator()(int node, int component, int entity, Mesh_Topology t) const {
+  auto &operator()(int entity, int node, int component, Mesh_Topology t) const {
     if (t == Vertex) {
-      return vtxField(node, component, entity);
+      return vtxField(entity, node, component);
     } else {
       Kokkos::printf("%d is not a support topology\n", t);
       assert(false);
