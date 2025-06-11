@@ -245,6 +245,11 @@ struct FieldElement {
            J.extent(1), J.extent(2));
     }
     const auto dimension = J.extent(1);
+    if (dimension > 3 || dimension < 1) {
+      fail("getJacobianDeterminant: invalid dimension of input matrix.  "
+           "The given matrices have dimension %lu x %lu \n",
+           J.extent(0), J.extent(1));
+    }
     if (dimension == 3) {
       /* det(J) is also the triple product of the
          "tangent vectors" in 3D, the volume of their
@@ -276,17 +281,17 @@ struct FieldElement {
           });
       return determinants;
     }
-    fail("getJacobianDeterminant doesn't yet support 1d.  "
-         "The given matrices have dimension %lu x %lu \n",
-         J.extent(0), J.extent(1));
+    if (dimension == 1) {
+      fail("getJacobianDeterminant doesn't yet support 1d.  "
+           "The given matrices have dimension %lu x %lu \n",
+           J.extent(0), J.extent(1));
+    }
     // assuming at this point dimension=1
     /* \|\vec{x}_{,\xi}\| the length
        of the tangent vector at this point.
        line integral:
        ds = sqrt(dx^2 + dy^2 + dz^2) */
-    return Kokkos::View<Real *>(
-        "foo", J.extent(0)); // FIXME J[0].getLength(); // J is a 3x3 with only
-                             // one non-zero component at J(0,0)
+    return Kokkos::View<Real *>("foo", J.extent(0)); 
   }
 
   /**
