@@ -36,7 +36,8 @@ template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
 decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller>(
     MeshField::MeshInfo()))
-createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
+createCoordinateField(const MeshField::MeshInfo &mesh_info,
+                      Omega_h::Reals coords) {
   const auto meshDim = mesh_info.dim;
   auto coordField =
       MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
@@ -49,6 +50,11 @@ createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
   return coordField;
 }
 
+} // anonymous namespace
+
+namespace MeshField {
+
+namespace Omegah {
 struct LinearTriangleToVertexField {
   Omega_h::LOs triVerts;
   LinearTriangleToVertexField(Omega_h::Mesh &mesh)
@@ -159,9 +165,7 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   }
 }
 
-} // namespace
-
-namespace MeshField {
+} // namespace Omegah
 
 template <typename ExecutionSpace, template <typename...> typename Controller =
                                        MeshField::KokkosController>
@@ -210,9 +214,9 @@ public:
   }
 
   // evaluate a field at the specified local coordinate for each triangle
-  template <typename AnalyticFunction, typename ViewType, typename ShapeField>
+  template <typename ViewType, typename ShapeField>
   auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                              AnalyticFunction func, ShapeField field) {
+                              ShapeField field) {
     const auto MeshDim = 2;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");
@@ -222,7 +226,7 @@ public:
       MeshField::fail("input field order must be 1 or 2\n");
     }
 
-    const auto [shp, map] = getTriangleElement<ShapeOrder>(mesh);
+    const auto [shp, map] = Omegah::getTriangleElement<ShapeOrder>(mesh);
 
     MeshField::FieldElement f(meshInfo.numTri, field, shp, map);
     auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
