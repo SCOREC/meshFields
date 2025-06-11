@@ -134,7 +134,8 @@ struct QuadraticTriangleToField {
 // evaluate a field at the specified local coordinate for one triangle using
 // quadratic shape functions
 void quadraticTriangleLocalPointEval() {
-  const MeshField::MeshInfo meshInfo{.numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
+  const MeshField::MeshInfo meshInfo{
+      .numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 2>(
       meshInfo);
@@ -187,11 +188,7 @@ void quadraticTetrahedronLocalPointEval() {
   const int MeshDim = 3;
   const int ShapeOrder = 2;
   const MeshField::MeshInfo meshInfo{
-    .numVtx = 4,
-    .numEdge = 6,
-    .numTri = 4,
-    .numTet = 1,
-    .dim = MeshDim};
+      .numVtx = 4, .numEdge = 6, .numTri = 4, .numTet = 1, .dim = MeshDim};
   auto field =
       MeshField::CreateLagrangeField<ExecutionSpace,
                                      MeshField::KokkosController,

@@ -196,7 +196,8 @@ public:
   template <typename FieldElement> void process(FieldElement &fes) {
     const auto topo = fes.elm2dof.getTopology();
     if (topo[0] != MeshField::Triangle) {
-      throw std::invalid_argument("Integrator::process only supports triangles.");
+      throw std::invalid_argument(
+          "Integrator::process only supports triangles.");
     }
     pre();
     auto ip = getIntegrationPoints(topo[0], order);

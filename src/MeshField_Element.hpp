@@ -291,7 +291,7 @@ struct FieldElement {
        of the tangent vector at this point.
        line integral:
        ds = sqrt(dx^2 + dy^2 + dz^2) */
-    return Kokkos::View<Real *>("foo", J.extent(0)); 
+    return Kokkos::View<Real *>("foo", J.extent(0));
   }
 
   /**

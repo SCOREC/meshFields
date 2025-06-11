@@ -61,7 +61,8 @@ struct ShapeField : public Mixins... {
   Shape shape;
   const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
-  ShapeField(MeshFieldType &meshFieldIn, const MeshInfo& meshInfoIn, Mixins... mixins)
+  ShapeField(MeshFieldType &meshFieldIn, const MeshInfo &meshInfoIn,
+             Mixins... mixins)
       : meshField(meshFieldIn), meshInfo(meshInfoIn), Mixins(mixins)... {};
 };
 
