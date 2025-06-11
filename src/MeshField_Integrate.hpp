@@ -195,9 +195,11 @@ public:
    * FIXME make the sensible
    * */
   template <typename FieldElement> void process(FieldElement &fes) {
-    // TODO add check to only support triangles
-    pre();
     const auto topo = fes.elm2dof.getTopology();
+    if (topo[0] != MeshField::Triangle) {
+      throw std::invalid_argument("Integrator::process only supports triangles.");
+    }
+    pre();
     auto ip = getIntegrationPoints(topo[0], order);
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
