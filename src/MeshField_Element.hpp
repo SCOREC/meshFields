@@ -241,7 +241,7 @@ struct FieldElement {
     static_assert(Matrices::rank() == 3); // array of rank two matrices
     if (J.extent(1) != J.extent(2)) {
       fail("getJacobianDeterminant only supports square matrices.  "
-           "The given matrices have dimension %d x %d \n",
+           "The given matrices have dimension %lu x %lu \n",
            J.extent(1), J.extent(2));
     }
     const auto dimension = J.extent(1);
@@ -251,13 +251,13 @@ struct FieldElement {
          parallelpiped, which is the differential volume
          of the coordinate field */
       fail("getJacobianDeterminant doesn't yet support 3d.  "
-           "The given matrices have dimension %d x %d \n",
+           "The given matrices have dimension %lu x %lu \n",
            J.extent(0), J.extent(1));
     }
     if (dimension == 2) {
       if (J.extent(1) != 2) {
         fail("getJacobianDeterminant only supports 2x2 matrices in 2d.  "
-             "The given matrices have dimension %d x %d \n",
+             "The given matrices have dimension %lu x %lu \n",
              J.extent(1), J.extent(2));
       }
       /* |\frac{\partial x}{\partial s}\times
@@ -277,7 +277,7 @@ struct FieldElement {
       return determinants;
     }
     fail("getJacobianDeterminant doesn't yet support 1d.  "
-         "The given matrices have dimension %d x %d \n",
+         "The given matrices have dimension %lu x %lu \n",
          J.extent(0), J.extent(1));
     // assuming at this point dimension=1
     /* \|\vec{x}_{,\xi}\| the length
