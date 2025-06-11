@@ -1,8 +1,8 @@
 #include "KokkosController.hpp"
 #include "MeshField_Element.hpp"
 #include "MeshField_Field.hpp"
-#include "MeshField_ShapeField.hpp"
 #include "MeshField_For.hpp"
+#include "MeshField_ShapeField.hpp"
 #include <Kokkos_Core.hpp>
 #include <iostream>
 
@@ -32,13 +32,14 @@ struct LinearEdgeToVertexField {
 };
 
 template <typename ShapeField>
-void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real*> coords, ShapeField field) {
+void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real *> coords,
+                   ShapeField field) {
   assert(numVerts == coords.size());
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
     field(vtx, 0, 0, MeshField::Vertex) = coords(vtx);
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts},
-                          setFieldAtVertices, "setFieldAtVertices");
+  MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts}, setFieldAtVertices,
+                          "setFieldAtVertices");
 }
 
 // evaluate a field at the specified local coordinate for each edge
@@ -47,8 +48,10 @@ void edgeJacobian() {
   meshInfo.dim = 1;
   meshInfo.numVtx = 2;
   meshInfo.numEdge = 1;
-  auto coordField = MeshField::CreateCoordinateField<ExecutionSpace, MeshField::KokkosController>(meshInfo);
-  Kokkos::View<MeshField::Real*, Kokkos::HostSpace> coords_h("coords_h", 2);
+  auto coordField =
+      MeshField::CreateCoordinateField<ExecutionSpace,
+                                       MeshField::KokkosController>(meshInfo);
+  Kokkos::View<MeshField::Real *, Kokkos::HostSpace> coords_h("coords_h", 2);
   coords_h[0] = -1;
   coords_h[1] = 1;
   auto coords = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), coords_h);
@@ -58,15 +61,15 @@ void edgeJacobian() {
                             MeshField::LinearEdgeShape(),
                             LinearEdgeToVertexField());
 
-  Kokkos::View<MeshField::Real*[2]> lc("localCoords",1);
+  Kokkos::View<MeshField::Real *[2]> lc("localCoords", 1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
   const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);
-  const auto J_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),J);
+  const auto J_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), J);
   assert(J_h.size() == 1);
-  std::cout << "edge jacobian " << J_h(0,0,0) << std::endl;
+  std::cout << "edge jacobian " << J_h(0, 0, 0) << std::endl;
   const auto expected = 1.0;
-  assert(std::fabs(J_h(0,0,0) - expected) <= MeshField::MachinePrecision);
+  assert(std::fabs(J_h(0, 0, 0) - expected) <= MeshField::MachinePrecision);
 }
 
 int main(int argc, char **argv) {

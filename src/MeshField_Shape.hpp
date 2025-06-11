@@ -30,9 +30,9 @@ KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi) {
 
 namespace MeshField {
 
-using Vector2 = Kokkos::Array<Real,2>;
-using Vector3 = Kokkos::Array<Real,3>;
-using Vector4 = Kokkos::Array<Real,4>;
+using Vector2 = Kokkos::Array<Real, 2>;
+using Vector3 = Kokkos::Array<Real, 3>;
+using Vector4 = Kokkos::Array<Real, 4>;
 
 struct LinearEdgeShape {
   static const size_t numNodes = 2;
@@ -52,7 +52,7 @@ struct LinearEdgeShape {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real,numNodes> getLocalGradients() const {
+  Kokkos::Array<Real, numNodes> getLocalGradients() const {
     // clang-format off
     return {-0.5, 0.5};
     // clang-format on
@@ -79,7 +79,7 @@ struct LinearTriangleShape {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, meshEntDim*numNodes> getLocalGradients() const {
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
     // clang-format off
     return { -1,-1,  //first vector
               1, 0,
@@ -132,10 +132,10 @@ struct QuadraticTriangleShape {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const& xi) const {
+  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi) const {
     assert(greaterThanOrEqualZero(xi));
     assert(sumsToOne(xi));
-    const Real xi2 = 1-xi[0]-xi[1];
+    const Real xi2 = 1 - xi[0] - xi[1];
     // clang-format off
     return {-4*xi2+1,-4*xi2+1,
              4*xi[0]-1,0,
@@ -176,11 +176,11 @@ struct QuadraticTetrahedronShape {
   }
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Vector3, numNodes> getLocalGradients(Vector4 const& xi) const {
+  Kokkos::Array<Vector3, numNodes> getLocalGradients(Vector4 const &xi) const {
     assert(greaterThanOrEqualZero(xi));
     assert(sumsToOne(xi));
-    const Real xi3 = 1-xi[0]-xi[1]-xi[2];
-    const Real d3 = 1-4*xi3;
+    const Real xi3 = 1 - xi[0] - xi[1] - xi[2];
+    const Real d3 = 1 - 4 * xi3;
     // clang-format off
     return {d3,d3,d3,
             4*xi[0]-1,0,0,

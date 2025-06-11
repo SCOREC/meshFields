@@ -1,7 +1,6 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
 #include "MeshField_Element.hpp"    //remove?
-#include <MeshField_Integrate.hpp>
 #include "MeshField_Fail.hpp"       //remove?
 #include "MeshField_For.hpp"        //remove?
 #include "MeshField_ShapeField.hpp" //remove?
@@ -9,6 +8,7 @@
 #include "Omega_h_file.hpp"
 #include "Omega_h_simplex.hpp"
 #include <Kokkos_Core.hpp>
+#include <MeshField_Integrate.hpp>
 #include <iostream>
 #include <sstream>
 
@@ -39,28 +39,34 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
 
 template <typename FieldElement>
 class CountIntegrator : public MeshField::Integrator {
-  private:
-    CountIntegrator() {};
-  protected:
-    size_t count;
-    FieldElement& fes;
-  public:
-    unsigned int getCount() {return count;}
-    CountIntegrator(FieldElement& fes_in) : Integrator(1), count(0), fes(fes_in) {};
-    void atPoints(Kokkos::View<MeshField::Real**>, Kokkos::View<MeshField::Real*>, Kokkos::View<MeshField::Real*>) {
-      count = fes.numMeshEnts;
-    }
+private:
+  CountIntegrator(){};
+
+protected:
+  size_t count;
+  FieldElement &fes;
+
+public:
+  unsigned int getCount() { return count; }
+  CountIntegrator(FieldElement &fes_in)
+      : Integrator(1), count(0), fes(fes_in){};
+  void atPoints(Kokkos::View<MeshField::Real **>,
+                Kokkos::View<MeshField::Real *>,
+                Kokkos::View<MeshField::Real *>) {
+    count = fes.numMeshEnts;
+  }
 };
-int main(int argc, char ** argv) {
+int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
   auto mesh = createMeshTri18(lib);
   MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
-        mesh);
+      mesh);
 
   const auto ShapeOrder = 1;
   auto field = omf.getCoordField();
-  const auto [shp, map] = MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
+  const auto [shp, map] =
+      MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 
   CountIntegrator countInt(fes);

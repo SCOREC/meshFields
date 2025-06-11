@@ -15,7 +15,7 @@ namespace MeshField {
  * @brief
  * On-process mesh metadata
  */
-struct MeshInfo { //FIXME should be a class with ctors that prevent bad state
+struct MeshInfo { // FIXME should be a class with ctors that prevent bad state
   int numVtx;     // entDim = 0
   int numEdge;    // entDim = 1
   int numTri;     // entDim = 2
