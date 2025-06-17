@@ -266,8 +266,10 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
  * @return a linear ShapeField
  */
 
-template <typename ExecutionSpace, template <typename...> typename Controller =
-                                       MeshField::KokkosController>
+template <typename ExecutionSpace,
+          template <typename...>
+          typename Controller = MeshField::KokkosController,
+          size_t dim>
 auto CreateCoordinateField(const MeshInfo &meshInfo) {
   if (meshInfo.numVtx <= 0) {
     fail("mesh has no vertices\n");
@@ -281,7 +283,7 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
       std::is_same_v<
           Controller<ExecutionSpace, MemorySpace, DataType>,
           MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
-      Controller<ExecutionSpace, MemorySpace, DataType[1][3]>,
+      Controller<ExecutionSpace, MemorySpace, DataType[1][dim]>,
       Controller<MemorySpace, ExecutionSpace, DataType ***>>;
   auto createController = [](const int numComp, auto numVtx) {
     if constexpr (std::is_same_v<

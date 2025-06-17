@@ -32,14 +32,17 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh &mesh) {
   return meshInfo;
 }
 
-template <typename ExecutionSpace, template <typename...> typename Controller =
-                                       MeshField::KokkosController>
-decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller>(
+template <typename ExecutionSpace,
+          template <typename...>
+          typename Controller = MeshField::KokkosController,
+          size_t dim>
+decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
     MeshField::MeshInfo()))
 createCoordinateField(MeshField::MeshInfo mesh_info, Omega_h::Reals coords) {
   const auto meshDim = mesh_info.dim;
   auto coordField =
-      MeshField::CreateCoordinateField<ExecutionSpace, Controller>(mesh_info);
+      MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
+          mesh_info);
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
     coordField(i, 0, 0, MeshField::Vertex) = coords[i * meshDim];
     coordField(i, 0, 1, MeshField::Vertex) = coords[i * meshDim + 1];
@@ -163,23 +166,26 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
 
 namespace MeshField {
 
-template <typename ExecutionSpace, template <typename...> typename Controller =
-                                       MeshField::KokkosController>
+template <typename ExecutionSpace,
+          template <typename...> typename Controller =
+              MeshField::KokkosController,
+          size_t dim = 3>
 class OmegahMeshField {
 private:
   Omega_h::Mesh &mesh;
   const MeshField::MeshInfo meshInfo;
-  using CoordField = decltype(createCoordinateField<ExecutionSpace, Controller>(
-      MeshField::MeshInfo(), Omega_h::Reals()));
+  using CoordField =
+      decltype(createCoordinateField<ExecutionSpace, Controller, dim>(
+          MeshField::MeshInfo(), Omega_h::Reals()));
   CoordField coordField;
 
 public:
   OmegahMeshField(Omega_h::Mesh &mesh_in)
       : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
-        coordField(createCoordinateField<ExecutionSpace, Controller>(
+        coordField(createCoordinateField<ExecutionSpace, Controller, dim>(
             getMeshInfo(mesh_in), mesh_in.coords())) {}
 
-  template <typename DataType, size_t order, size_t dim>
+  template <typename DataType, size_t order>
   // Ordering of field indexing changed to 'entity, node, component'
   auto CreateLagrangeField() {
     return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
