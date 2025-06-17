@@ -74,7 +74,6 @@ void triJacobian() {
       .numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
   auto coordField = MeshField::CreateCoordinateField<
       ExecutionSpace, MeshField::KokkosController, 2>(meshInfo);
-
   TriangleTestCase rightTriangle({0, 0, 1, 0, 0, 1}, {1, 0, 0, 1}, 1);
   TriangleTestCase skewedTriangle({0, 0, 5, 1, 3, 4}, {5, 1, 3, 4}, 17);
   for (auto testCase : {rightTriangle, skewedTriangle}) {

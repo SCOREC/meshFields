@@ -129,4 +129,3 @@ jobs:
       # only need to scan with a single build config if the installed cmake config files work
       if: matrix.compiler == 'g++' && matrix.build_type == 'Release'
       uses: github/codeql-action/analyze@v3
-

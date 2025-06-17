@@ -13,7 +13,7 @@ jobs:
     permissions:
       contents: read
     # The type of runner that the job will run on
-    runs-on: self-hosted
+    runs-on: [self-hosted, linux, x64, gpu]
 
     if: |
       github.event.issue.pull_request &&

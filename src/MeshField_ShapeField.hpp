@@ -59,9 +59,10 @@ template <typename MeshFieldType, typename Shape, typename... Mixins>
 struct ShapeField : public Mixins... {
   MeshFieldType meshField;
   Shape shape;
-  MeshInfo meshInfo;
+  const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
-  ShapeField(MeshFieldType &meshFieldIn, MeshInfo meshInfoIn, Mixins... mixins)
+  ShapeField(MeshFieldType &meshFieldIn, const MeshInfo &meshInfoIn,
+             Mixins... mixins)
       : meshField(meshFieldIn), meshInfo(meshInfoIn), Mixins(mixins)... {};
 };
 
@@ -124,9 +125,9 @@ template <typename VtxAccessor> struct LinearAccessor {
   using BaseType = typename VtxAccessor::BaseType;
 
   KOKKOS_FUNCTION
-  auto &operator()(int node, int component, int entity, Mesh_Topology t) const {
+  auto &operator()(int entity, int node, int component, Mesh_Topology t) const {
     if (t == Vertex) {
-      return vtxField(node, component, entity);
+      return vtxField(entity, node, component);
     } else {
       Kokkos::printf("%d is not a support topology\n", t);
       assert(false);

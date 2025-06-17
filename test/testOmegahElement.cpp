@@ -48,9 +48,9 @@ template <typename Result, typename CoordField, typename AnalyticFunction>
 bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
                  TestCoords testCase, AnalyticFunction func) {
   const auto numPtsPerElem = testCase.NumPtsPerElem;
-  MeshField::FieldElement fcoords(mesh.nfaces(), coordField,
-                                  MeshField::LinearTriangleCoordinateShape(),
-                                  LinearTriangleToVertexField(mesh));
+  MeshField::FieldElement fcoords(
+      mesh.nfaces(), coordField, MeshField::LinearTriangleCoordinateShape(),
+      MeshField::Omegah::LinearTriangleToVertexField(mesh));
   auto globalCoords =
       MeshField::evaluate(fcoords, testCase.coords, numPtsPerElem);
 
@@ -170,14 +170,14 @@ void doRun(Omega_h::Mesh &mesh,
     using ViewType = decltype(testCase.coords);
     {
       const auto ShapeOrder = 1;
+
       auto field =
           omf.template CreateLagrangeField<MeshField::Real, ShapeOrder>();
       LinearFunction func = LinearFunction();
       setVertices(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<LinearFunction,
-                                                        ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, func, field);
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
+          testCase.coords, testCase.NumPtsPerElem, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 LinearFunction{});
       if (failed)
@@ -192,9 +192,8 @@ void doRun(Omega_h::Mesh &mesh,
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<QuadraticFunction,
-                                                        ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, func, field);
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
+          testCase.coords, testCase.NumPtsPerElem, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 QuadraticFunction{});
       if (failed)
@@ -209,9 +208,8 @@ void doRun(Omega_h::Mesh &mesh,
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<LinearFunction,
-                                                        ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, func, field);
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
+          testCase.coords, testCase.NumPtsPerElem, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 LinearFunction{});
       if (failed)
