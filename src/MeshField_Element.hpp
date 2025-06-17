@@ -188,8 +188,9 @@ struct FieldElement {
     return c;
   }
 
-  using NodeArray = Kokkos::Array<typename FieldAccessor::BaseType,
-                                  ShapeType::meshEntDim * ShapeType::numNodes>;
+  using NodeArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    ShapeType::meshEntDim * ShapeType::numNodes>;
   KOKKOS_INLINE_FUNCTION NodeArray getNodeValues(int ent) const {
     NodeArray c;
     for (auto topo : elm2dof.getTopology()) { // element topology

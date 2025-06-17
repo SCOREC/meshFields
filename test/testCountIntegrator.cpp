@@ -59,7 +59,7 @@ public:
 
 template <template <typename...> typename Controller>
 void doRun(Omega_h::Mesh &mesh,
-           MeshField::OmegahMeshField<ExecutionSpace, Controller> &omf) {
+           MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> &omf) {
   const auto ShapeOrder = 1;
   auto field = omf.getCoordField();
   const auto [shp, map] =
@@ -77,14 +77,14 @@ int main(int argc, char **argv) {
   auto mesh = createMeshTri18(lib);
 #ifdef MESHFIELDS_ENABLE_CABANA
   {
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(
-        mesh);
+    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::CabanaController>
+        omf(mesh);
     doRun<MeshField::CabanaController>(mesh, omf);
   }
 #endif
   {
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
-      mesh);
+    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::KokkosController>
+        omf(mesh);
     doRun<MeshField::KokkosController>(mesh, omf);
   }
   return 0;

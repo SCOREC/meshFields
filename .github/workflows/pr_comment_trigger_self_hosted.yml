@@ -50,7 +50,7 @@ jobs:
           echo "workDir $workDir"
 
           # kokkos
-          git clone -b develop git@github.com:kokkos/kokkos.git ${workDir}/kokkos
+          git clone -b develop https://github.com/kokkos/kokkos.git ${workDir}/kokkos
           kkbdir=${workDir}/build-kokkos
           cmake -S ${workDir}/kokkos -B $kkbdir \
             -DCMAKE_BUILD_TYPE=Release \
@@ -66,7 +66,7 @@ jobs:
           cmake --build $kkbdir --target install -j 4
 
           ##cabana
-          git clone git@github.com:ECP-copa/Cabana.git ${workDir}/cabana
+          git clone https://github.com/ECP-copa/Cabana.git ${workDir}/cabana
           cabbdir=${workDir}/build-cab
           cmake -S ${workDir}/cabana -B $cabbdir \
             -DCMAKE_BUILD_TYPE="Release" \
@@ -81,7 +81,7 @@ jobs:
           cmake --build $cabbdir -j 4 --target install
 
           # omegah
-          git clone git@github.com:SCOREC/omega_h.git ${workDir}/omegah
+          git clone https://github.com/SCOREC/omega_h.git ${workDir}/omegah
           ohbdir=${workDir}/build-omegah
           cmake -S ${workDir}/omegah -B $ohbdir \
             -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
