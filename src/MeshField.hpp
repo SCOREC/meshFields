@@ -32,10 +32,9 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh &mesh) {
   return meshInfo;
 }
 
-template <typename ExecutionSpace,
+template <typename ExecutionSpace, size_t dim,
           template <typename...>
-          typename Controller = MeshField::KokkosController,
-          size_t dim>
+          typename Controller = MeshField::KokkosController>
 decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
     MeshField::MeshInfo()))
 createCoordinateField(const MeshField::MeshInfo &mesh_info,
@@ -170,24 +169,25 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
 
 } // namespace Omegah
 
-template <typename ExecutionSpace,
+template <typename ExecutionSpace, size_t dim,
           template <typename...> typename Controller =
-              MeshField::KokkosController,
-          size_t dim = 3>
+              MeshField::KokkosController>
 class OmegahMeshField {
 private:
   Omega_h::Mesh &mesh;
   const MeshField::MeshInfo meshInfo;
   using CoordField =
-      decltype(createCoordinateField<ExecutionSpace, Controller, dim>(
+      decltype(createCoordinateField<ExecutionSpace, dim, Controller>(
           MeshField::MeshInfo(), Omega_h::Reals()));
   CoordField coordField;
 
 public:
   OmegahMeshField(Omega_h::Mesh &mesh_in)
       : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
-        coordField(createCoordinateField<ExecutionSpace, Controller, dim>(
-            getMeshInfo(mesh_in), mesh_in.coords())) {}
+        coordField(createCoordinateField<ExecutionSpace, dim, Controller>(
+            getMeshInfo(mesh_in), mesh_in.coords())) {
+    static_assert(dim == 1 || dim == 2 || dim == 3);
+  }
 
   template <typename DataType, size_t order>
   // Ordering of field indexing changed to 'entity, node, component'

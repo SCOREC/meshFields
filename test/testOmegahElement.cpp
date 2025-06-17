@@ -143,7 +143,7 @@ void doFail(std::string_view order, std::string_view function,
 
 template <template <typename...> typename Controller>
 void doRun(Omega_h::Mesh &mesh,
-           MeshField::OmegahMeshField<ExecutionSpace, Controller, 2> &omf) {
+           MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> &omf) {
 
   // setup field with values from the analytic function
   static const size_t OnePtPerElem = 1;
@@ -225,14 +225,14 @@ int main(int argc, char **argv) {
 #ifdef MESHFIELDS_ENABLE_CABANA
   {
     auto mesh = createMeshTri18(lib);
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController, 2>
+    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::CabanaController>
         omf(mesh);
     doRun<MeshField::CabanaController>(mesh, omf);
   }
 #endif
   {
     auto mesh = createMeshTri18(lib);
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController, 2>
+    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::KokkosController>
         omf(mesh);
     doRun<MeshField::KokkosController>(mesh, omf);
   }
