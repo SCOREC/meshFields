@@ -143,7 +143,7 @@ void doFail(std::string_view order, std::string_view function,
 
 template <template <typename...> typename Controller>
 void doRun(Omega_h::Mesh &mesh,
-           MeshField::OmegahMeshField<ExecutionSpace, Controller> &omf) {
+           MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> &omf) {
 
   // setup field with values from the analytic function
   static const size_t OnePtPerElem = 1;
@@ -166,14 +166,14 @@ void doRun(Omega_h::Mesh &mesh,
   // clang-format on
 
   auto coords = mesh.coords();
-  const auto MeshDim = 2;
   for (auto testCase : cases) {
     using ViewType = decltype(testCase.coords);
     {
       const auto ShapeOrder = 1;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    MeshDim>();
-      auto func = LinearFunction();
+
+      auto field =
+          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder>();
+      LinearFunction func = LinearFunction();
       setVertices(mesh, func, field);
       using FieldType = decltype(field);
       auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
@@ -186,8 +186,8 @@ void doRun(Omega_h::Mesh &mesh,
 
     {
       const auto ShapeOrder = 2;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    MeshDim>();
+      auto field =
+          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder>();
       auto func = QuadraticFunction();
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
@@ -202,8 +202,8 @@ void doRun(Omega_h::Mesh &mesh,
 
     {
       const auto ShapeOrder = 2;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    MeshDim>();
+      auto field =
+          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder>();
       auto func = LinearFunction();
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
@@ -225,15 +225,15 @@ int main(int argc, char **argv) {
 #ifdef MESHFIELDS_ENABLE_CABANA
   {
     auto mesh = createMeshTri18(lib);
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::CabanaController> omf(
-        mesh);
+    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::CabanaController>
+        omf(mesh);
     doRun<MeshField::CabanaController>(mesh, omf);
   }
 #endif
   {
     auto mesh = createMeshTri18(lib);
-    MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
-        mesh);
+    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::KokkosController>
+        omf(mesh);
     doRun<MeshField::KokkosController>(mesh, omf);
   }
   Kokkos::finalize();

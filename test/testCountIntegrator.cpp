@@ -60,8 +60,8 @@ int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
   auto mesh = createMeshTri18(lib);
-  MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
-      mesh);
+  MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::KokkosController>
+      omf(mesh);
 
   const auto ShapeOrder = 1;
   auto field = omf.getCoordField();
