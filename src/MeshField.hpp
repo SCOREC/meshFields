@@ -189,11 +189,11 @@ public:
     static_assert(dim == 1 || dim == 2 || dim == 3);
   }
 
-  template <typename DataType, size_t order>
+  template <typename DataType, size_t order, size_t numComp>
   // Ordering of field indexing changed to 'entity, node, component'
   auto CreateLagrangeField() {
     return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
-                                          order, dim>(meshInfo);
+                                          order, dim, numComp>(meshInfo);
   }
 
   auto getCoordField() { return coordField; }

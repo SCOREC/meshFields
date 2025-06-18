@@ -172,7 +172,7 @@ void doRun(Omega_h::Mesh &mesh,
       const auto ShapeOrder = 1;
 
       auto field =
-          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder>();
+          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, 1>();
       LinearFunction func = LinearFunction();
       setVertices(mesh, func, field);
       using FieldType = decltype(field);
@@ -187,7 +187,7 @@ void doRun(Omega_h::Mesh &mesh,
     {
       const auto ShapeOrder = 2;
       auto field =
-          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder>();
+          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, 1>();
       auto func = QuadraticFunction();
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
@@ -203,7 +203,7 @@ void doRun(Omega_h::Mesh &mesh,
     {
       const auto ShapeOrder = 2;
       auto field =
-          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder>();
+          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, 1>();
       auto func = LinearFunction();
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);

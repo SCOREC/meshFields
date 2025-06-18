@@ -158,7 +158,7 @@ template <typename VtxAccessor> struct LinearAccessor {
 template <typename ExecutionSpace,
           template <typename...>
           typename Controller = MeshField::KokkosController,
-          typename DataType, size_t order, size_t dim>
+          typename DataType, size_t order, size_t dim, size_t numComp>
 auto CreateLagrangeField(const MeshInfo &meshInfo) {
   static_assert((std::is_same_v<Real4, DataType> == true ||
                  std::is_same_v<Real8, DataType> == true),
@@ -179,10 +179,10 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
         std::is_same_v<
             Controller<ExecutionSpace, MemorySpace, DataType>,
             MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
-        Controller<ExecutionSpace, MemorySpace, DataType[1][1]>,
+        Controller<ExecutionSpace, MemorySpace, DataType[1][numComp]>,
         Controller<MemorySpace, ExecutionSpace, DataType ***>>;
     // 1 dof with 1 component per vtx
-    auto createController = [](const int numComp, auto numVtx) {
+    auto createController = [](auto numVtx) {
       if constexpr (std::is_same_v<
                         Controller<ExecutionSpace, MemorySpace, DataType>,
                         MeshField::CabanaController<ExecutionSpace, MemorySpace,
@@ -192,7 +192,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
         return Ctrlr({/*field 0*/ numVtx, 1, numComp});
       }
     };
-    Ctrlr kk_ctrl = createController(1, meshInfo.numVtx);
+    Ctrlr kk_ctrl = createController(meshInfo.numVtx);
 #else
     using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
     Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, 1});
@@ -214,10 +214,11 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
         std::is_same_v<
             Controller<ExecutionSpace, MemorySpace, DataType>,
             MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
-        Controller<ExecutionSpace, MemorySpace, DataType[1][1], DataType[1][1]>,
+        Controller<ExecutionSpace, MemorySpace, DataType[1][numComp],
+                   DataType[1][numComp]>,
         Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>>;
     // 1 dof with 1 comp per vtx/edge
-    auto createController = [](const int numComp, auto numVtx, auto numEdge) {
+    auto createController = [](auto numVtx, auto numEdge) {
       if constexpr (std::is_same_v<
                         Controller<ExecutionSpace, MemorySpace, DataType>,
                         MeshField::CabanaController<ExecutionSpace, MemorySpace,
@@ -228,12 +229,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                       /*field 1*/ numEdge, 1, numComp});
       }
     };
-    Ctrlr kk_ctrl = createController(1, meshInfo.numVtx, meshInfo.numEdge);
+    Ctrlr kk_ctrl = createController(meshInfo.numVtx, meshInfo.numEdge);
 #else
     using Ctrlr =
         Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>;
-    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, 1,
-                   /*field 1*/ meshInfo.numEdge, 1, 1});
+    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, numComp,
+                   /*field 1*/ meshInfo.numEdge, 1, numComp});
 #endif
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
