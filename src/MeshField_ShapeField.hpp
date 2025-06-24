@@ -55,10 +55,12 @@ struct MeshInfo {
  * @param meshInfoIn defines on-process mesh metadata
  * @param mixins object(s) needed to construct the Accessor
  */
-template <typename MeshFieldType, typename Shape, typename... Mixins>
+template <size_t numCompIn, typename MeshFieldType, typename Shape,
+          typename... Mixins>
 struct ShapeField : public Mixins... {
   MeshFieldType meshField;
   Shape shape;
+  static const size_t numComp = numCompIn;
   const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
   ShapeField(MeshFieldType &meshFieldIn, const MeshInfo &meshInfoIn,
@@ -199,7 +201,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
 #endif
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
-    using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
+    using LinearLagrangeShapeField =
+        ShapeField<numComp, Ctrlr, LinearTriangleShape, LA>;
     LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
@@ -240,7 +243,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
     using QuadraticLagrangeShapeField =
-        ShapeField<Ctrlr, QuadraticTriangleShape, QA>;
+        ShapeField<numComp, Ctrlr, QuadraticTriangleShape, QA>;
     QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
     return qlsf;
   } else {
@@ -303,7 +306,8 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
 #endif
   auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   using LA = LinearAccessor<decltype(vtxField)>;
-  using LinearLagrangeShapeField = ShapeField<Ctrlr, LinearTriangleShape, LA>;
+  using LinearLagrangeShapeField =
+      ShapeField<dim, Ctrlr, LinearTriangleShape, LA>;
   LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
   return llsf;
 };

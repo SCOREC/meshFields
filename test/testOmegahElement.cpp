@@ -170,13 +170,13 @@ void doRun(Omega_h::Mesh &mesh,
     using ViewType = decltype(testCase.coords);
     {
       const auto ShapeOrder = 1;
-
-      auto field =
-          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, 1>();
+      const auto numComponents = 1;
+      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                                    numComponents>();
       LinearFunction func = LinearFunction();
       setVertices(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType, 1>(
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
           testCase.coords, testCase.NumPtsPerElem, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 LinearFunction{});
@@ -186,13 +186,14 @@ void doRun(Omega_h::Mesh &mesh,
 
     {
       const auto ShapeOrder = 2;
-      auto field =
-          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, 1>();
+      const auto numComponents = 1;
+      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                                    numComponents>();
       auto func = QuadraticFunction();
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType, 1>(
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
           testCase.coords, testCase.NumPtsPerElem, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 QuadraticFunction{});
@@ -202,13 +203,14 @@ void doRun(Omega_h::Mesh &mesh,
 
     {
       const auto ShapeOrder = 2;
-      auto field =
-          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, 1>();
+      const auto numComponents = 1;
+      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                                    numComponents>();
       auto func = LinearFunction();
       setVertices(mesh, func, field);
       setEdges(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType, 1>(
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
           testCase.coords, testCase.NumPtsPerElem, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 LinearFunction{});
@@ -218,13 +220,28 @@ void doRun(Omega_h::Mesh &mesh,
 
     {
       const auto ShapeOrder = 1;
-
-      auto field =
-          omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, 2>();
+      const auto numComponents = 2;
+      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                                    numComponents>();
       LinearFunction func = LinearFunction();
       setVertices(mesh, func, field);
       using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType, 2>(
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
+          testCase.coords, testCase.NumPtsPerElem, field);
+      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                                LinearFunction{});
+      if (failed)
+        doFail("linear", "linear", testCase.name);
+    }
+    {
+      const auto ShapeOrder = 1;
+      const auto numComponents = 3;
+      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                                    numComponents>();
+      LinearFunction func = LinearFunction();
+      setVertices(mesh, func, field);
+      using FieldType = decltype(field);
+      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
           testCase.coords, testCase.NumPtsPerElem, field);
       auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
                                 LinearFunction{});

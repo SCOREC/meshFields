@@ -124,8 +124,7 @@ struct ElementToDofHolderMap {
  * @param elmIn see ElementType
  */
 template <typename FieldAccessor, typename ShapeType,
-          typename ElementDofHolderAccessor,
-          size_t numComponentsPerDof = ShapeType::numComponentsPerDof>
+          typename ElementDofHolderAccessor>
 struct FieldElement {
   const size_t numMeshEnts;
   const FieldAccessor field;
@@ -151,8 +150,8 @@ struct FieldElement {
   };
   using ValArray =
       Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
-                    numComponentsPerDof>;
-  static const size_t NumComponents = numComponentsPerDof;
+                    FieldAccessor::numComp>;
+  static const size_t NumComponents = FieldAccessor::numComp;
 
   /**
    * @brief
@@ -174,11 +173,11 @@ struct FieldElement {
     assert(ent < numMeshEnts);
     ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
-    for (int ci = 0; ci < numComponentsPerDof; ++ci)
+    for (int ci = 0; ci < NumComponents; ++ci)
       c[ci] = 0;
     for (auto topo : elm2dof.getTopology()) { // element topology
       for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (int ci = 0; ci < numComponentsPerDof; ++ci) {
+        for (int ci = 0; ci < NumComponents; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
           const auto fval =
               field(map.entity, map.node, map.component, map.topo);
@@ -456,11 +455,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
            "to evaluate(...) were invalid\n");
     }
   }
-  if (localCoords.extent(0) < fes.numMeshEnts) {
-    fail("The size of dimension 0 of the local coordinates input array "
-         "must be at least %zu.\n",
-         fes.numMeshEnts);
-  }
+
   if (localCoords.extent(1) != fes.MeshEntDim + 1) {
     fail("Dimension 1 of the input array of local coordinates "
          "must have size = %zu.\n",
@@ -470,6 +465,15 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
     fail("The input array of offsets must have size = %zu\n",
          fes.numMeshEnts + 1);
   }
+  LO numLocalCoords;
+  Kokkos::deep_copy(numLocalCoords,
+                    Kokkos::subview(offsets, offsets.size() - 1));
+  if (localCoords.extent(0) != numLocalCoords) {
+    fail("The size of dimension 0 of the local coordinates input array (%zu) "
+         "does not match the last entry of the offsets array (%zu).\n",
+         localCoords.extent(0), numLocalCoords);
+  }
+
   constexpr const auto numComponents = FieldElement::ValArray::size();
   const auto numPts = MeshFieldUtil::getLastValue(offsets);
   Kokkos::View<Real *[numComponents]> res("result", numPts);
