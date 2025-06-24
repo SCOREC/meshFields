@@ -124,7 +124,8 @@ struct ElementToDofHolderMap {
  * @param elmIn see ElementType
  */
 template <typename FieldAccessor, typename ShapeType,
-          typename ElementDofHolderAccessor>
+          typename ElementDofHolderAccessor,
+          size_t numComponentsPerDof = ShapeType::numComponentsPerDof>
 struct FieldElement {
   const size_t numMeshEnts;
   const FieldAccessor field;
@@ -150,8 +151,8 @@ struct FieldElement {
   };
   using ValArray =
       Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
-                    ShapeType::numComponentsPerDof>;
-  static const size_t NumComponents = ShapeType::numComponentsPerDof;
+                    numComponentsPerDof>;
+  static const size_t NumComponents = numComponentsPerDof;
 
   /**
    * @brief
@@ -173,11 +174,11 @@ struct FieldElement {
     assert(ent < numMeshEnts);
     ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
-    for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
+    for (int ci = 0; ci < numComponentsPerDof; ++ci)
       c[ci] = 0;
     for (auto topo : elm2dof.getTopology()) { // element topology
       for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
+        for (int ci = 0; ci < numComponentsPerDof; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
           const auto fval =
               field(map.entity, map.node, map.component, map.topo);

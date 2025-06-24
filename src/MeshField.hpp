@@ -220,7 +220,7 @@ public:
   }
 
   // evaluate a field at the specified local coordinate for each triangle
-  template <typename ViewType, typename ShapeField>
+  template <typename ViewType, typename ShapeField, size_t numComp>
   auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
                               ShapeField field) {
     const auto MeshDim = 2;
@@ -234,7 +234,8 @@ public:
 
     const auto [shp, map] = Omegah::getTriangleElement<ShapeOrder>(mesh);
 
-    MeshField::FieldElement f(meshInfo.numTri, field, shp, map);
+    MeshField::FieldElement<ShapeField, decltype(shp), decltype(map), numComp>
+        f(meshInfo.numTri, field, shp, map);
     auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
     return eval;
