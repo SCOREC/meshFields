@@ -80,6 +80,7 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
         }
       },
       numErrors);
+  printf("numErrors: %d\n", numErrors);
   return (numErrors > 0);
 }
 
@@ -143,7 +144,7 @@ createElmAreaCoords(size_t numElements,
 void doFail(std::string_view order, std::string_view function,
             std::string_view location, std::string_view numComp) {
   std::stringstream ss;
-  ss << order << " field evaluation with " << numComp << "components and "
+  ss << order << " field evaluation with " << numComp << " components and "
      << function << " analytic function at " << location << " points failed\n";
   std::string msg = ss.str();
   MeshField::fail(msg);
