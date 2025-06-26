@@ -229,7 +229,7 @@ void doRun(Omega_h::Mesh &mesh,
 
     {
       const auto ShapeOrder = 1;
-      const auto numComponents = 2;
+      const auto numComponents = 1;
       auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
                                                     numComponents>();
       LinearFunction func = LinearFunction();
@@ -245,7 +245,7 @@ void doRun(Omega_h::Mesh &mesh,
     }
     {
       const auto ShapeOrder = 1;
-      const auto numComponents = 3;
+      const auto numComponents = 1;
       auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
                                                     numComponents>();
       LinearFunction func = LinearFunction();
