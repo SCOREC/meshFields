@@ -45,7 +45,7 @@ struct TestCoords {
 };
 
 template <typename Result, typename CoordField, typename AnalyticFunction>
-bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
+bool checkResult(Omega_h::Mesh &mesh, Result &result, CoordField coordField,
                  TestCoords testCase, AnalyticFunction func, size_t numComp) {
   const auto numPtsPerElem = testCase.NumPtsPerElem;
   MeshField::FieldElement fcoords(
@@ -64,7 +64,8 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
           const auto x = globalCoords(pt, 0);
           const auto y = globalCoords(pt, 1);
           const auto expected = func(x, y);
-            const auto computed = result(pt, 0);
+          for (int i = 0; i < numComp; ++i) {
+            const auto computed = result(pt, i);
             MeshField::LO isError = 0;
             if (Kokkos::fabs(computed - expected) >
                 MeshField::MachinePrecision) {
@@ -76,6 +77,7 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
             }
             lerrors += isError;
           }
+        }
       },
       numErrors);
   return (numErrors > 0);
@@ -229,7 +231,7 @@ void doRun(Omega_h::Mesh &mesh,
 
     {
       const auto ShapeOrder = 1;
-      const auto numComponents = 1;
+      const auto numComponents = 2;
       auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
                                                     numComponents>();
       LinearFunction func = LinearFunction();
@@ -245,7 +247,7 @@ void doRun(Omega_h::Mesh &mesh,
     }
     {
       const auto ShapeOrder = 1;
-      const auto numComponents = 1;
+      const auto numComponents = 3;
       auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
                                                     numComponents>();
       LinearFunction func = LinearFunction();
