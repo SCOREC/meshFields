@@ -63,9 +63,9 @@ bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
         for (auto pt = first; pt < last; pt++) {
           const auto x = globalCoords(pt, 0);
           const auto y = globalCoords(pt, 1);
+          const auto expected = func(x, y);
           for (int i = 0; i < numComp; ++i) {
-            const auto expected = func(x, y);
-            const auto computed = result(pt, 0);
+            const auto computed = result(pt, i);
             MeshField::LO isError = 0;
             if (Kokkos::fabs(computed - expected) >
                 MeshField::MachinePrecision) {
