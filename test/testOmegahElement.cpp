@@ -45,7 +45,7 @@ struct TestCoords {
 };
 
 template <typename Result, typename CoordField, typename AnalyticFunction>
-MeshField::LO checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
+bool checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordField,
                  TestCoords testCase, AnalyticFunction func, size_t numComp) {
   const auto numPtsPerElem = testCase.NumPtsPerElem;
   MeshField::FieldElement fcoords(
@@ -65,7 +65,7 @@ MeshField::LO checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordFi
           const auto y = globalCoords(pt, 1);
           for (int i = 0; i < numComp; ++i) {
             const auto expected = func(x, y);
-            const auto computed = result(pt, i);
+            const auto computed = result(pt, 0);
             MeshField::LO isError = 0;
             if (Kokkos::fabs(computed - expected) >
                 MeshField::MachinePrecision) {
@@ -80,7 +80,7 @@ MeshField::LO checkResult(Omega_h::Mesh &mesh, Result result, CoordField coordFi
         }
       },
       numErrors);
-  return numErrors;
+  return (numErrors > 0);
 }
 
 template <typename AnalyticFunction, typename ShapeField>
@@ -141,10 +141,10 @@ createElmAreaCoords(size_t numElements,
 }
 
 void doFail(std::string_view order, std::string_view function,
-            std::string_view location, std::string_view numComp, std::string_view numErrors) {
+            std::string_view location, std::string_view numComp) {
   std::stringstream ss;
   ss << order << " field evaluation with " << numComp << " components and "
-     << function << " analytic function at " << location << " points failed with " << numErrors << std::endl;
+     << function << " analytic function at " << location << " points failed\n";
   std::string msg = ss.str();
   MeshField::fail(msg);
 }
@@ -190,7 +190,7 @@ void doRun(Omega_h::Mesh &mesh,
                                 LinearFunction{}, numComponents);
       if (failed)
         doFail("linear", "linear", testCase.name,
-               std::to_string(numComponents), std::to_string(failed));
+               std::to_string(numComponents));
     }
 
     {
@@ -208,7 +208,7 @@ void doRun(Omega_h::Mesh &mesh,
                                 QuadraticFunction{}, numComponents);
       if (failed)
         doFail("quadratic", "quadratic", testCase.name,
-               std::to_string(numComponents), std::to_string(failed));
+               std::to_string(numComponents));
     }
 
     {
@@ -226,7 +226,7 @@ void doRun(Omega_h::Mesh &mesh,
                                 LinearFunction{}, numComponents);
       if (failed)
         doFail("quadratic", "linear", testCase.name,
-               std::to_string(numComponents), std::to_string(failed));
+               std::to_string(numComponents));
     }
 
     {
@@ -243,7 +243,7 @@ void doRun(Omega_h::Mesh &mesh,
                                 LinearFunction{}, numComponents);
       if (failed)
         doFail("linear", "linear", testCase.name,
-               std::to_string(numComponents), std::to_string(failed));
+               std::to_string(numComponents));
     }
     {
       const auto ShapeOrder = 1;
@@ -259,7 +259,7 @@ void doRun(Omega_h::Mesh &mesh,
                                 LinearFunction{}, numComponents);
       if (failed)
         doFail("linear", "linear", testCase.name,
-               std::to_string(numComponents), std::to_string(failed));
+               std::to_string(numComponents));
     }
   }
 }
