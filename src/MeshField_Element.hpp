@@ -486,7 +486,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
             lc[i] = localCoords(pt, i);
           const auto val = fes.getValue(ent, lc);
           for (int i = 0; i < numComponents; i++)
-            res(ent, i) = val[i];
+            res(pt, i) = val[i];
         }
       });
   return res;
