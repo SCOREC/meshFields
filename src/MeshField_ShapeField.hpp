@@ -197,7 +197,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     Ctrlr kk_ctrl = createController(meshInfo.numVtx);
 #else
     using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
-    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, 1});
+    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, numComp});
 #endif
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;

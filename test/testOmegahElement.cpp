@@ -115,9 +115,7 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
     const auto y =
         (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
-    for (int i = 0; i < field.numComp; ++i) {
-      field(edge, 0, 0, MeshField::Edge) = func(x, y);
-    }
+    field(edge, 0, 0, MeshField::Edge) = func(x, y);
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nedges()},
                           setFieldAtEdges, "setFieldAtEdges");
