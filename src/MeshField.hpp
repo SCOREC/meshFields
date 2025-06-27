@@ -189,11 +189,11 @@ public:
     static_assert(dim == 1 || dim == 2 || dim == 3);
   }
 
-  template <typename DataType, size_t order>
+  template <typename DataType, size_t order, size_t numComp>
   // Ordering of field indexing changed to 'entity, node, component'
   auto CreateLagrangeField() {
     return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
-                                          order, dim>(meshInfo);
+                                          order, dim, numComp>(meshInfo);
   }
 
   auto getCoordField() { return coordField; }
@@ -219,12 +219,13 @@ public:
     return offsets;
   }
 
-  // evaluate a field at the specified local coordinates for each triangle
+  // evaluate a field at the specified local coordinate for each triangle
   template <typename ViewType, typename ShapeField>
   auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
                               ShapeField field) {
     auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
-    auto eval = triangleLocalPointEval(localCoords, offsets, field);
+    auto eval = triangleLocalPointEval<ViewType, ShapeField>(localCoords,
+                                                             offsets, field);
     return eval;
   }
 
@@ -243,7 +244,8 @@ public:
 
     const auto [shp, map] = Omegah::getTriangleElement<ShapeOrder>(mesh);
 
-    MeshField::FieldElement f(meshInfo.numTri, field, shp, map);
+    MeshField::FieldElement<ShapeField, decltype(shp), decltype(map)> f(
+        meshInfo.numTri, field, shp, map);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
     return eval;
   }
