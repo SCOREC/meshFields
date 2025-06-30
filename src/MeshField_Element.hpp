@@ -150,8 +150,8 @@ struct FieldElement {
   };
   using ValArray =
       Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
-                    ShapeType::numComponentsPerDof>;
-  static const size_t NumComponents = ShapeType::numComponentsPerDof;
+                    FieldAccessor::numComp>;
+  static const size_t NumComponents = FieldAccessor::numComp;
 
   /**
    * @brief
@@ -173,11 +173,11 @@ struct FieldElement {
     assert(ent < numMeshEnts);
     ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
-    for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci)
+    for (int ci = 0; ci < NumComponents; ++ci)
       c[ci] = 0;
     for (auto topo : elm2dof.getTopology()) { // element topology
       for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (int ci = 0; ci < shapeFn.numComponentsPerDof; ++ci) {
+        for (int ci = 0; ci < NumComponents; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
           const auto fval =
               field(map.entity, map.node, map.component, map.topo);

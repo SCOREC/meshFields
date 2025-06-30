@@ -36,7 +36,6 @@ using Vector4 = Kokkos::Array<Real, 4>;
 
 struct LinearEdgeShape {
   static const size_t numNodes = 2;
-  static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 1;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
   constexpr static size_t Order = 1;
@@ -90,7 +89,6 @@ struct LinearTriangleShape {
 
 struct LinearTriangleCoordinateShape {
   static const size_t numNodes = 3;
-  static const size_t numComponentsPerDof = 2;
   static const size_t meshEntDim = 2;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
   constexpr static size_t Order = 1;
@@ -109,7 +107,6 @@ struct LinearTriangleCoordinateShape {
 
 struct QuadraticTriangleShape {
   static const size_t numNodes = 6;
-  static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 2;
   constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};
   constexpr static size_t NumDofHolders[2] = {3, 3};
@@ -149,7 +146,6 @@ struct QuadraticTriangleShape {
 
 struct QuadraticTetrahedronShape {
   static const size_t numNodes = 10;
-  static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 3;
   constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};
   constexpr static size_t NumDofHolders[2] = {4, 6};

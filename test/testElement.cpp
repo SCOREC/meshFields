@@ -41,7 +41,7 @@ void triangleLocalPointEval() {
   const auto numElms = 3; // provided by the mesh
   const MeshField::MeshInfo meshInfo{.numVtx = 5, .numTri = 3};
   auto field = MeshField::CreateLagrangeField<
-      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 2>(
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 2, 1>(
       meshInfo);
 
   MeshField::FieldElement f(numElms, field, MeshField::LinearTriangleShape(),
@@ -85,7 +85,7 @@ struct LinearEdgeToVertexField {
 void edgeLocalPointEval() {
   const MeshField::MeshInfo meshInfo{.numVtx = 5, .numEdge = 7, .dim = 1};
   auto field = MeshField::CreateLagrangeField<
-      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1>(
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1, 1>(
       meshInfo);
 
   MeshField::FieldElement f(meshInfo.numEdge, field,
@@ -137,7 +137,7 @@ void quadraticTriangleLocalPointEval() {
   const MeshField::MeshInfo meshInfo{
       .numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
   auto field = MeshField::CreateLagrangeField<
-      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 2>(
+      ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 2, 1>(
       meshInfo);
 
   MeshField::FieldElement f(meshInfo.numTri, field,
@@ -192,7 +192,7 @@ void quadraticTetrahedronLocalPointEval() {
   auto field =
       MeshField::CreateLagrangeField<ExecutionSpace,
                                      MeshField::KokkosController,
-                                     MeshField::Real, ShapeOrder, MeshDim>(
+                                     MeshField::Real, ShapeOrder, MeshDim, 1>(
           meshInfo);
 
   MeshField::FieldElement f(meshInfo.numTet, field,
