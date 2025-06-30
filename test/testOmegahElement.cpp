@@ -115,7 +115,9 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
     const auto y =
         (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
-    field(edge, 0, 0, MeshField::Edge) = func(x, y);
+    for (int i = 0; i < field.numComp; ++i) {
+      field(edge, 0, i, MeshField::Edge) = func(x, y);
+    }
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nedges()},
                           setFieldAtEdges, "setFieldAtEdges");
@@ -145,6 +147,35 @@ void doFail(std::string_view order, std::string_view function,
      << function << " analytic function at " << location << " points failed\n";
   std::string msg = ss.str();
   MeshField::fail(msg);
+}
+template <size_t ShapeOrder, size_t numComponents,
+          template <typename...> typename Controller>
+void runTest(Omega_h::Mesh &mesh,
+             MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> &omf,
+             auto testCase, auto function) {
+  using functionType = decltype(function);
+  using ViewType = decltype(testCase.coords);
+  auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                                numComponents>();
+  using FieldType = decltype(field);
+  setVertices(mesh, function, field);
+  if constexpr (ShapeOrder == 2) {
+    setEdges(mesh, function, field);
+  }
+  auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
+      testCase.coords, testCase.NumPtsPerElem, field);
+  auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                            decltype(function){}, numComponents);
+  if (failed) {
+    std::string fieldErr = ShapeOrder == 1 ? "linear" : "quadratic";
+    std::string functionErr;
+    if constexpr (std::is_same_v<functionType, LinearFunction>) {
+      functionErr = "linear";
+    } else {
+      functionErr = "quadratic";
+    }
+    doFail(fieldErr, functionErr, testCase.name, std::to_string(numComponents));
+  }
 }
 
 template <template <typename...> typename Controller>
@@ -177,87 +208,43 @@ void doRun(Omega_h::Mesh &mesh,
     {
       const auto ShapeOrder = 1;
       const auto numComponents = 1;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    numComponents>();
-      LinearFunction func = LinearFunction();
-      setVertices(mesh, func, field);
-      using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, field);
-      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                LinearFunction{}, numComponents);
-      if (failed)
-        doFail("linear", "linear", testCase.name,
-               std::to_string(numComponents));
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
     }
 
     {
       const auto ShapeOrder = 2;
       const auto numComponents = 1;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    numComponents>();
-      auto func = QuadraticFunction();
-      setVertices(mesh, func, field);
-      setEdges(mesh, func, field);
-      using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, field);
-      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                QuadraticFunction{}, numComponents);
-      if (failed)
-        doFail("quadratic", "quadratic", testCase.name,
-               std::to_string(numComponents));
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase,
+                                         QuadraticFunction());
     }
 
     {
       const auto ShapeOrder = 2;
       const auto numComponents = 1;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    numComponents>();
-      auto func = LinearFunction();
-      setVertices(mesh, func, field);
-      setEdges(mesh, func, field);
-      using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, field);
-      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                LinearFunction{}, numComponents);
-      if (failed)
-        doFail("quadratic", "linear", testCase.name,
-               std::to_string(numComponents));
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
     }
 
     {
       const auto ShapeOrder = 1;
       const auto numComponents = 2;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    numComponents>();
-      LinearFunction func = LinearFunction();
-      setVertices(mesh, func, field);
-      using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, field);
-      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                LinearFunction{}, numComponents);
-      if (failed)
-        doFail("linear", "linear", testCase.name,
-               std::to_string(numComponents));
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
     }
     {
       const auto ShapeOrder = 1;
       const auto numComponents = 3;
-      auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                    numComponents>();
-      LinearFunction func = LinearFunction();
-      setVertices(mesh, func, field);
-      using FieldType = decltype(field);
-      auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
-          testCase.coords, testCase.NumPtsPerElem, field);
-      auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
-                                LinearFunction{}, numComponents);
-      if (failed)
-        doFail("linear", "linear", testCase.name,
-               std::to_string(numComponents));
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+    }
+    {
+      const auto ShapeOrder = 2;
+      const auto numComponents = 2;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase,
+                                         QuadraticFunction());
+    }
+
+    {
+      const auto ShapeOrder = 2;
+      const auto numComponents = 3;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
     }
   }
 }
