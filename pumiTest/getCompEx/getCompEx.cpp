@@ -37,9 +37,15 @@ int main(int argc, char** argv) {
   apf::MeshEntity* tri = m->iterate(rIt);
   assert(tri);
   apf::Element* element = apf::createElement(f, tri);
-  getComp(element, {0,0,1});
-  getComp(element, {0,1,0});
-  getComp(element, {1,1,0});
+  apf::MeshEntity* triVerts[3];
+  int numTriVerts = m->getDownward(tri, 0, triVerts);
+  assert(numTriVerts == 3);
+  for(int i=0; i<numTriVerts; i++) {
+    std::cout << i << " expected " << apf::getScalar(f, triVerts[i], 0) << " ";
+    apf::Vector3 xi = {0,0,0};
+    xi[i] = 1;
+    getComp(element, xi);
+  }
   //write to vtk files that can be visualized in paraview
   apf::writeVtkFiles("twoTri", m);
   }
