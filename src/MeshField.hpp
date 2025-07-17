@@ -57,7 +57,7 @@ createCoordinateField(const MeshField::MeshInfo &mesh_info,
 namespace MeshField {
 
 namespace Omegah {
-struct LinearTriangleToVertexField {
+template <size_t adjust = 0> struct LinearTriangleToVertexField {
   Omega_h::LOs triVerts;
   LinearTriangleToVertexField(Omega_h::Mesh &mesh)
       : triVerts(mesh.ask_elem_verts()) {
@@ -80,14 +80,23 @@ struct LinearTriangleToVertexField {
     const auto triDim = 2;
     const auto vtxDim = 0;
     const auto ignored = -1;
-    const auto localVtxIdx =
-        Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
-    const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
-    const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
-    return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
+    if (adjust == 1) {
+      const auto localVtxIdx =
+          Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
+      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+      const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+      return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
+    } else {
+      const auto localVtxIdx =
+          (Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored) +
+           1) %
+          3;
+      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+      const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+      return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
+    }
   }
 };
-
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
@@ -153,10 +162,10 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   if constexpr (ShapeOrder == 1) {
     struct result {
       MeshField::LinearTriangleShape shp;
-      LinearTriangleToVertexField map;
+      LinearTriangleToVertexField<1> map;
     };
     return result{MeshField::LinearTriangleShape(),
-                  LinearTriangleToVertexField(mesh)};
+                  LinearTriangleToVertexField<1>(mesh)};
   } else if constexpr (ShapeOrder == 2) {
     struct result {
       MeshField::QuadraticTriangleShape shp;
