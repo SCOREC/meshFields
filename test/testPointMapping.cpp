@@ -3,10 +3,6 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_mesh.hpp>
 
-// Uncommenting will reorder the parametric evaluation coordinates which causes
-// the test to pass.
-// #define REORDER_COORDS
-
 int main(int argc, char **argv) {
   // setup
   Kokkos::initialize(argc, argv);
@@ -25,7 +21,6 @@ int main(int argc, char **argv) {
     auto f = KOKKOS_LAMBDA(double x, double y)->double {
       return 2 * x + 3 * y;
     };
-    // auto f = [](double x, double y) -> double { return 2 * x + 3 * y; };
     Kokkos::parallel_for(
         mesh.nverts(), KOKKOS_LAMBDA(int vtx) {
           auto x = coords[vtx * dim];
@@ -56,7 +51,7 @@ int main(int argc, char **argv) {
             auto x = coords[vtx * dim];
             auto y = coords[vtx * dim + 1];
             auto expected = f(x, y);
-            auto actual = eval_results(tri * 3, node);
+            auto actual = eval_results(tri * 3 + node, 0);
             if (Kokkos::fabs(expected - actual) > MeshField::MachinePrecision) {
               ++errors;
               Kokkos::printf(
