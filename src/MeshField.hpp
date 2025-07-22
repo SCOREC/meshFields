@@ -80,13 +80,13 @@ struct LinearTriangleToVertexField {
     const auto triDim = 2;
     const auto vtxDim = 0;
     const auto ignored = -1;
-     const auto localVtxIdx =
-          (Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored) +
-           2) %
-          3;
-      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
-      const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
-      return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
+    const auto localVtxIdx =
+        (Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored) +
+         2) %
+        3;
+    const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+    const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+    return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
 struct QuadraticTriangleToField {
@@ -130,8 +130,10 @@ struct QuadraticTriangleToField {
       const auto triDim = 2;
       const auto vtxDim = 0;
       const auto ignored = -1;
-      const auto localVtxIdx =
-          (Omega_h::simplex_down_template(triDim, vtxDim, dofHolderIdx, ignored) + 2) % 3;
+      const auto localVtxIdx = (Omega_h::simplex_down_template(
+                                    triDim, vtxDim, dofHolderIdx, ignored) +
+                                2) %
+                               3;
       const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
       osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
     } else if (dofHolderTopo == MeshField::Edge) {
