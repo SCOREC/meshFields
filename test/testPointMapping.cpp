@@ -19,7 +19,7 @@ template <size_t order> void runTest(Omega_h::Mesh mesh) {
         auto y = coords[vtx * dim + 1];
         shape_field(vtx, 0, 0, MeshField::Mesh_Topology::Vertex) = f(x, y);
       });
-  if constexpr (order == 2) {
+  if (order == 2) {
     Kokkos::parallel_for(
         mesh.nedges(), KOKKOS_LAMBDA(int edge) {
           const auto left = edge2vtx[edge * 2];
@@ -30,11 +30,11 @@ template <size_t order> void runTest(Omega_h::Mesh mesh) {
           shape_field(edge, 0, 0, MeshField::Mesh_Topology::Edge) = f(x, y);
         });
   }
-  const auto numPtsPerElem = order == 2 ? 6 : 3;
-  Kokkos::View<double **> local_coords("", mesh.nelems() * numPtsPerElem, 3);
+  const auto numNodesPerElem = order == 2 ? 6 : 3;
+  Kokkos::View<double **> local_coords("", mesh.nelems() * numNodesPerElem, 3);
   Kokkos::parallel_for(
-      "set", mesh.nelems() * numPtsPerElem, KOKKOS_LAMBDA(const int &i) {
-        const auto val = i % numPtsPerElem;
+      "set", mesh.nelems() * numNodesPerElem, KOKKOS_LAMBDA(const int &i) {
+        const auto val = i % numNodesPerElem;
         local_coords(i, 0) = (val == 0);
         local_coords(i, 1) = (val == 1);
         local_coords(i, 2) = (val == 2);
@@ -53,7 +53,7 @@ template <size_t order> void runTest(Omega_h::Mesh mesh) {
       });
 
   auto eval_results = mesh_field.triangleLocalPointEval(
-      local_coords, numPtsPerElem, shape_field);
+      local_coords, numNodesPerElem, shape_field);
 
   int errors = 0;
   const auto triVerts = mesh.ask_elem_verts();
@@ -72,7 +72,7 @@ template <size_t order> void runTest(Omega_h::Mesh mesh) {
           auto x = coords[vtx * dim];
           auto y = coords[vtx * dim + 1];
           auto expected = f(x, y);
-          auto actual = eval_results(tri * numPtsPerElem + node, 0);
+          auto actual = eval_results(tri * numNodesPerElem + node, 0);
           if (Kokkos::fabs(expected - actual) > MeshField::MachinePrecision) {
             ++errors;
             Kokkos::printf(
@@ -80,7 +80,7 @@ template <size_t order> void runTest(Omega_h::Mesh mesh) {
                 expected, actual, tri, node);
           }
         }
-        for (int node = 3; node < numPtsPerElem; ++node) {
+        for (int node = 3; node < numNodesPerElem; ++node) {
           const auto triDim = 2;
           const auto edgeDim = 1;
           const auto triToEdgeDegree = Omega_h::simplex_degree(triDim, edgeDim);
@@ -92,7 +92,7 @@ template <size_t order> void runTest(Omega_h::Mesh mesh) {
           auto x = (coords[left * dim] + coords[right * dim]) / 2.0;
           auto y = (coords[left * dim + 1] + coords[right * dim + 1]) / 2.0;
           auto expected = f(x, y);
-          auto actual = eval_results(tri * numPtsPerElem + node, 0);
+          auto actual = eval_results(tri * numNodesPerElem + node, 0);
           if (Kokkos::fabs(expected - actual) > MeshField::MachinePrecision) {
             ++errors;
             Kokkos::printf(
