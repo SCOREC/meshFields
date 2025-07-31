@@ -113,22 +113,15 @@ struct LinearTetrahedronShape {
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector4 const &xi) const {
-  assert(greaterThanOrEqualZero(xi));
-  assert(sumsToOne(xi));
-  return {1 - xi[0] - xi[1] - xi[2],
-          xi[0],
-          xi[1],
-          xi[2]};
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    return {1 - xi[0] - xi[1] - xi[2], xi[0], xi[1], xi[2]};
   }
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
-    return {-1, -1, -1,
-             1,  0,  0,
-             0,  1,  0,
-             0,  0,  1};
+    return {-1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1};
   }
-
 };
 
 struct QuadraticTriangleShape {

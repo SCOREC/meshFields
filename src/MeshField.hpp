@@ -91,7 +91,7 @@ struct LinearTriangleToVertexField {
 };
 struct LinearTetrahedronToVertexField {
   Omega_h::LOs tetVerts;
-  LinearTetrahedronToVertexField(Omega_h::Mesh &mesh) 
+  LinearTetrahedronToVertexField(Omega_h::Mesh &mesh)
       : tetVerts(mesh.ask_elem_verts()) {
     if (mesh.dim() != 3 && mesh.family() != OMEGA_H_SIMPLEX) {
       MeshField::fail(
@@ -111,11 +111,13 @@ struct LinearTetrahedronToVertexField {
     const auto tetDim = 3;
     const auto vtxDim = 0;
     const auto ignored = -1;
-    const auto localVtxIdx = (Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored) + 3) % 4;
+    const auto localVtxIdx =
+        (Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored) +
+         3) %
+        4;
     const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
     const MeshField::LO vtx = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
     return {0, tetCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
-
   }
 };
 struct QuadraticTriangleToField {
@@ -290,9 +292,9 @@ public:
     return eval;
   }
 
-  template<typename ViewType, typename ShapeField>
-  auto tetrahedronLocalPointEval(ViewType localCoords, Kokkos::View<LO *> offsets,
-                                 ShapeField field) {
+  template <typename ViewType, typename ShapeField>
+  auto tetrahedronLocalPointEval(ViewType localCoords,
+                                 Kokkos::View<LO *> offsets, ShapeField field) {
     const auto MeshDim = 3;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 3d\n");

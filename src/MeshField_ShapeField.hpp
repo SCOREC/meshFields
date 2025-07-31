@@ -202,9 +202,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
     using LinearLagrangeShapeField = std::conditional_t<
-    dim == 3,
-    ShapeField<numComp, Ctrlr, LinearTetrahedronShape, LA>,
-    ShapeField<numComp, Ctrlr, LinearTriangleShape, LA>>;
+        dim == 3, ShapeField<numComp, Ctrlr, LinearTetrahedronShape, LA>,
+        ShapeField<numComp, Ctrlr, LinearTriangleShape, LA>>;
     LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
