@@ -89,6 +89,35 @@ struct LinearTriangleToVertexField {
     return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
+struct LinearTetrahedronToVertexField {
+  Omega_h::LOs tetVerts;
+  LinearTetrahedronToVertexField(Omega_h::Mesh &mesh) 
+      : tetVerts(mesh.ask_elem_verts()) {
+    if (mesh.dim() != 3 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 3D and simplex (tetrahedron)\n",
+          __func__);
+    }
+  }
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Tetrahedron};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
+             MeshField::LO tet, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Tetrahedron);
+    const auto tetDim = 3;
+    const auto vtxDim = 0;
+    const auto ignored = -1;
+    const auto localVtxIdx = (Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored) + 3) % 4;
+    const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
+    const MeshField::LO vtx = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
+    return {0, tetCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
+
+  }
+};
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
@@ -249,6 +278,33 @@ public:
 
     MeshField::FieldElement<ShapeField, decltype(shp), decltype(map)> f(
         meshInfo.numTri, field, shp, map);
+    auto eval = MeshField::evaluate(f, localCoords, offsets);
+    return eval;
+  }
+
+  template <typename ViewType, typename ShapeField>
+  auto tetrahedronLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
+                                 ShapeField field) {
+    auto offsets = createOffsets(meshInfo.numTet, NumPtsPerElem);
+    auto eval = tetrahedronLocalPointEval(localCoords, offsets, field);
+    return eval;
+  }
+
+  template<typename ViewType, typename ShapeField>
+  auto tetrahedronLocalPointEval(ViewType localCoords, Kokkos::View<LO *> offsets,
+                                 ShapeField field) {
+    const auto MeshDim = 3;
+    if (mesh.dim() != MeshDim) {
+      MeshField::fail("input mesh must be 3d\n");
+    }
+    const auto ShapeOrder = ShapeField::Order;
+    if (ShapeOrder != 1) {
+      MeshField::fail("input field order must be 1 or 2\n");
+    }
+    const auto shp = MeshField::LinearTetrahedronShape();
+    const auto map = Omegah::LinearTetrahedronToVertexField(mesh);
+    MeshField::FieldElement<ShapeField, decltype(shp), decltype(map)> f(
+        meshInfo.numTet, field, shp, map);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
     return eval;
   }

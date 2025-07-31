@@ -105,6 +105,32 @@ struct LinearTriangleCoordinateShape {
   }
 };
 
+struct LinearTetrahedronShape {
+  static const size_t numNodes = 4;
+  static const size_t meshEntDim = 3;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector4 const &xi) const {
+  assert(greaterThanOrEqualZero(xi));
+  assert(sumsToOne(xi));
+  return {1 - xi[0] - xi[1] - xi[2],
+          xi[0],
+          xi[1],
+          xi[2]};
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
+    return {-1, -1, -1,
+             1,  0,  0,
+             0,  1,  0,
+             0,  0,  1};
+  }
+
+};
+
 struct QuadraticTriangleShape {
   static const size_t numNodes = 6;
   static const size_t meshEntDim = 2;
