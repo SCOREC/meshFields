@@ -243,8 +243,9 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
-    using QuadraticLagrangeShapeField =
-        ShapeField<numComp, Ctrlr, QuadraticTriangleShape, QA>;
+    using QuadraticLagrangeShapeField = std::conditional_t<
+        dim == 3, ShapeField<numComp, Ctrlr, QuadraticTetrahedronShape, QA>,
+        ShapeField<numComp, Ctrlr, QuadraticTriangleShape, QA>>;
     QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
     return qlsf;
   } else {
