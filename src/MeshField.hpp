@@ -81,13 +81,14 @@ struct LinearTriangleToVertexField {
     const auto vtxDim = 0;
     const auto ignored = -1;
     const auto localVtxIdx =
-        Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
+        (Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored) +
+         2) %
+        3;
     const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
     const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
     return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
-
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
@@ -129,8 +130,10 @@ struct QuadraticTriangleToField {
       const auto triDim = 2;
       const auto vtxDim = 0;
       const auto ignored = -1;
-      const auto localVtxIdx =
-          Omega_h::simplex_down_template(triDim, vtxDim, dofHolderIdx, ignored);
+      const auto localVtxIdx = (Omega_h::simplex_down_template(
+                                    triDim, vtxDim, dofHolderIdx, ignored) +
+                                2) %
+                               3;
       const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
       osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
     } else if (dofHolderTopo == MeshField::Edge) {
@@ -140,7 +143,7 @@ struct QuadraticTriangleToField {
       // passing dofHolderIdx as Omega_h_simplex.hpp does not provide
       // a function that maps a triangle and edge index to a 'canonical' edge
       // index. This may need to be revisited...
-      osh_ent = triEdges[(tri * triToEdgeDegree) + dofHolderIdx];
+      osh_ent = triEdges[(tri * triToEdgeDegree) + (dofHolderIdx + 2) % 3];
     } else {
       assert(false);
     }
