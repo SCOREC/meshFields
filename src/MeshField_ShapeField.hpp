@@ -201,9 +201,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
 #endif
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
+    // clang-format off
     using LinearLagrangeShapeField = std::conditional_t<
-        dim == 3, ShapeField<numComp, Ctrlr, LinearTetrahedronShape, LA>,
+        dim == 3, 
+        ShapeField<numComp, Ctrlr, LinearTetrahedronShape, LA>,
         ShapeField<numComp, Ctrlr, LinearTriangleShape, LA>>;
+    // clang-format on
     LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
@@ -243,9 +246,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
+    // clang-format off
     using QuadraticLagrangeShapeField = std::conditional_t<
-        dim == 3, ShapeField<numComp, Ctrlr, QuadraticTetrahedronShape, QA>,
+        dim == 3, 
+        ShapeField<numComp, Ctrlr, QuadraticTetrahedronShape, QA>,
         ShapeField<numComp, Ctrlr, QuadraticTriangleShape, QA>>;
+    // clang-format on
     QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
     return qlsf;
   } else {

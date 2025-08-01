@@ -204,7 +204,7 @@ struct QuadraticTetrahedronToField {
   operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
              MeshField::LO tet, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Tetrahedron);
-    const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 3, 0, 4, 5, 2, 1};
+    const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 3, 4, 5, 0, 2, 1};
     const MeshField::Mesh_Topology tetNode2DofHolderTopo[10] = {
         MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
         MeshField::Vertex, MeshField::Edge,   MeshField::Edge,
