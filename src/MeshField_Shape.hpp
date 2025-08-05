@@ -105,6 +105,34 @@ struct LinearTriangleCoordinateShape {
   }
 };
 
+struct LinearTetrahedronShape {
+  static const size_t numNodes = 4;
+  static const size_t meshEntDim = 3;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector4 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    // clang-format off
+    return {1 - xi[0] - xi[1] - xi[2], 
+            xi[0], xi[1], 
+            xi[2]};
+    // clang-format on
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
+    // clang-format off
+    return {-1, -1, -1, 
+             1,  0,  0, 
+             0,  1,  0, 
+             0,  0,  1};
+    // clang-format on
+  }
+};
+
 struct QuadraticTriangleShape {
   static const size_t numNodes = 6;
   static const size_t meshEntDim = 2;
@@ -151,7 +179,8 @@ struct QuadraticTetrahedronShape {
   constexpr static size_t NumDofHolders[2] = {4, 6};
   constexpr static size_t DofsPerHolder[2] = {1, 1};
   constexpr static size_t Order = 2;
-
+  // ordering taken from mfem
+  // see mfem/mfem fem/fe/fe_fixed_order.cpp @597cba8
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector4 const &xi) const {
     assert(greaterThanOrEqualZero(xi));
@@ -163,9 +192,9 @@ struct QuadraticTetrahedronShape {
             xi[1]*(2*xi[1]-1),
             xi[2]*(2*xi[2]-1),
             4*xi[0]*xi3,
-            4*xi[0]*xi[1],
             4*xi[1]*xi3,
             4*xi[2]*xi3,
+            4*xi[0]*xi[1],
             4*xi[2]*xi[0],
             4*xi[1]*xi[2]};
     // clang-format on
@@ -183,9 +212,9 @@ struct QuadraticTetrahedronShape {
             0,4*xi[1]-1,0,
             0,0,4*xi[2]-1,
             4*xi3-4*xi[0],-4*xi[0],-4*xi[0],
-            4*xi[1],4*xi[0],0,
             -4*xi[1],4*xi3-4*xi[1],-4*xi[1],
             -4*xi[2],-4*xi[2],4*xi3-4*xi[2],
+            4*xi[1],4*xi[0],0,
             4*xi[2],0,4*xi[0],
             0,4*xi[2],4*xi[1]};
     // clang-format on

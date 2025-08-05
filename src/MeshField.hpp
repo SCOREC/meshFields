@@ -89,6 +89,37 @@ struct LinearTriangleToVertexField {
     return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
+struct LinearTetrahedronToVertexField {
+  Omega_h::LOs tetVerts;
+  LinearTetrahedronToVertexField(Omega_h::Mesh &mesh)
+      : tetVerts(mesh.ask_elem_verts()) {
+    if (mesh.dim() != 3 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 3D and simplex (tetrahedron)\n",
+          __func__);
+    }
+  }
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Tetrahedron};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
+             MeshField::LO tet, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Tetrahedron);
+    const auto tetDim = 3;
+    const auto vtxDim = 0;
+    const auto ignored = -1;
+    const auto localVtxIdx =
+        (Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored) +
+         3) %
+        4;
+    const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
+    const MeshField::LO vtx = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
+    return {0, tetCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
+  }
+};
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
@@ -151,6 +182,59 @@ struct QuadraticTriangleToField {
   }
 };
 
+struct QuadraticTetrahedronToField {
+  Omega_h::LOs tetVerts;
+  Omega_h::LOs tetEdges;
+  QuadraticTetrahedronToField(Omega_h::Mesh &mesh)
+      : tetVerts(mesh.ask_elem_verts()),
+        tetEdges(mesh.ask_down(mesh.dim(), 1).ab2b) {
+    if (mesh.dim() != 3 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 3D and simplex (tetrahedron)",
+          __func__);
+    }
+  }
+
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Tetrahedron};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
+             MeshField::LO tet, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Tetrahedron);
+    const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 3, 4, 5, 0, 2, 1};
+    const MeshField::Mesh_Topology tetNode2DofHolderTopo[10] = {
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        MeshField::Vertex, MeshField::Edge,   MeshField::Edge,
+        MeshField::Edge,   MeshField::Edge,   MeshField::Edge,
+        MeshField::Edge};
+    const auto dofHolderIdx = tetNode2DofHolder[tetNodeIdx];
+    const auto dofHolderTopo = tetNode2DofHolderTopo[tetNodeIdx];
+    Omega_h::LO osh_ent;
+    if (dofHolderTopo == MeshField::Vertex) {
+      const auto tetDim = 3;
+      const auto vtxDim = 0;
+      const auto ignored = -1;
+      const auto localVtxIdx = (Omega_h::simplex_down_template(
+                                    tetDim, vtxDim, dofHolderIdx, ignored) +
+                                3) %
+                               4;
+      const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
+      osh_ent = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
+    } else if (dofHolderTopo == MeshField::Edge) {
+      const auto tetDim = 3;
+      const auto edgeDim = 1;
+      const auto tetToEdgeDegree = Omega_h::simplex_degree(tetDim, edgeDim);
+      osh_ent = tetEdges[(tet * tetToEdgeDegree) + dofHolderIdx];
+    } else {
+      assert(false);
+    }
+    return {0, tetCompIdx, osh_ent, dofHolderTopo};
+  }
+};
+
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
@@ -167,6 +251,24 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
     };
     return result{MeshField::QuadraticTriangleShape(),
                   QuadraticTriangleToField(mesh)};
+  }
+}
+template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
+  static_assert(ShapeOrder == 1 || ShapeOrder == 2);
+  if constexpr (ShapeOrder == 1) {
+    struct result {
+      MeshField::LinearTetrahedronShape shp;
+      LinearTetrahedronToVertexField map;
+    };
+    return result{MeshField::LinearTetrahedronShape(),
+                  LinearTetrahedronToVertexField(mesh)};
+  } else if constexpr (ShapeOrder == 2) {
+    struct result {
+      MeshField::QuadraticTetrahedronShape shp;
+      QuadraticTetrahedronToField map;
+    };
+    return result{MeshField::QuadraticTetrahedronShape(),
+                  QuadraticTetrahedronToField(mesh)};
   }
 }
 
@@ -249,6 +351,32 @@ public:
 
     MeshField::FieldElement<ShapeField, decltype(shp), decltype(map)> f(
         meshInfo.numTri, field, shp, map);
+    auto eval = MeshField::evaluate(f, localCoords, offsets);
+    return eval;
+  }
+
+  template <typename ViewType, typename ShapeField>
+  auto tetrahedronLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
+                                 ShapeField field) {
+    auto offsets = createOffsets(meshInfo.numTet, NumPtsPerElem);
+    auto eval = tetrahedronLocalPointEval(localCoords, offsets, field);
+    return eval;
+  }
+
+  template <typename ViewType, typename ShapeField>
+  auto tetrahedronLocalPointEval(ViewType localCoords,
+                                 Kokkos::View<LO *> offsets, ShapeField field) {
+    const auto MeshDim = 3;
+    if (mesh.dim() != MeshDim) {
+      MeshField::fail("input mesh must be 3d\n");
+    }
+    const auto ShapeOrder = ShapeField::Order;
+    if (ShapeOrder != 1 && ShapeOrder != 2) {
+      MeshField::fail("input field order must be 1 or 2\n");
+    }
+    const auto [shp, map] = Omegah::getTetrahedronElement<ShapeOrder>(mesh);
+    MeshField::FieldElement<ShapeField, decltype(shp), decltype(map)> f(
+        meshInfo.numTet, field, shp, map);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
     return eval;
   }

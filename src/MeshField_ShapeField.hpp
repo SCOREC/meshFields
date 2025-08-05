@@ -172,7 +172,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
   static_assert((dim == 1 || dim == 2 || dim == 3),
                 "CreateLagrangeField only supports 1d, 2d, and 3d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
-  if constexpr (order == 1 && (dim == 1 || dim == 2)) {
+  if constexpr (order == 1 && (dim == 1 || dim == 2 || dim == 3)) {
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
     }
@@ -201,8 +201,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
 #endif
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     using LA = LinearAccessor<decltype(vtxField)>;
-    using LinearLagrangeShapeField =
-        ShapeField<numComp, Ctrlr, LinearTriangleShape, LA>;
+    // clang-format off
+    using LinearLagrangeShapeField = std::conditional_t<
+        dim == 3, 
+        ShapeField<numComp, Ctrlr, LinearTetrahedronShape, LA>,
+        ShapeField<numComp, Ctrlr, LinearTriangleShape, LA>>;
+    // clang-format on
     LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
@@ -242,8 +246,12 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
-    using QuadraticLagrangeShapeField =
-        ShapeField<numComp, Ctrlr, QuadraticTriangleShape, QA>;
+    // clang-format off
+    using QuadraticLagrangeShapeField = std::conditional_t<
+        dim == 3, 
+        ShapeField<numComp, Ctrlr, QuadraticTetrahedronShape, QA>,
+        ShapeField<numComp, Ctrlr, QuadraticTriangleShape, QA>>;
+    // clang-format on
     QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
     return qlsf;
   } else {
