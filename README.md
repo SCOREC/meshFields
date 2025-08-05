@@ -54,6 +54,7 @@ cmake ../kokkos \
   -DKokkos_ENABLE_CUDA_LAMBDA=on \
   -DKokkos_ENABLE_DEBUG=on \
   -DKokkos_ENABLE_PROFILING=on \
+  -DKokkos_ENABLE_IMPL_VIEW_LEGACY=on \
   -DCMAKE_INSTALL_PREFIX=$PWD/install
 make -j 24 install
 
@@ -225,7 +226,7 @@ The following assumes that the environment is already setup (see above, either C
 ```
 cd $root
 git clone git@github.com:SCOREC/meshFields
-cmake -S meshFields -B build-meshFields-[CPU|GPU]
+cmake -S meshFields -B build-meshFields-[CPU|GPU] -DMeshFields_USE_Cabana=on
 cmake --build build-meshFields-[CPU|GPU]
 ```
 
