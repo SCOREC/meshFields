@@ -62,6 +62,7 @@ jobs:
             -DKokkos_ENABLE_CUDA=on \
             -DKokkos_ENABLE_CUDA_LAMBDA=on \
             -DKokkos_ENABLE_DEBUG=off \
+            -DKokkos_ENABLE_IMPL_VIEW_LEGACY=ON \
             -DCMAKE_INSTALL_PREFIX=$kkbdir/install
           cmake --build $kkbdir --target install -j 4
 
@@ -97,6 +98,7 @@ jobs:
           #meshfields
           mfbdir=${workDir}/build-meshfields
           cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
+            -DMeshFields_USE_Cabana=on \
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
             -DCabana_ROOT=$cabbdir/install
