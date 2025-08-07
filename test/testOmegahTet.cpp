@@ -1,138 +1,278 @@
+#include "KokkosController.hpp"
+#include "MeshField.hpp"
+#include "MeshField_Element.hpp"    //remove?
+#include "MeshField_Fail.hpp"       //remove?
+#include "MeshField_For.hpp"        //remove?
+#include "MeshField_ShapeField.hpp" //remove?
+#ifdef MESHFIELDS_ENABLE_CABANA
+#include "CabanaController.hpp"
+#endif
+#include "Omega_h_build.hpp"
+#include "Omega_h_file.hpp"
+#include "Omega_h_simplex.hpp"
 #include <Kokkos_Core.hpp>
-#include <MeshField.hpp>
-#include <Omega_h_build.hpp>
-#include <Omega_h_mesh.hpp>
-template <size_t order> void runTest(Omega_h::Mesh mesh) {
-  MeshField::OmegahMeshField<Kokkos::DefaultExecutionSpace, 3> mesh_field(mesh);
-  auto shape_field =
-      mesh_field.template CreateLagrangeField<double, order, 1>();
-  auto dim = mesh.dim();
-  auto coords = mesh.coords();
-  auto f = KOKKOS_LAMBDA(double x, double y, double z)->double {
-    return 2 * x + 3 * y + 4 * z;
-  };
-  auto edge2vtx = mesh.ask_down(1, 0).ab2b;
-  auto edgeMap = mesh.ask_down(dim, 1).ab2b;
-  Kokkos::parallel_for(
-      mesh.nverts(), KOKKOS_LAMBDA(int vtx) {
-        auto x = coords[vtx * dim];
-        auto y = coords[vtx * dim + 1];
-        auto z = coords[vtx * dim + 2];
-        shape_field(vtx, 0, 0, MeshField::Mesh_Topology::Vertex) = f(x, y, z);
-      });
-  if (order == 2) {
-    Kokkos::parallel_for(
-        mesh.nedges(), KOKKOS_LAMBDA(int edge) {
-          const auto left = edge2vtx[edge * 2];
-          const auto right = edge2vtx[edge * 2 + 1];
-          const auto x = (coords[left * dim] + coords[right * dim]) / 2.0;
-          const auto y =
-              (coords[left * dim + 1] + coords[right * dim + 1]) / 2.0;
-          const auto z =
-              (coords[left * dim + 2] + coords[right * dim + 2]) / 2.0;
-          shape_field(edge, 0, 0, MeshField::Mesh_Topology::Edge) = f(x, y, z);
-        });
+#include <iostream>
+#include <sstream>
+
+using ExecutionSpace = Kokkos::DefaultExecutionSpace;
+using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
+
+struct LinearFunction {
+  KOKKOS_INLINE_FUNCTION
+  MeshField::Real operator()(MeshField::Real x, MeshField::Real y,
+                             MeshField::Real z) const {
+    return 2.0 * x + y + z;
   }
-  const auto numNodesPerElem = order == 2 ? 10 : 4;
-  Kokkos::View<double **> local_coords("", mesh.nelems() * numNodesPerElem, 4);
-  Kokkos::parallel_for(
-      "set", mesh.nelems() * numNodesPerElem, KOKKOS_LAMBDA(const int &i) {
-        const auto val = i % numNodesPerElem;
-        local_coords(i, 0) = (val == 0);
-        local_coords(i, 1) = (val == 1);
-        local_coords(i, 2) = (val == 2);
-        local_coords(i, 3) = (val == 3);
-        if constexpr (order == 2) {
-          if (val == 4) {
-            local_coords(i, 0) = 1 / 2.0;
-            local_coords(i, 1) = 1 / 2.0;
-          } else if (val == 5) {
-            local_coords(i, 1) = 1 / 2.0;
-            local_coords(i, 2) = 1 / 2.0;
-          } else if (val == 6) {
-            local_coords(i, 0) = 1 / 2.0;
-            local_coords(i, 2) = 1 / 2.0;
-          } else if (val == 7) {
-            local_coords(i, 0) = 1 / 2.0;
-            local_coords(i, 3) = 1 / 2.0;
-          } else if (val == 8) {
-            local_coords(i, 1) = 1 / 2.0;
-            local_coords(i, 3) = 1 / 2.0;
-          } else if (val == 9) {
-            local_coords(i, 2) = 1 / 2.0;
-            local_coords(i, 3) = 1 / 2.0;
-          }
-        }
-      });
-  auto eval_results = mesh_field.tetrahedronLocalPointEval(
-      local_coords, numNodesPerElem, shape_field);
+};
 
-  int errors = 0;
-  const auto tetVerts = mesh.ask_elem_verts();
-  const auto coordField = mesh_field.getCoordField();
+struct QuadraticFunction {
+  KOKKOS_INLINE_FUNCTION
+  MeshField::Real operator()(MeshField::Real x, MeshField::Real y,
+                             MeshField::Real z) const {
+    return (x * x) + (2.0 * y) + z;
+  }
+};
+
+Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
+  auto world = lib.world();
+  const auto family = OMEGA_H_SIMPLEX;
+  auto len = 1.0;
+  return Omega_h::build_box(world, family, len, len, len, 3, 3, 3);
+}
+
+struct TestCoords {
+  Kokkos::View<MeshField::Real *[4]> coords;
+  size_t NumPtsPerElem;
+  std::string name;
+};
+
+template <typename Result, typename CoordField, typename AnalyticFunction>
+bool checkResult(Omega_h::Mesh &mesh, Result &result, CoordField coordField,
+                 TestCoords testCase, AnalyticFunction func, size_t numComp) {
+  const auto numPtsPerElem = testCase.NumPtsPerElem;
+  MeshField::FieldElement fcoords(
+      mesh.nregions(), coordField, MeshField::LinearTetrahedronShape(),
+      MeshField::Omegah::LinearTetrahedronToVertexField(mesh));
+  auto globalCoords =
+      MeshField::evaluate(fcoords, testCase.coords, numPtsPerElem);
+
+  MeshField::LO numErrors = 0;
   Kokkos::parallel_reduce(
-      "test", mesh.nelems(),
-      KOKKOS_LAMBDA(const int &tet, int &errors) {
-        for (int node = 0; node < 4; ++node) {
-          const auto tetDim = 3;
-          const auto vtxDim = 0;
-          const auto ignored = -1;
-          const auto localVtxIdx =
-              Omega_h::simplex_down_template(tetDim, vtxDim, node, ignored);
-          const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
-          int vtx = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
-          auto x = coords[vtx * dim];
-          auto y = coords[vtx * dim + 1];
-          auto z = coords[vtx * dim + 2];
-          auto expected = f(x, y, z);
-          auto actual = eval_results(tet * numNodesPerElem + node, 0);
-          if (Kokkos::fabs(expected - actual) > MeshField::MachinePrecision) {
-            ++errors;
-
-            Kokkos::printf(
-                "expected: %lf, actual: %lf, element: %d, node(vtx): %d\n",
-                expected, actual, tet, node);
-          }
-        }
-        for (int node = 4; node < numNodesPerElem; ++node) {
-          const auto tetDim = 3;
-          const auto edgeDim = 1;
-          const auto tetToEdgeDegree = Omega_h::simplex_degree(tetDim, edgeDim);
-          const MeshField::LO tetNode2DofHolder[6] = {0, 1, 2, 3, 4, 5};
-          int edge =
-              edgeMap[(tet * tetToEdgeDegree) + tetNode2DofHolder[node - 4]];
-          auto left = edge2vtx[edge * 2];
-          auto right = edge2vtx[edge * 2 + 1];
-          const auto x = (coords[left * dim] + coords[right * dim]) / 2.0;
-          const auto y =
-              (coords[left * dim + 1] + coords[right * dim + 1]) / 2.0;
-          const auto z =
-              (coords[left * dim + 2] + coords[right * dim + 2]) / 2.0;
-          auto expected = f(x, y, z);
-          auto actual = eval_results(tet * numNodesPerElem + node, 0);
-          if (Kokkos::fabs(expected - actual) > MeshField::MachinePrecision) {
-            ++errors;
-            Kokkos::printf(
-                "expected: %lf, actual: %lf, element: %d, node(edge): %d\n",
-                expected, actual, tet, node);
+      "checkResult", mesh.nregions(),
+      KOKKOS_LAMBDA(const int &ent, MeshField::LO &lerrors) {
+        const auto first = ent * numPtsPerElem;
+        const auto last = first + numPtsPerElem;
+        for (auto pt = first; pt < last; pt++) {
+          const auto x = globalCoords(pt, 0);
+          const auto y = globalCoords(pt, 1);
+          const auto z = globalCoords(pt, 2);
+          const auto expected = func(x, y, z);
+          for (int i = 0; i < numComp; ++i) {
+            const auto computed = result(pt, i);
+            MeshField::LO isError = 0;
+            if (Kokkos::fabs(computed - expected) >
+                MeshField::MachinePrecision) {
+              isError = 1;
+              Kokkos::printf(
+                  "result for elm %d, pt %d, does not match: expected "
+                  "%f computed %f\n",
+                  ent, pt, expected, computed);
+            }
+            lerrors += isError;
           }
         }
       },
-      errors);
-  if (errors > 0) {
-    MeshField::fail("One or more mappings did not match\n");
+      numErrors);
+  return (numErrors > 0);
+}
+
+template <typename AnalyticFunction, typename ShapeField>
+void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
+  const auto MeshDim = mesh.dim();
+  auto coords = mesh.coords();
+  auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
+    // get dofholder position at the midpoint of edge
+    // - TODO should be encoded in the field?
+    const auto x = coords[vtx * MeshDim];
+    const auto y = coords[vtx * MeshDim + 1];
+    const auto z = coords[vtx * MeshDim + 2];
+    for (int i = 0; i < field.numComp; ++i) {
+      field(vtx, 0, i, MeshField::Vertex) = func(x, y, z);
+    }
+  };
+  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
+                          setFieldAtVertices, "setFieldAtVertices");
+}
+
+template <typename AnalyticFunction, typename ShapeField>
+void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
+  const auto MeshDim = mesh.dim();
+  const auto edgeDim = 1;
+  const auto vtxDim = 0;
+  const auto edge2vtx = mesh.ask_down(edgeDim, vtxDim).ab2b;
+  auto coords = mesh.coords();
+  auto setFieldAtEdges = KOKKOS_LAMBDA(const int &edge) {
+    // get dofholder position at the midpoint of edge
+    // - TODO should be encoded in the field?
+    const auto left = edge2vtx[edge * 2];
+    const auto right = edge2vtx[edge * 2 + 1];
+    const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
+    const auto y =
+        (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
+    const auto z =
+        (coords[left * MeshDim + 2] + coords[right * MeshDim + 2]) / 2.0;
+    for (int i = 0; i < field.numComp; ++i) {
+      field(edge, 0, i, MeshField::Edge) = func(x, y, z);
+    }
+  };
+  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nedges()},
+                          setFieldAtEdges, "setFieldAtEdges");
+}
+
+template <size_t NumPtsPerElem>
+Kokkos::View<MeshField::Real *[4]>
+createElmAreaCoords(size_t numElements,
+                    Kokkos::Array<MeshField::Real, 4 * NumPtsPerElem> coords) {
+  Kokkos::View<MeshField::Real *[4]> lc("localCoords",
+                                        numElements * NumPtsPerElem);
+  Kokkos::parallel_for(
+      "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &elm) {
+        for (int pt = 0; pt < NumPtsPerElem; pt++) {
+          lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 4 + 0];
+          lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 4 + 1];
+          lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 4 + 2];
+          lc(elm * NumPtsPerElem + pt, 3) = coords[pt * 4 + 3];
+        }
+      });
+  return lc;
+}
+
+void doFail(std::string_view order, std::string_view function,
+            std::string_view location, std::string_view numComp) {
+  std::stringstream ss;
+  ss << order << " field evaluation with " << numComp << " components and "
+     << function << " analytic function at " << location << " points failed\n";
+  std::string msg = ss.str();
+  MeshField::fail(msg);
+}
+template <size_t ShapeOrder, size_t numComponents,
+          template <typename...> typename Controller>
+void runTest(Omega_h::Mesh &mesh,
+             MeshField::OmegahMeshField<ExecutionSpace, 3, Controller> &omf,
+             auto testCase, auto function) {
+  using functionType = decltype(function);
+  using ViewType = decltype(testCase.coords);
+  auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                                numComponents>();
+  using FieldType = decltype(field);
+  setVertices(mesh, function, field);
+  if constexpr (ShapeOrder == 2) {
+    setEdges(mesh, function, field);
+  }
+  auto result = omf.template tetrahedronLocalPointEval<ViewType, FieldType>(
+      testCase.coords, testCase.NumPtsPerElem, field);
+  auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+                            decltype(function){}, numComponents);
+  if (failed) {
+    std::string fieldErr = ShapeOrder == 1 ? "linear" : "quadratic";
+    std::string functionErr;
+    if constexpr (std::is_same_v<functionType, LinearFunction>) {
+      functionErr = "linear";
+    } else {
+      functionErr = "quadratic";
+    }
+    doFail(fieldErr, functionErr, testCase.name, std::to_string(numComponents));
+  }
+}
+
+template <template <typename...> typename Controller>
+void doRun(Omega_h::Mesh &mesh,
+           MeshField::OmegahMeshField<ExecutionSpace, 3, Controller> &omf) {
+
+  // setup field with values from the analytic function
+  static const size_t OnePtPerElem = 1;
+  static const size_t FourPtsPerElem = 4;
+  auto centroids = createElmAreaCoords<OnePtPerElem>(
+      mesh.nregions(), {1 / 4.0, 1 / 4.0, 1 / 4.0, 1 / 4.0});
+  auto interior =
+      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.1, 0.4, 0.3, 0.2});
+  auto vertex =
+      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.0, 0.0, 1.0, 0.0});
+  // clang-format off
+    auto allVertices = createElmAreaCoords<FourPtsPerElem>(mesh.nregions(),
+        {1.0, 0.0, 0.0, 0.0,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 1.0, 0.0,
+         0.0, 0.0, 0.0, 1.0});
+    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
+                        TestCoords{interior, OnePtPerElem, "interior"},
+                        TestCoords{vertex, OnePtPerElem, "vertex"},
+                        TestCoords{allVertices, FourPtsPerElem, "allVertices"}};
+  // clang-format on
+
+  auto coords = mesh.coords();
+  for (auto testCase : cases) {
+    using ViewType = decltype(testCase.coords);
+    {
+      const auto ShapeOrder = 1;
+      const auto numComponents = 1;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+    }
+
+    {
+      const auto ShapeOrder = 2;
+      const auto numComponents = 1;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase,
+                                         QuadraticFunction());
+    }
+
+    {
+      const auto ShapeOrder = 2;
+      const auto numComponents = 1;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+    }
+    {
+      const auto ShapeOrder = 1;
+      const auto numComponents = 2;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+    }
+    {
+      const auto ShapeOrder = 1;
+      const auto numComponents = 3;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+    }
+    {
+      const auto ShapeOrder = 2;
+      const auto numComponents = 2;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase,
+                                         QuadraticFunction());
+    }
+
+    {
+      const auto ShapeOrder = 2;
+      const auto numComponents = 3;
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+    }
   }
 }
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
+  MeshField::Debug = true;
+#ifdef MESHFIELDS_ENABLE_CABANA
   {
-    auto world = lib.world();
-    auto mesh =
-        Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 10, false);
-    runTest<1>(mesh);
-    runTest<2>(mesh);
+    auto mesh = createMeshTri18(lib);
+    MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::CabanaController>
+        omf(mesh);
+    doRun<MeshField::CabanaController>(mesh, omf);
+  }
+#endif
+  {
+    auto mesh = createMeshTri18(lib);
+    MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::KokkosController>
+        omf(mesh);
+    doRun<MeshField::KokkosController>(mesh, omf);
   }
   Kokkos::finalize();
   return 0;

@@ -46,6 +46,9 @@ createCoordinateField(const MeshField::MeshInfo &mesh_info,
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
     coordField(i, 0, 0, MeshField::Vertex) = coords[i * meshDim];
     coordField(i, 0, 1, MeshField::Vertex) = coords[i * meshDim + 1];
+    if constexpr (dim == 3) {
+      coordField(i, 0, 2, MeshField::Vertex) = coords[i * meshDim + 2];
+    }
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
                           setCoordField, "setCoordField");
