@@ -40,6 +40,7 @@ jobs:
            -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
            -DKokkos_ENABLE_SERIAL=ON 
            -DKokkos_ENABLE_OPENMP=OFF
+           -DKokkos_ENABLE_IMPL_VIEW_LEGACY=ON 
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-kokkos/install
 
     - name: Kokkos Build
