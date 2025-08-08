@@ -5,6 +5,7 @@
 template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
   MeshField::OmegahMeshField<Kokkos::DefaultExecutionSpace, dim> mesh_field(
       mesh);
+  const auto vertexNodes = (dim == 3 ? 4 : 3);
   auto shape_field =
       mesh_field.template CreateLagrangeField<double, order, 1>();
   // initialize vertices
@@ -36,10 +37,9 @@ template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
           shape_field(edge, 0, 0, MeshField::Mesh_Topology::Edge) = f(x, y, z);
         });
   }
-  const auto numNodesPerElem =
-      order == 2 ? (dim == 3 ? 10 : 6) : (dim == 3 ? 4 : 3);
+  const auto numNodesPerElem = order == 2 ? (dim == 3 ? 10 : 6) : vertexNodes;
   Kokkos::View<double **> local_coords("", mesh.nelems() * numNodesPerElem,
-                                       dim == 3 ? 4 : 3);
+                                       vertexNodes);
   Kokkos::parallel_for(
       "set", mesh.nelems() * numNodesPerElem, KOKKOS_LAMBDA(const int &i) {
         const auto val = i % numNodesPerElem;
@@ -95,13 +95,13 @@ template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
   Kokkos::parallel_reduce(
       "test", mesh.nelems(),
       KOKKOS_LAMBDA(const int &tri, int &errors) {
-        for (int node = 0; node < (dim == 3 ? 4 : 3); ++node) {
-          const auto triDim = (dim == 3 ? 3 : 2);
+        for (int node = 0; node < vertexNodes; ++node) {
+          const auto elemDim = (dim == 3 ? 3 : 2);
           const auto vtxDim = 0;
           const auto ignored = -1;
           const auto localVtxIdx =
-              Omega_h::simplex_down_template(triDim, vtxDim, node, ignored);
-          const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+              Omega_h::simplex_down_template(elemDim, vtxDim, node, ignored);
+          const auto triToVtxDegree = Omega_h::simplex_degree(elemDim, vtxDim);
           int vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
           auto x = coords[vtx * dim];
           auto y = coords[vtx * dim + 1];
@@ -115,10 +115,11 @@ template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
                 expected, actual, tri, node);
           }
         }
-        for (int node = (dim == 3 ? 4 : 3); node < numNodesPerElem; ++node) {
-          const auto triDim = (dim == 3 ? 3 : 2);
+        for (int node = vertexNodes; node < numNodesPerElem; ++node) {
+          const auto elemDim = (dim == 3 ? 3 : 2);
           const auto edgeDim = 1;
-          const auto triToEdgeDegree = Omega_h::simplex_degree(triDim, edgeDim);
+          const auto triToEdgeDegree =
+              Omega_h::simplex_degree(elemDim, edgeDim);
           const MeshField::LO triNode2DofHolder[6] = {0, 1, 2, 3, 4, 5};
           int edge = edgeMap[(tri * triToEdgeDegree) +
                              triNode2DofHolder[node - (dim == 3 ? 4 : 3)]];
