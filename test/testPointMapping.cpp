@@ -2,10 +2,14 @@
 #include <MeshField.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_mesh.hpp>
+
+// this test verifies that the mapping used in meshFields
+// properly matches the expected canonical ordering
+
 template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
   MeshField::OmegahMeshField<Kokkos::DefaultExecutionSpace, dim> mesh_field(
       mesh);
-  const auto vertexNodes = (dim == 3 ? 4 : 3);
+  const auto numComponent = (dim == 3 ? 4 : 3);
   auto shape_field =
       mesh_field.template CreateLagrangeField<double, order, 1>();
   // initialize vertices
@@ -37,47 +41,49 @@ template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
           shape_field(edge, 0, 0, MeshField::Mesh_Topology::Edge) = f(x, y, z);
         });
   }
-  const auto numNodesPerElem = order == 2 ? (dim == 3 ? 10 : 6) : vertexNodes;
+  // We specify one point per a node for all elements.  We use
+  // numComponent to specify the size of the barycentric coordinates
+  const auto numNodesPerElem = order == 2 ? (dim == 3 ? 10 : 6) : numComponent;
   Kokkos::View<double **> local_coords("", mesh.nelems() * numNodesPerElem,
-                                       vertexNodes);
+                                       numComponent);
   Kokkos::parallel_for(
       "set", mesh.nelems() * numNodesPerElem, KOKKOS_LAMBDA(const int &i) {
-        const auto val = i % numNodesPerElem;
-        local_coords(i, 0) = (val == 0);
-        local_coords(i, 1) = (val == 1);
-        local_coords(i, 2) = (val == 2);
+        const auto nodeIndex = i % numNodesPerElem;
+        local_coords(i, 0) = (nodeIndex == 0);
+        local_coords(i, 1) = (nodeIndex == 1);
+        local_coords(i, 2) = (nodeIndex == 2);
         if constexpr (dim == 3) {
-          local_coords(i, 3) = (val == 3);
+          local_coords(i, 3) = (nodeIndex == 3);
           if constexpr (order == 2) {
-            if (val == 4) {
+            if (nodeIndex == 4) {
               local_coords(i, 0) = 1 / 2.0;
               local_coords(i, 1) = 1 / 2.0;
-            } else if (val == 5) {
+            } else if (nodeIndex == 5) {
               local_coords(i, 1) = 1 / 2.0;
               local_coords(i, 2) = 1 / 2.0;
-            } else if (val == 6) {
+            } else if (nodeIndex == 6) {
               local_coords(i, 0) = 1 / 2.0;
               local_coords(i, 2) = 1 / 2.0;
-            } else if (val == 7) {
+            } else if (nodeIndex == 7) {
               local_coords(i, 0) = 1 / 2.0;
               local_coords(i, 3) = 1 / 2.0;
-            } else if (val == 8) {
+            } else if (nodeIndex == 8) {
               local_coords(i, 1) = 1 / 2.0;
               local_coords(i, 3) = 1 / 2.0;
-            } else if (val == 9) {
+            } else if (nodeIndex == 9) {
               local_coords(i, 2) = 1 / 2.0;
               local_coords(i, 3) = 1 / 2.0;
             }
           }
 
         } else if constexpr (order == 2) {
-          if (val == 3) {
+          if (nodeIndex == 3) {
             local_coords(i, 0) = 1 / 2.0;
             local_coords(i, 1) = 1 / 2.0;
-          } else if (val == 4) {
+          } else if (nodeIndex == 4) {
             local_coords(i, 1) = 1 / 2.0;
             local_coords(i, 2) = 1 / 2.0;
-          } else if (val == 5) {
+          } else if (nodeIndex == 5) {
             local_coords(i, 0) = 1 / 2.0;
             local_coords(i, 2) = 1 / 2.0;
           }
@@ -95,7 +101,7 @@ template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
   Kokkos::parallel_reduce(
       "test", mesh.nelems(),
       KOKKOS_LAMBDA(const int &tri, int &errors) {
-        for (int node = 0; node < vertexNodes; ++node) {
+        for (int node = 0; node < numComponent; ++node) {
           const auto elemDim = (dim == 3 ? 3 : 2);
           const auto vtxDim = 0;
           const auto ignored = -1;
@@ -115,14 +121,14 @@ template <size_t order, size_t dim> void runTest(Omega_h::Mesh mesh) {
                 expected, actual, tri, node);
           }
         }
-        for (int node = vertexNodes; node < numNodesPerElem; ++node) {
+        for (int node = numComponent; node < numNodesPerElem; ++node) {
           const auto elemDim = (dim == 3 ? 3 : 2);
           const auto edgeDim = 1;
           const auto triToEdgeDegree =
               Omega_h::simplex_degree(elemDim, edgeDim);
           const MeshField::LO triNode2DofHolder[6] = {0, 1, 2, 3, 4, 5};
           int edge = edgeMap[(tri * triToEdgeDegree) +
-                             triNode2DofHolder[node - (dim == 3 ? 4 : 3)]];
+                             triNode2DofHolder[node - numComponent]];
           auto left = edge2vtx[edge * 2];
           auto right = edge2vtx[edge * 2 + 1];
           auto x = (coords[left * dim] + coords[right * dim]) / 2.0;

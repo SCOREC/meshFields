@@ -33,7 +33,7 @@ struct QuadraticFunction {
   }
 };
 
-Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
+Omega_h::Mesh createMeshTet18(Omega_h::Library &lib) {
   auto world = lib.world();
   const auto family = OMEGA_H_SIMPLEX;
   auto len = 1.0;
@@ -262,14 +262,14 @@ int main(int argc, char **argv) {
   MeshField::Debug = true;
 #ifdef MESHFIELDS_ENABLE_CABANA
   {
-    auto mesh = createMeshTri18(lib);
+    auto mesh = createMeshTet18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::CabanaController>
         omf(mesh);
     doRun<MeshField::CabanaController>(mesh, omf);
   }
 #endif
   {
-    auto mesh = createMeshTri18(lib);
+    auto mesh = createMeshTet18(lib);
     MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::KokkosController>
         omf(mesh);
     doRun<MeshField::KokkosController>(mesh, omf);
