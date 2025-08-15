@@ -14,12 +14,17 @@
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
-
-Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
+template<size_t dim>
+Omega_h::Mesh createMesh(Omega_h::Library &lib) {
   auto world = lib.world();
   const auto family = OMEGA_H_SIMPLEX;
   auto len = 1.0;
-  return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
+  if constexpr (dim == 2) {
+    return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
+  }
+  else {
+    return Omega_h::build_box(world, family, len, len, len, 3, 3, 3);
+  }
 }
 
 template <typename AnalyticFunction, typename ShapeField>
@@ -57,13 +62,20 @@ public:
   }
 };
 
-template <template <typename...> typename Controller>
+template <template <typename...> typename Controller, size_t dim>
 void doRun(Omega_h::Mesh &mesh,
-           MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> &omf) {
+           MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
   const auto ShapeOrder = 1;
   auto field = omf.getCoordField();
-  const auto [shp, map] =
-      MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
+  auto shapeSet = [&]() -> auto {
+    if constexpr (dim == 3) {
+      return MeshField::Omegah::getTetrahedronElement<ShapeOrder>(mesh);
+    }
+    else {
+      return MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
+    }
+  };
+  const auto [shp, map] = shapeSet();
   MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 
   CountIntegrator countInt(fes);
@@ -74,18 +86,29 @@ void doRun(Omega_h::Mesh &mesh,
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
-  auto mesh = createMeshTri18(lib);
-#ifdef MESHFIELDS_ENABLE_CABANA
+  #ifdef MESHFIELDS_ENABLE_CABANA
   {
+    auto mesh2D = createMesh<2>(lib);
+    auto mesh3D = createMesh<3>(lib);
     MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::CabanaController>
-        omf(mesh);
-    doRun<MeshField::CabanaController>(mesh, omf);
+        omf2D(mesh2D);
+    doRun<MeshField::CabanaController>(mesh2D, omf2D);
+    MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::CabanaController>
+        omf3D(mesh3D);
+    doRun<MeshField::CabanaController>(mesh3D, omf3D);
   }
 #endif
   {
+    auto mesh2D = createMesh<2>(lib);
+    auto mesh3D = createMesh<3>(lib);
     MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::KokkosController>
-        omf(mesh);
-    doRun<MeshField::KokkosController>(mesh, omf);
+        omf2D(mesh2D);
+    doRun<MeshField::KokkosController>(mesh2D, omf2D);
+    MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::KokkosController>
+        omf3D(mesh3D);
+    doRun<MeshField::KokkosController>(mesh3D, omf3D);
+
   }
+  Kokkos::finalize();
   return 0;
 }
