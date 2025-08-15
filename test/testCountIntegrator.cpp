@@ -18,11 +18,8 @@ template <size_t dim> Omega_h::Mesh createMesh(Omega_h::Library &lib) {
   auto world = lib.world();
   const auto family = OMEGA_H_SIMPLEX;
   auto len = 1.0;
-  if constexpr (dim == 2) {
-    return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
-  } else {
-    return Omega_h::build_box(world, family, len, len, len, 3, 3, 3);
-  }
+  const auto numEnts3d = (dim == 3 ? 3 : 0);
+  return Omega_h::build_box(world, family, len, len, len, 3, 3, numEnts3d);
 }
 
 template <typename AnalyticFunction, typename ShapeField>
