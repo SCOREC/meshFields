@@ -10,22 +10,20 @@
 
 namespace MeshField {
 // directly copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.[h|cc]
-template<size_t dim>
-struct IntegrationPoint {
-  IntegrationPoint(Kokkos::Array<Real, dim> const &p, double w) : param(p), weight(w) {}
+template <size_t dim> struct IntegrationPoint {
+  IntegrationPoint(Kokkos::Array<Real, dim> const &p, double w)
+      : param(p), weight(w) {}
   Kokkos::Array<Real, dim> param;
   double weight;
 };
-template<size_t dim>
-class Integration {
+template <size_t dim> class Integration {
 public:
   virtual ~Integration() {}
   virtual int countPoints() const = 0;
   virtual std::vector<IntegrationPoint<dim>> getPoints() const = 0;
   virtual int getAccuracy() const = 0;
 };
-template<size_t dim>
-class EntityIntegration {
+template <size_t dim> class EntityIntegration {
 public:
   virtual ~EntityIntegration() {}
   Integration<dim> const *getAccurate(int minimumAccuracy) const {
@@ -76,70 +74,70 @@ public:
   }
 };
 
-class TetrahedronIntegration : public EntityIntegration<4>
-{
+class TetrahedronIntegration : public EntityIntegration<4> {
+public:
+  class N1 : public Integration<4> {
   public:
-    class N1 : public Integration<4>
-    {
-      public:
-        virtual int countPoints() const {return 1;}
-        virtual std::vector<IntegrationPoint<4>> getPoints() const
-        {
-          return {IntegrationPoint(Vector4{0.25, 0.25, 0.25, 0.25}, 1.0 / 6.0)};
-        }
-        virtual int getAccuracy() const {return 1;}
-    };
-    class N2 : public Integration<4>
-    {
-      public:
-        virtual int countPoints() const {return 4;}
-        virtual std::vector<IntegrationPoint<4>> getPoints() const
-        {
-          
-          return
-{ IntegrationPoint(Vector4{0.138196601125011,0.138196601125011,0.138196601125011, 0.585410196624969},0.25/6.0), 
-  IntegrationPoint(Vector4{0.585410196624969,0.138196601125011,0.138196601125011, 0.138196601125011},0.25/6.0),
-  IntegrationPoint(Vector4{0.138196601125011,0.585410196624969,0.138196601125011, 0.138196601125011},0.25/6.0),
-  IntegrationPoint(Vector4{0.138196601125011,0.138196601125011,0.585410196624969, 0.138196601125011},0.25/6.0)};
-        }
-        virtual int getAccuracy() const {return 2;}
-    };
-       virtual int countIntegrations() const {return 2;}
-    virtual Integration<4> const* getIntegration(int i) const
-    {
-      static N1 i1;
-      static N2 i2;
-      static Integration<4>* integrations[2] =
-      {&i1,&i2};
-      return integrations[i];
+    virtual int countPoints() const { return 1; }
+    virtual std::vector<IntegrationPoint<4>> getPoints() const {
+      return {IntegrationPoint(Vector4{0.25, 0.25, 0.25, 0.25}, 1.0 / 6.0)};
     }
+    virtual int getAccuracy() const { return 1; }
+  };
+  class N2 : public Integration<4> {
+  public:
+    virtual int countPoints() const { return 4; }
+    virtual std::vector<IntegrationPoint<4>> getPoints() const {
+
+      return {IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
+                                       0.138196601125011, 0.585410196624969},
+                               0.25 / 6.0),
+              IntegrationPoint(Vector4{0.585410196624969, 0.138196601125011,
+                                       0.138196601125011, 0.138196601125011},
+                               0.25 / 6.0),
+              IntegrationPoint(Vector4{0.138196601125011, 0.585410196624969,
+                                       0.138196601125011, 0.138196601125011},
+                               0.25 / 6.0),
+              IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
+                                       0.585410196624969, 0.138196601125011},
+                               0.25 / 6.0)};
+    }
+    virtual int getAccuracy() const { return 2; }
+  };
+  virtual int countIntegrations() const { return 2; }
+  virtual Integration<4> const *getIntegration(int i) const {
+    static N1 i1;
+    static N2 i2;
+    static Integration<4> *integrations[2] = {&i1, &i2};
+    return integrations[i];
+  }
 };
-template<size_t dim>
-std::shared_ptr<EntityIntegration<dim>> const getIntegration(Mesh_Topology topo) {
+template <size_t dim>
+std::shared_ptr<EntityIntegration<dim>> const
+getIntegration(Mesh_Topology topo) {
   if constexpr (dim == 3) {
     if (topo == Triangle) {
       return std::make_shared<TriangleIntegration>();
     }
-  }
-  else if constexpr (dim == 4) {
-    if (topo == Tetrahedron) {    
+  } else if constexpr (dim == 4) {
+    if (topo == Tetrahedron) {
       return std::make_shared<TetrahedronIntegration>();
     }
   }
   fail("getIntegration does not support given topology\n");
   return nullptr;
 }
-template<size_t dim>
+template <size_t dim>
 std::vector<IntegrationPoint<dim>> getIntegrationPoints(Mesh_Topology topo,
-                                                   int order) {
+                                                        int order) {
   auto ip = getIntegration<dim>(topo)->getAccurate(order)->getPoints();
   return ip;
 }
 
 template <typename FieldElement>
-Kokkos::View<MeshField::Real **>
-getIntegrationPointLocalCoords(FieldElement &fes,
-                               std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
+Kokkos::View<MeshField::Real **> getIntegrationPointLocalCoords(
+    FieldElement &fes,
+    std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
   const auto numPtsPerElm = ip.size();
   const auto numMeshEnts = fes.numMeshEnts;
   const auto meshEntDim = fes.MeshEntDim;
@@ -163,9 +161,9 @@ getIntegrationPointLocalCoords(FieldElement &fes,
 }
 
 template <typename FieldElement>
-Kokkos::View<Real *>
-getIntegrationPointWeights(FieldElement &fes,
-                           std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
+Kokkos::View<Real *> getIntegrationPointWeights(
+    FieldElement &fes,
+    std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
   const auto numPtsPerElm = ip.size();
   const auto numMeshEnts = fes.numMeshEnts;
   const auto meshEntDim = fes.MeshEntDim;
@@ -244,7 +242,8 @@ public:
   template <typename FieldElement> void process(FieldElement &fes) {
     const auto topo = fes.elm2dof.getTopology();
     pre();
-    auto ip = getIntegrationPoints<FieldElement::MeshEntDim + 1>(topo[0], order);
+    auto ip =
+        getIntegrationPoints<FieldElement::MeshEntDim + 1>(topo[0], order);
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords, ip.size());

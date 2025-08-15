@@ -28,8 +28,8 @@ struct LinearTetrahedronToVertexField {
 class TetrahedronTestCase {
 public:
   TetrahedronTestCase(std::vector<MeshField::Real> coords_in,
-                   std::vector<MeshField::Real> jacobian_in,
-                   MeshField::Real jacobianDeterminant_in)
+                      std::vector<MeshField::Real> jacobian_in,
+                      MeshField::Real jacobianDeterminant_in)
       : coords(coords_in), jacobian(jacobian_in),
         jacobianDeterminant(jacobianDeterminant_in) {
     assert(coords.size() == 12);
@@ -65,8 +65,10 @@ void tetJacobian() {
       .numVtx = 4, .numEdge = 6, .numTet = 1, .dim = 3};
   auto coordField = MeshField::CreateCoordinateField<
       ExecutionSpace, MeshField::KokkosController, 3>(meshInfo);
-  TetrahedronTestCase identityTet({0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1}, {1, 0, 0, 0, 1, 0, 0, 0, 1}, 1);
-  TetrahedronTestCase skewedTet({0, 0, 0, 5, 1, 2, 3, 4, 6, 10, 8, 9}, {5, 1, 2, 3, 4, 6, 10, 8, 9}, -59);
+  TetrahedronTestCase identityTet({0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
+                                  {1, 0, 0, 0, 1, 0, 0, 0, 1}, 1);
+  TetrahedronTestCase skewedTet({0, 0, 0, 5, 1, 2, 3, 4, 6, 10, 8, 9},
+                                {5, 1, 2, 3, 4, 6, 10, 8, 9}, -59);
   for (auto testCase : {identityTet, skewedTet}) {
     setVtxCoords(meshInfo.numVtx, meshInfo.dim, testCase, coordField);
 
@@ -85,16 +87,20 @@ void tetJacobian() {
     assert(J_h.extent(1) == 3);
     assert(J_h.extent(2) == 3);
     std::cout << "tet jacobian\n"
-              << J_h(0, 0, 0) << " " << J_h(0, 0, 1) << " " << J_h(0, 0, 2) << "\n"
-              << J_h(0, 1, 0) << " " << J_h(0, 1, 1) << " " << J_h(0, 1, 2) << "\n"
-              << J_h(0, 2, 0) << " " << J_h(0, 2, 1) << " " << J_h(0, 2, 2) << "\n";
+              << J_h(0, 0, 0) << " " << J_h(0, 0, 1) << " " << J_h(0, 0, 2)
+              << "\n"
+              << J_h(0, 1, 0) << " " << J_h(0, 1, 1) << " " << J_h(0, 1, 2)
+              << "\n"
+              << J_h(0, 2, 0) << " " << J_h(0, 2, 1) << " " << J_h(0, 2, 2)
+              << "\n";
     const auto determinants = MeshField::getJacobianDeterminants(f, J);
     const auto determinants_h =
         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), determinants);
     std::cout << "tet jacobian determinant " << determinants_h(0) << "\n";
     for (int i = 0; i < 3; ++i) {
       for (int j = 0; j < 3; ++j) {
-        assert(std::fabs(J_h(0, i, j) - testCase.jacobian.at(i * 3 + j)) <= MeshField::MachinePrecision);
+        assert(std::fabs(J_h(0, i, j) - testCase.jacobian.at(i * 3 + j)) <=
+               MeshField::MachinePrecision);
       }
     }
     assert(determinants.rank() == 1);

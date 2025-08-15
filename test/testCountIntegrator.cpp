@@ -14,15 +14,13 @@
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
-template<size_t dim>
-Omega_h::Mesh createMesh(Omega_h::Library &lib) {
+template <size_t dim> Omega_h::Mesh createMesh(Omega_h::Library &lib) {
   auto world = lib.world();
   const auto family = OMEGA_H_SIMPLEX;
   auto len = 1.0;
   if constexpr (dim == 2) {
     return Omega_h::build_box(world, family, len, len, 0.0, 3, 3, 0);
-  }
-  else {
+  } else {
     return Omega_h::build_box(world, family, len, len, len, 3, 3, 3);
   }
 }
@@ -70,8 +68,7 @@ void doRun(Omega_h::Mesh &mesh,
   auto shapeSet = [&]() -> auto {
     if constexpr (dim == 3) {
       return MeshField::Omegah::getTetrahedronElement<ShapeOrder>(mesh);
-    }
-    else {
+    } else {
       return MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
     }
   };
@@ -86,7 +83,7 @@ void doRun(Omega_h::Mesh &mesh,
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
-  #ifdef MESHFIELDS_ENABLE_CABANA
+#ifdef MESHFIELDS_ENABLE_CABANA
   {
     auto mesh2D = createMesh<2>(lib);
     auto mesh3D = createMesh<3>(lib);
@@ -107,7 +104,6 @@ int main(int argc, char **argv) {
     MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::KokkosController>
         omf3D(mesh3D);
     doRun<MeshField::KokkosController>(mesh3D, omf3D);
-
   }
   Kokkos::finalize();
   return 0;

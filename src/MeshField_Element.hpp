@@ -260,9 +260,10 @@ struct FieldElement {
       Kokkos::parallel_for(
           J.extent(0), KOKKOS_LAMBDA(const int i) {
             const auto Ji = Kokkos::subview(J, i, Kokkos::ALL(), Kokkos::ALL());
-            const auto cofactorSum = Ji(0, 0) * (Ji(1, 1) * Ji(2, 2) - Ji(1, 2) * Ji(2, 1)) - 
-                               Ji(0, 1) * (Ji(1, 0) * Ji(2, 2) - Ji(1, 2) * Ji(2, 0)) +
-                               Ji(0, 2) * (Ji(1, 0) * Ji(2, 1) - Ji(1, 1) * Ji(2, 0));
+            const auto cofactorSum =
+                Ji(0, 0) * (Ji(1, 1) * Ji(2, 2) - Ji(1, 2) * Ji(2, 1)) -
+                Ji(0, 1) * (Ji(1, 0) * Ji(2, 2) - Ji(1, 2) * Ji(2, 0)) +
+                Ji(0, 2) * (Ji(1, 0) * Ji(2, 1) - Ji(1, 1) * Ji(2, 0));
             determinants(i) = cofactorSum;
           });
       return determinants;
@@ -357,7 +358,8 @@ struct FieldElement {
            numMeshEnts + 1);
     }
     if (MeshEntDim != 1 && MeshEntDim != 2 && MeshEntDim != 3) {
-      fail("getJacobians only currently supports 1d, 2d, and 3d meshes.  Input mesh "
+      fail("getJacobians only currently supports 1d, 2d, and 3d meshes.  Input "
+           "mesh "
            "has %zu dimensions.\n",
            numMeshEnts);
     }
@@ -414,7 +416,6 @@ struct FieldElement {
           });
       return res;
     }
-
   }
 };
 
