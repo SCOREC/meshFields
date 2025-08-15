@@ -65,7 +65,7 @@ void doRun(Omega_h::Mesh &mesh,
            MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
   const auto ShapeOrder = 1;
   auto field = omf.getCoordField();
-  auto shapeSet = [&]() -> auto {
+  auto shapeSet = [&]() {
     if constexpr (dim == 3) {
       return MeshField::Omegah::getTetrahedronElement<ShapeOrder>(mesh);
     } else {
