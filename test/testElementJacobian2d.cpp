@@ -84,7 +84,7 @@ void triJacobian() {
                               LinearTriangleToVertexField());
 
     Kokkos::View<MeshField::Real *[3]> lc("localCoords", 1);
-    Kokkos::deep_copy(lc, 1.0 / 2);
+    Kokkos::deep_copy(lc, 1.0 / 3);
     const auto numPtsPerElement = 1;
     const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);
     const auto J_h =

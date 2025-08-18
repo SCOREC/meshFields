@@ -71,8 +71,8 @@ struct LinearTriangleToVertexField {
     }
   }
 
-  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
-  getTopology() const {
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
     return {MeshField::Triangle};
   }
 
@@ -102,8 +102,8 @@ struct LinearTetrahedronToVertexField {
           __func__);
     }
   }
-  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
-  getTopology() const {
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
     return {MeshField::Tetrahedron};
   }
 
@@ -136,8 +136,8 @@ struct QuadraticTriangleToField {
     }
   }
 
-  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
-  getTopology() const {
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
     return {MeshField::Triangle};
   }
 
@@ -198,8 +198,8 @@ struct QuadraticTetrahedronToField {
     }
   }
 
-  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
-  getTopology() const {
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
     return {MeshField::Tetrahedron};
   }
 
