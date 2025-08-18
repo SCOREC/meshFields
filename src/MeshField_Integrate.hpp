@@ -18,27 +18,27 @@ template <size_t pointSize> struct IntegrationPoint {
   Kokkos::Array<Real, pointSize> param;
   double weight;
 };
-template <size_t dim> class Integration {
+template <size_t pointSize> class Integration {
 public:
   virtual ~Integration() {}
   virtual int countPoints() const = 0;
-  virtual std::vector<IntegrationPoint<dim>> getPoints() const = 0;
+  virtual std::vector<IntegrationPoint<pointSize>> getPoints() const = 0;
   virtual int getAccuracy() const = 0;
 };
-template <size_t dim> class EntityIntegration {
+template <size_t pointSize> class EntityIntegration {
 public:
   virtual ~EntityIntegration() {}
-  Integration<dim> const *getAccurate(int minimumAccuracy) const {
+  Integration<pointSize> const *getAccurate(int minimumAccuracy) const {
     int n = countIntegrations();
     for (int i = 0; i < n; ++i) {
-      Integration<dim> const *integration = getIntegration(i);
+      Integration<pointSize> const *integration = getIntegration(i);
       if (integration->getAccuracy() >= minimumAccuracy)
         return integration;
     }
     return NULL;
   }
   virtual int countIntegrations() const = 0;
-  virtual Integration<dim> const *getIntegration(int i) const = 0;
+  virtual Integration<pointSize> const *getIntegration(int i) const = 0;
 };
 
 class TriangleIntegration : public EntityIntegration<3> {
