@@ -10,10 +10,12 @@
 
 namespace MeshField {
 // directly copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.[h|cc]
-template <size_t dim> struct IntegrationPoint {
-  IntegrationPoint(Kokkos::Array<Real, dim> const &p, double w)
+template <size_t pointSize> struct IntegrationPoint {
+  // template parameter pointSize specifies the length of the integration point
+  // array for one point
+  IntegrationPoint(Kokkos::Array<Real, pointSize> const &p, double w)
       : param(p), weight(w) {}
-  Kokkos::Array<Real, dim> param;
+  Kokkos::Array<Real, pointSize> param;
   double weight;
 };
 template <size_t dim> class Integration {
@@ -112,25 +114,16 @@ public:
     return integrations[i];
   }
 };
-template <size_t dim>
-std::shared_ptr<EntityIntegration<dim>> const
-getIntegration(Mesh_Topology topo) {
-  if constexpr (dim == 3) {
-    if (topo == Triangle) {
-      return std::make_shared<TriangleIntegration>();
-    }
-  } else if constexpr (dim == 4) {
-    if (topo == Tetrahedron) {
-      return std::make_shared<TetrahedronIntegration>();
-    }
+template <Mesh_Topology topo> auto const getIntegration() {
+  if constexpr (topo == Triangle) {
+    return std::make_shared<TriangleIntegration>();
+  } else if constexpr (topo == Tetrahedron) {
+    return std::make_shared<TetrahedronIntegration>();
   }
   fail("getIntegration does not support given topology\n");
-  return nullptr;
 }
-template <size_t dim>
-std::vector<IntegrationPoint<dim>> getIntegrationPoints(Mesh_Topology topo,
-                                                        int order) {
-  auto ip = getIntegration<dim>(topo)->getAccurate(order)->getPoints();
+template <Mesh_Topology topo> auto getIntegrationPoints(int order) {
+  auto ip = getIntegration<topo>()->getAccurate(order)->getPoints();
   return ip;
 }
 
@@ -240,10 +233,9 @@ public:
    * FIXME make the sensible
    * */
   template <typename FieldElement> void process(FieldElement &fes) {
-    const auto topo = fes.elm2dof.getTopology();
+    constexpr auto topo = decltype(FieldElement::elm2dof)::getTopology();
     pre();
-    auto ip =
-        getIntegrationPoints<FieldElement::MeshEntDim + 1>(topo[0], order);
+    auto ip = getIntegrationPoints<topo[0]>(order);
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords, ip.size());
