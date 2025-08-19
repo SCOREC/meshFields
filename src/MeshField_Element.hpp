@@ -479,7 +479,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
                     Kokkos::subview(offsets, offsets.size() - 1));
   if (localCoords.extent(0) != numLocalCoords) {
     fail("The size of dimension 0 of the local coordinates input array (%zu) "
-         "does not match the last entry of the offsets array (%zu).\n",
+         "does not match the last entry of the offsets array (%d).\n",
          localCoords.extent(0), numLocalCoords);
   }
 
