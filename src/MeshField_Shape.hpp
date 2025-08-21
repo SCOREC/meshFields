@@ -4,10 +4,6 @@
 
 // getValues(...) implementation copied from
 // SCOREC/core apf/apfShape.cc @ 7cd76473
-//
-// TODO: define MeshField's canonical ordering using PUMI's, these shape
-// function implementations require it. A lookup table should be defined for
-// each (possibly following what omega_h does in Omega_h_element.hpp).
 
 namespace {
 template <typename Array> KOKKOS_INLINE_FUNCTION bool sumsToOne(Array &xi) {
