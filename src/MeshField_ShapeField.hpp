@@ -96,14 +96,12 @@ struct QuadraticAccessor {
 
   KOKKOS_FUNCTION
   auto &operator()(int node, int component, int entity, Mesh_Topology t) const {
-    if (t == Vertex) {
-      return vtxField(node, component, entity);
-    } else if (t == Edge) {
-      return edgeField(node, component, entity);
-    } else {
+    if (t!= Vertex && t != Edge) {
       Kokkos::printf("%d is not a support topology\n", t);
       assert(false);
     }
+    return (t == Vertex) ? vtxField(node, component, entity)
+                        : edgeField(node, component, entity);
   }
 };
 
@@ -128,12 +126,11 @@ template <typename VtxAccessor> struct LinearAccessor {
 
   KOKKOS_FUNCTION
   auto &operator()(int entity, int node, int component, Mesh_Topology t) const {
-    if (t == Vertex) {
-      return vtxField(entity, node, component);
-    } else {
+    if (t != Vertex) {
       Kokkos::printf("%d is not a support topology\n", t);
       assert(false);
     }
+    return vtxField(entity, node, component);
   }
 };
 
