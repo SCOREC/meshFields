@@ -44,7 +44,7 @@ jobs:
       - name: Omega_h Checkout repo
         uses: actions/checkout@v4
         with:
-            repository: sandialabs/omega_h
+            repository: SCOREC/omega_h
             path: omegah
 
       - name: Omega_h Configure CMake
