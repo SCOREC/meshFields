@@ -96,12 +96,12 @@ struct QuadraticAccessor {
 
   KOKKOS_FUNCTION
   auto &operator()(int node, int component, int entity, Mesh_Topology t) const {
-    if (t!= Vertex && t != Edge) {
+    if (t != Vertex && t != Edge) {
       Kokkos::printf("%d is not a support topology\n", t);
       assert(false);
     }
     return (t == Vertex) ? vtxField(node, component, entity)
-                        : edgeField(node, component, entity);
+                         : edgeField(node, component, entity);
   }
 };
 
