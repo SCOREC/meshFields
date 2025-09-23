@@ -15,6 +15,10 @@ struct LinearTriangleToVertexField {
     return {MeshField::Triangle};
   }
 
+  KOKKOS_FUNCTION MeshField::LO operator()(MeshField::LO triNodeIdx) const {
+    return triNodeIdx;
+  }
+
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
              MeshField::LO tri, MeshField::Mesh_Topology topo) const {

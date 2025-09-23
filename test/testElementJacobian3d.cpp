@@ -14,6 +14,9 @@ struct LinearTetrahedronToVertexField {
   getTopology() const {
     return {MeshField::Tetrahedron};
   }
+  KOKKOS_FUNCTION MeshField::LO operator()(MeshField::LO tetNodeIdx) const {
+    return tetNodeIdx;
+  }
 
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
