@@ -303,18 +303,28 @@ struct FieldElement {
     return Kokkos::View<Real *>("foo", J.extent(0));
   }
 
-  template<size_t MeshEntDim>
-  KOKKOS_INLINE_FUNCTION auto getGradients(Kokkos::View<Real *> lc) const {
+  template <size_t MeshEntDim>
+  KOKKOS_INLINE_FUNCTION auto getGradients(Kokkos::View<Real **> lc,
+                                           size_t pt) const {
     if constexpr (ShapeType::Order == 1) {
-                    return shapeFn.getLocalGradients();
-                  }
-                  else {
-                    Kokkos::Array<Real, MeshEntDim + 1> coord;
-                    for (int i = 0; i < MeshEntDim + 1; ++i) {
-                      coord[i] = lc(i);
-                    }
-                   return shapeFn.getLocalGradients(coord);
-                  }
+      return shapeFn.getLocalGradients();
+    } else {
+      Kokkos::Array<Real, MeshEntDim + 1> coord;
+      for (int i = 0; i < MeshEntDim + 1; ++i) {
+        coord[i] = lc(pt, i);
+      }
+      return shapeFn.getLocalGradients(coord);
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION auto setNodalGradients(
+      Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients,
+      auto grad, size_t pt, size_t node, size_t d) const {
+    if constexpr (ShapeType::Order == 1) {
+      nodalGradients(pt, node, d) = grad[node * MeshEntDim + d];
+    } else {
+      nodalGradients(pt, node, d) = grad[node][d];
+    }
   }
 
   /**
@@ -404,20 +414,12 @@ struct FieldElement {
             const auto vals = getNodeValues(ent);
             assert(vals.size() == MeshEntDim * ShapeType::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-                auto ptCoords = Kokkos::subview(localCoords, pt, Kokkos::ALL());
-                const auto grad = getGradients<MeshEntDim>(ptCoords);
+              auto ptCoords = Kokkos::subview(localCoords, pt, Kokkos::ALL());
+              const auto grad = getGradients<MeshEntDim>(localCoords, pt);
               for (size_t node = 0; node < ShapeType::numNodes; node++) {
-                auto idx = elm2dof(node);
-                Kokkos::printf("\n");
                 for (size_t d = 0; d < MeshEntDim; d++) {
-                  Kokkos::printf("%lf:", vals[node * MeshEntDim + d]);
                   nodeCoords(pt, node, d) = vals[node * MeshEntDim + d];
-                  if constexpr (ShapeType::Order == 1) {
-                    nodalGradients(pt, node, d) = grad[idx * MeshEntDim + d];
-                  }
-                  else {
-                    nodalGradients(pt, node, d) = grad[idx][d];
-                  }
+                  setNodalGradients(nodalGradients, grad, pt, node, d);
                 }
               }
             }

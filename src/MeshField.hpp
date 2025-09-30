@@ -75,16 +75,6 @@ struct LinearTriangleToVertexField {
   getTopology() {
     return {MeshField::Triangle};
   }
-  KOKKOS_FUNCTION MeshField::LO operator()(MeshField::LO triNodeIdx) const {
-    const auto triDim = 2;
-    const auto vtxDim = 0;
-    const auto ignored = -1;
-    const auto localVtxIdx =
-        (Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored) +
-         2) %
-        3;
-    return localVtxIdx;
-  }
 
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
@@ -116,17 +106,7 @@ struct LinearTetrahedronToVertexField {
   getTopology() {
     return {MeshField::Tetrahedron};
   }
-  KOKKOS_FUNCTION MeshField::LO operator()(MeshField::LO tetNodeIdx) const {
-    const auto tetDim = 3;
-    const auto vtxDim = 0;
-    const auto ignored = -1;
-    const auto localVtxIdx = 
-        (Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored) +
-         3) %
-        4;
-    return localVtxIdx;
 
-  }
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
   operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
              MeshField::LO tet, MeshField::Mesh_Topology topo) const {
@@ -159,10 +139,6 @@ struct QuadraticTriangleToField {
   static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
   getTopology() {
     return {MeshField::Triangle};
-  }
-
-  KOKKOS_FUNCTION MeshField::LO operator()(MeshField::LO triNodeIdx) const {
-    return triNodeIdx;
   }
 
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
@@ -225,10 +201,6 @@ struct QuadraticTetrahedronToField {
   static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
   getTopology() {
     return {MeshField::Tetrahedron};
-  }
-
-  KOKKOS_FUNCTION MeshField::LO operator()(MeshField::LO tetNodeIdx) const {
-    return tetNodeIdx;
   }
 
   KOKKOS_FUNCTION MeshField::ElementToDofHolderMap

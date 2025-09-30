@@ -54,32 +54,35 @@ template <template <typename...> typename Controller, size_t ShapeOrder,
           size_t dim>
 void doRun(Omega_h::Mesh &mesh,
            MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
-  auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, dim>();
+  auto field =
+      omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, dim>();
   auto coords = mesh.coords();
   Kokkos::parallel_for(
-    mesh.nverts(), KOKKOS_LAMBDA(int vtx) {
-      field(vtx, 0, 0, MeshField::Vertex) = coords[vtx * dim];
-      field(vtx, 0, 1, MeshField::Vertex) = coords[vtx * dim + 1];
-      if constexpr (dim == 3) {
-        field(vtx, 0, 2, MeshField::Vertex) = coords[vtx * dim + 2];
-      }
-    });
+      mesh.nverts(), KOKKOS_LAMBDA(int vtx) {
+        field(vtx, 0, 0, MeshField::Vertex) = coords[vtx * dim];
+        field(vtx, 0, 1, MeshField::Vertex) = coords[vtx * dim + 1];
+        if constexpr (dim == 3) {
+          field(vtx, 0, 2, MeshField::Vertex) = coords[vtx * dim + 2];
+        }
+      });
   if (ShapeOrder == 2) {
     auto edge2vtx = mesh.ask_down(1, 0).ab2b;
     auto edgeMap = mesh.ask_down(dim, 1).ab2b;
     Kokkos::parallel_for(
-      mesh.nedges(), KOKKOS_LAMBDA(int edge) {
-        const auto left = edge2vtx[edge * 2];
-        const auto right = edge2vtx[edge * 2 + 1];
-        const auto x = (coords[left * dim] + coords[right * dim]) / 2.0;
-        const auto y = (coords[left * dim + 1] + coords[right * dim + 1]) / 2.0;
-        field(edge, 0, 0, MeshField::Edge) = x;
-        field(edge, 0, 1, MeshField::Edge) = y;
-        if constexpr (dim == 3) {
-          const auto z = (coords[left * dim + 2] + coords[right * dim + 2]) / 2.0;
-          field(edge, 0, 2, MeshField::Edge) = z;
-        }
-      });
+        mesh.nedges(), KOKKOS_LAMBDA(int edge) {
+          const auto left = edge2vtx[edge * 2];
+          const auto right = edge2vtx[edge * 2 + 1];
+          const auto x = (coords[left * dim] + coords[right * dim]) / 2.0;
+          const auto y =
+              (coords[left * dim + 1] + coords[right * dim + 1]) / 2.0;
+          field(edge, 0, 0, MeshField::Edge) = x;
+          field(edge, 0, 1, MeshField::Edge) = y;
+          if constexpr (dim == 3) {
+            const auto z =
+                (coords[left * dim + 2] + coords[right * dim + 2]) / 2.0;
+            field(edge, 0, 2, MeshField::Edge) = z;
+          }
+        });
   }
 
   auto shapeSet = [&]() {
@@ -106,13 +109,14 @@ void doRun(Omega_h::Mesh &mesh,
         testIntegrator testInt(fes, m, n, 0, p);
         testInt.process(fes);
         double exact = 1.0 / binom[p][m] / (p + 1) / (p + 2);
-        //if (Kokkos::fabs(testInt.getIntegral() - exact) > MeshField::MachinePrecision) {
-        //  std::stringstream ss;
-        //  ss << "Integration over " << ((dim == 3) ? "Tetrahedron " : "Triangle ") << "with order " << 
-        //  ShapeOrder << " failed\n";
-        //  MeshField::fail(ss.str());
-        //}
-        std::cout << exact << ":" << testInt.getIntegral() << std::endl;
+        if (Kokkos::fabs(testInt.getIntegral() - exact) >
+            MeshField::MachinePrecision) {
+          std::stringstream ss;
+          ss << "Integration over "
+             << ((dim == 3) ? "Tetrahedron " : "Triangle ") << "with order "
+             << ShapeOrder << " failed\n";
+          MeshField::fail(ss.str());
+        }
       }
     }
   } else {
@@ -124,8 +128,14 @@ void doRun(Omega_h::Mesh &mesh,
           testInt.process(fes);
           double exact = 1.0 / binom[p][l + m] / binom[l + m][l] / (p + 1) /
                          (p + 2) / (p + 3);
-          //std::cout << p  << ":" << l << ":" << m << ":" << n << std::endl;
-          std::cout << exact << ":" << testInt.getIntegral() << std::endl;
+          if (Kokkos::fabs(testInt.getIntegral() - exact) >
+              MeshField::MachinePrecision) {
+            std::stringstream ss;
+            ss << "Integration over "
+               << ((dim == 3) ? "Tetrahedron " : "Triangle ") << "with order "
+               << ShapeOrder << " failed\n";
+            MeshField::fail(ss.str());
+          }
         }
       }
     }
@@ -142,7 +152,7 @@ int main(int argc, char **argv) {
         {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
 
     Omega_h::LOs tris_to_verts({0, 1, 2});
-    Omega_h::LOs tets_to_verts({0, 1, 2, 3});
+    Omega_h::LOs tets_to_verts({3, 0, 1, 2});
     Omega_h::Mesh mesh2D(&lib);
     Omega_h::Mesh mesh3D(&lib);
     Omega_h::build_from_elems_and_coords(&mesh2D, OMEGA_H_SIMPLEX, 2,
@@ -152,13 +162,11 @@ int main(int argc, char **argv) {
 
     MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::CabanaController>
         omf2D(mesh2D);
-    std::cout << "ORDER 2 TRIANGLE" << std::endl;
-    //doRun<MeshField::CabanaController, 1>(mesh2D, omf2D);
-    //doRun<MeshField::CabanaController, 2>(mesh2D, omf2D);
+    doRun<MeshField::CabanaController, 1>(mesh2D, omf2D);
+    doRun<MeshField::CabanaController, 2>(mesh2D, omf2D);
     MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::CabanaController>
         omf3D(mesh3D);
-    std::cout << "ORDER 2 TET" << std::endl;
-    //doRun<MeshField::CabanaController, 1>(mesh3D, omf3D);
+    doRun<MeshField::CabanaController, 1>(mesh3D, omf3D);
     doRun<MeshField::CabanaController, 2>(mesh3D, omf3D);
   }
 #endif
@@ -168,7 +176,7 @@ int main(int argc, char **argv) {
         {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
 
     Omega_h::LOs tris_to_verts({0, 1, 2});
-    Omega_h::LOs tets_to_verts({0, 1, 2, 3});
+    Omega_h::LOs tets_to_verts({3, 0, 1, 2});
     Omega_h::Mesh mesh2D(&lib);
     Omega_h::Mesh mesh3D(&lib);
     Omega_h::build_from_elems_and_coords(&mesh2D, OMEGA_H_SIMPLEX, 2,
@@ -178,12 +186,12 @@ int main(int argc, char **argv) {
 
     MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::KokkosController>
         omf2D(mesh2D);
-    //doRun<MeshField::KokkosController, 1>(mesh2D, omf2D);
-    //doRun<MeshField::KokkosController, 2>(mesh2D, omf2D);
+    doRun<MeshField::KokkosController, 1>(mesh2D, omf2D);
+    doRun<MeshField::KokkosController, 2>(mesh2D, omf2D);
     MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::KokkosController>
         omf3D(mesh3D);
-    //doRun<MeshField::KokkosController, 1>(mesh3D, omf3D);
-    //doRun<MeshField::KokkosController, 2>(mesh3D, omf3D);
+    doRun<MeshField::KokkosController, 1>(mesh3D, omf3D);
+    doRun<MeshField::KokkosController, 2>(mesh3D, omf3D);
   }
   Kokkos::finalize();
   return 0;
