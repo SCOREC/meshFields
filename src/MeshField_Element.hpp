@@ -303,6 +303,30 @@ struct FieldElement {
     return Kokkos::View<Real *>("foo", J.extent(0));
   }
 
+  template <size_t MeshEntDim>
+  KOKKOS_INLINE_FUNCTION auto getGradients(Kokkos::View<Real **> lc,
+                                           size_t pt) const {
+    if constexpr (ShapeType::Order == 1) {
+      return shapeFn.getLocalGradients();
+    } else {
+      Kokkos::Array<Real, MeshEntDim + 1> coord;
+      for (int i = 0; i < MeshEntDim + 1; ++i) {
+        coord[i] = lc(pt, i);
+      }
+      return shapeFn.getLocalGradients(coord);
+    }
+  }
+
+  KOKKOS_INLINE_FUNCTION auto setNodalGradients(
+      Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients,
+      auto grad, size_t pt, size_t node, size_t d) const {
+    if constexpr (ShapeType::Order == 1) {
+      nodalGradients(pt, node, d) = grad[node * MeshEntDim + d];
+    } else {
+      nodalGradients(pt, node, d) = grad[node][d];
+    }
+  }
+
   /**
    * @brief
    * Given an array of parametric coordinates 'localCoords', one per mesh
@@ -380,22 +404,22 @@ struct FieldElement {
       // one matrix per point
       Kokkos::View<Real ***> res("result", numPts, MeshEntDim, MeshEntDim);
       Kokkos::deep_copy(res, 0.0); // initialize all entries to zero
-
       // fill the views of node coordinates and node gradients
       Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodeCoords(
           "nodeCoords", numPts);
       Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients(
           "nodalGradients", numPts);
-      const auto grad = shapeFn.getLocalGradients();
       Kokkos::parallel_for(
           numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
             const auto vals = getNodeValues(ent);
             assert(vals.size() == MeshEntDim * ShapeType::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+              auto ptCoords = Kokkos::subview(localCoords, pt, Kokkos::ALL());
+              const auto grad = getGradients<MeshEntDim>(localCoords, pt);
               for (size_t node = 0; node < ShapeType::numNodes; node++) {
                 for (size_t d = 0; d < MeshEntDim; d++) {
                   nodeCoords(pt, node, d) = vals[node * MeshEntDim + d];
-                  nodalGradients(pt, node, d) = grad[node * MeshEntDim + d];
+                  setNodalGradients(nodalGradients, grad, pt, node, d);
                 }
               }
             }
