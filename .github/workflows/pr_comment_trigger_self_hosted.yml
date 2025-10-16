@@ -93,7 +93,7 @@ jobs:
             -DCMAKE_CUDA_ARCHITECTURES="80" \
             -DKokkos_PREFIX=$kkbdir/install \
             -DBUILD_SHARED_LIBS=on
-          cmake --build $ohbdir -j 4 --target install
+          cmake --build $ohbdir -j 6 --target install
 
           #meshfields
           mfbdir=${workDir}/build-meshfields
