@@ -126,7 +126,7 @@ function(test_func_impl TEST_NAME)
   endif()
 endfunction(test_func_impl)
 
-#tests that are always enabled
+#smoke tests that are always enabled
 function(smoke_test_func TEST_NAME)
   test_func_impl(${TEST_NAME} ${ARGN})
   if(TEST ${TEST_NAME})
@@ -160,27 +160,34 @@ function(will_fail_valgrind_test_func TEST_NAME)
   endif()
 endfunction()
 
-function(meshfields_add_exe EXE_NAME EXE_SRC)
+#smoke executables are always built
+function(meshfields_add_smoke_exe EXE_NAME EXE_SRC)
   add_executable(${EXE_NAME} ${EXE_SRC})
   target_link_libraries(${EXE_NAME} PRIVATE meshfields)
 endfunction()
 
-# Creating minimal reproduction of error
-meshfields_add_exe(KokkosTests test/testKokkos.cpp)
+function(meshfields_add_exe EXE_NAME EXE_SRC)
+  if(MeshFields_IS_TESTING)
+    add_executable(${EXE_NAME} ${EXE_SRC})
+    target_link_libraries(${EXE_NAME} PRIVATE meshfields)
+  endif()
+endfunction()
+
+meshfields_add_smoke_exe(KokkosTests test/testKokkos.cpp)
 meshfields_add_exe(SerializationTests test/testSerialize.cpp)
 meshfields_add_exe(ElementTests test/testElement.cpp)
 meshfields_add_exe(ElementJacobian1d test/testElementJacobian1d.cpp)
 meshfields_add_exe(ElementJacobian2d test/testElementJacobian2d.cpp)
 meshfields_add_exe(ElementJacobian3d test/testElementJacobian3d.cpp)
 meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
-meshfields_add_exe(OmegahTriTests test/testOmegahTri.cpp)
+meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(PointMapping test/testPointMapping.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
-  meshfields_add_exe(CabanaTests test/testCabana.cpp)
+  meshfields_add_smoke_exe(CabanaTests test/testCabana.cpp)
   smoke_test_func(CabanaTests ./CabanaTests)
   test_func(ControllerPerformance ./ControllerPerformance)
 endif()
