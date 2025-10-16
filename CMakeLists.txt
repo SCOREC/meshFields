@@ -109,8 +109,8 @@ endif()
 enable_testing()
 include(CTest)
 
-option(IS_TESTING "Build for CTest" OFF)
-message(STATUS "IS_TESTING: ${IS_TESTING}")
+option(MeshFields_IS_TESTING "Build for CTest" OFF)
+message(STATUS "MeshFields_IS_TESTING: ${MeshFields_IS_TESTING}")
 
 #check for valgrind
 find_program(VALGRIND_CMD valgrind DOC "Location of the valgrind program")
@@ -127,22 +127,28 @@ function(test_func_impl TEST_NAME)
 endfunction(test_func_impl)
 
 function(test_func TEST_NAME)
-  test_func_impl(${TEST_NAME} ${ARGN})
+  if(MeshFields_IS_TESTING)
+    test_func_impl(${TEST_NAME} ${ARGN})
+  endif()
 endfunction(test_func)
 
 # Unlike test_func, will_fail_test_func assumes the command for the test will fail
 function(will_fail_test_func TEST_NAME)
-  test_func_impl(${TEST_NAME} ${ARGN})
-  set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
+  if(MeshFields_IS_TESTING)
+    test_func_impl(${TEST_NAME} ${ARGN})
+    set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
+  endif()
 endfunction()
 
 function(will_fail_valgrind_test_func TEST_NAME)
-  if(VALGRIND_CMD)
-    test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
-    set_property(TEST ${TEST_NAME} PROPERTY
-      FAIL_REGULAR_EXPRESSION "Invalid read;Invalid write"
-    )
-    set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
+  if(MeshFields_IS_TESTING)
+    if(VALGRIND_CMD)
+      test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
+      set_property(TEST ${TEST_NAME} PROPERTY
+        FAIL_REGULAR_EXPRESSION "Invalid read;Invalid write"
+      )
+      set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
+    endif()
   endif()
 endfunction()
 
