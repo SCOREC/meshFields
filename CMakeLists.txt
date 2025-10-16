@@ -132,7 +132,7 @@ function(smoke_test_func TEST_NAME)
   if(TEST ${TEST_NAME})
     set_property(TEST ${TEST_NAME} PROPERTY LABELS "meshfields::smoke")
   endif()
-endfunction(test_func)
+endfunction(smoke_test_func)
 
 function(test_func TEST_NAME)
   if(MeshFields_IS_TESTING)
