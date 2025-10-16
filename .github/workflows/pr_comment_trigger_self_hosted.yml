@@ -101,7 +101,8 @@ jobs:
             -DMeshFields_USE_Cabana=on \
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
-            -DCabana_ROOT=$cabbdir/install
+            -DCabana_ROOT=$cabbdir/install \
+            -DMeshFields_IS_TESTING=on
           cmake --build $mfbdir -j4
           ctest --test-dir $mfbdir
 
