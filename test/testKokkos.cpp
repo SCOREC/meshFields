@@ -338,7 +338,7 @@ void kokkosControllerSizeTest() {
 void kokkosFieldSizeTest() {
   printf("== START kokkosFieldSizeTest ==\n");
   const int a = 5, b = 4, c = 3, d = 2, e = 1;
-  const int psi[5] = {a, b, c, d, e};
+  const size_t psi[5] = {a, b, c, d, e};
   {
     using simple_static =
         MeshField::KokkosController<MemorySpace, ExecutionSpace, int[a],

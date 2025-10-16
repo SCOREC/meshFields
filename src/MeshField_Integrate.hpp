@@ -159,7 +159,6 @@ Kokkos::View<Real *> getIntegrationPointWeights(
     std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
   const auto numPtsPerElm = ip.size();
   const auto numMeshEnts = fes.numMeshEnts;
-  const auto meshEntDim = fes.MeshEntDim;
   Kokkos::View<Real *> weights("weights", numMeshEnts * numPtsPerElm);
   // broadcast the points into the view - FIXME this is an inefficient use of
   // memory

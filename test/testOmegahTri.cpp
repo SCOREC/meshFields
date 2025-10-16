@@ -64,7 +64,7 @@ bool checkResult(Omega_h::Mesh &mesh, Result &result, CoordField coordField,
           const auto x = globalCoords(pt, 0);
           const auto y = globalCoords(pt, 1);
           const auto expected = func(x, y);
-          for (int i = 0; i < numComp; ++i) {
+          for (size_t i = 0; i < numComp; ++i) {
             const auto computed = result(pt, i);
             MeshField::LO isError = 0;
             if (Kokkos::fabs(computed - expected) >
@@ -92,7 +92,7 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     // - TODO should be encoded in the field?
     const auto x = coords[vtx * MeshDim];
     const auto y = coords[vtx * MeshDim + 1];
-    for (int i = 0; i < field.numComp; ++i) {
+    for (size_t i = 0; i < field.numComp; ++i) {
       field(vtx, 0, i, MeshField::Vertex) = func(x, y);
     }
   };
@@ -115,7 +115,7 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto x = (coords[left * MeshDim] + coords[right * MeshDim]) / 2.0;
     const auto y =
         (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
-    for (int i = 0; i < field.numComp; ++i) {
+    for (size_t i = 0; i < field.numComp; ++i) {
       field(edge, 0, i, MeshField::Edge) = func(x, y);
     }
   };
@@ -131,7 +131,7 @@ createElmAreaCoords(size_t numElements,
                                         numElements * NumPtsPerElem);
   Kokkos::parallel_for(
       "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &elm) {
-        for (int pt = 0; pt < NumPtsPerElem; pt++) {
+        for (size_t pt = 0; pt < NumPtsPerElem; pt++) {
           lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 3 + 0];
           lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 3 + 1];
           lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 3 + 2];
