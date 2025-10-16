@@ -170,7 +170,7 @@ struct FieldElement {
    */
   KOKKOS_INLINE_FUNCTION ValArray
   getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
-    assert(ent > 0);
+    assert(ent >= 0);
     assert(static_cast<size_t>(ent) < numMeshEnts);
     ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
