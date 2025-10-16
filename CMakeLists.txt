@@ -121,22 +121,19 @@ function(test_func_impl TEST_NAME)
   # need to run as a cmake script to capture assert and other 'system failures'
   # https://cmake.org/cmake/help/latest/prop_test/WILL_FAIL.html#prop_test:WILL_FAIL
   add_test(NAME ${TEST_NAME} COMMAND ${CMAKE_COMMAND} -E env ${TEST_STR})
+  if(TEST ${TEST_NAME})
+    set_property(TEST ${TEST_NAME} PROPERTY LABELS "meshfields::base")
+  endif()
 endfunction(test_func_impl)
 
 function(test_func TEST_NAME)
   test_func_impl(${TEST_NAME} ${ARGN})
-  if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
-  endif()
 endfunction(test_func)
 
 # Unlike test_func, will_fail_test_func assumes the command for the test will fail
 function(will_fail_test_func TEST_NAME)
   test_func_impl(${TEST_NAME} ${ARGN})
   set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
-  if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
-  endif()
 endfunction()
 
 function(will_fail_valgrind_test_func TEST_NAME)
@@ -146,9 +143,6 @@ function(will_fail_valgrind_test_func TEST_NAME)
       FAIL_REGULAR_EXPRESSION "Invalid read;Invalid write"
     )
     set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
-    if(TEST ${TEST_NAME})
-      set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
-    endif()
   endif()
 endfunction()
 
@@ -186,7 +180,7 @@ test_func(ElementJacobian3d ./ElementJacobian3d)
 test_func(CountIntegrator ./CountIntegrator)
 test_func(OmegahTriTests ./OmegahTriTests)
 test_func(PointMapping ./PointMapping)
-test_func(OmegahTetTest, ./OmegahTetTest)
+test_func(OmegahTetTest ./OmegahTetTest)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)
