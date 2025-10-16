@@ -9,9 +9,6 @@ option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 
 find_package(Kokkos REQUIRED)
 find_package(Omega_h REQUIRED)
-#Clear the omegah compilation flags that it passes to cuda.  Using the
-# kokkos target, and nvcc_wrapper, provide sufficient flags.
-set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
 if(MeshFields_USE_Cabana)
   find_package(Cabana 0.7.0 REQUIRED)
@@ -112,8 +109,8 @@ endif()
 enable_testing()
 include(CTest)
 
-option(IS_TESTING "Build for CTest" OFF)
-message(STATUS "IS_TESTING: ${IS_TESTING}")
+option(MeshFields_IS_TESTING "Build for CTest" OFF)
+message(STATUS "MeshFields_IS_TESTING: ${MeshFields_IS_TESTING}")
 
 #check for valgrind
 find_program(VALGRIND_CMD valgrind DOC "Location of the valgrind program")
@@ -124,72 +121,87 @@ function(test_func_impl TEST_NAME)
   # need to run as a cmake script to capture assert and other 'system failures'
   # https://cmake.org/cmake/help/latest/prop_test/WILL_FAIL.html#prop_test:WILL_FAIL
   add_test(NAME ${TEST_NAME} COMMAND ${CMAKE_COMMAND} -E env ${TEST_STR})
+  if(TEST ${TEST_NAME})
+    set_property(TEST ${TEST_NAME} PROPERTY LABELS "meshfields::base")
+  endif()
 endfunction(test_func_impl)
 
-function(test_func TEST_NAME)
+#smoke tests that are always enabled
+function(smoke_test_func TEST_NAME)
   test_func_impl(${TEST_NAME} ${ARGN})
   if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
+    set_property(TEST ${TEST_NAME} PROPERTY LABELS "meshfields::smoke")
+  endif()
+endfunction(smoke_test_func)
+
+function(test_func TEST_NAME)
+  if(MeshFields_IS_TESTING)
+    test_func_impl(${TEST_NAME} ${ARGN})
   endif()
 endfunction(test_func)
 
 # Unlike test_func, will_fail_test_func assumes the command for the test will fail
 function(will_fail_test_func TEST_NAME)
-  test_func_impl(${TEST_NAME} ${ARGN})
-  set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
-  if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
+  if(MeshFields_IS_TESTING)
+    test_func_impl(${TEST_NAME} ${ARGN})
+    set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
   endif()
 endfunction()
 
 function(will_fail_valgrind_test_func TEST_NAME)
-  if(VALGRIND_CMD)
-    test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
-    set_property(TEST ${TEST_NAME} PROPERTY
-      FAIL_REGULAR_EXPRESSION "Invalid read;Invalid write"
-    )
-    set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
-    if(TEST ${TEST_NAME})
-      set_property(TEST ${TEST_NAME} PROPERTY LABELS "base")
+  if(MeshFields_IS_TESTING)
+    if(VALGRIND_CMD)
+      test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
+      set_property(TEST ${TEST_NAME} PROPERTY
+        FAIL_REGULAR_EXPRESSION "Invalid read;Invalid write"
+      )
+      set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
     endif()
   endif()
 endfunction()
 
-function(meshfields_add_exe EXE_NAME EXE_SRC)
+#smoke executables are always built
+function(meshfields_add_smoke_exe EXE_NAME EXE_SRC)
   add_executable(${EXE_NAME} ${EXE_SRC})
   target_link_libraries(${EXE_NAME} PRIVATE meshfields)
 endfunction()
 
-# Creating minimal reproduction of error
-meshfields_add_exe(KokkosTests test/testKokkos.cpp)
+function(meshfields_add_exe EXE_NAME EXE_SRC)
+  if(MeshFields_IS_TESTING)
+    add_executable(${EXE_NAME} ${EXE_SRC})
+    target_link_libraries(${EXE_NAME} PRIVATE meshfields)
+  endif()
+endfunction()
+
+meshfields_add_smoke_exe(KokkosTests test/testKokkos.cpp)
 meshfields_add_exe(SerializationTests test/testSerialize.cpp)
 meshfields_add_exe(ElementTests test/testElement.cpp)
 meshfields_add_exe(ElementJacobian1d test/testElementJacobian1d.cpp)
 meshfields_add_exe(ElementJacobian2d test/testElementJacobian2d.cpp)
 meshfields_add_exe(ElementJacobian3d test/testElementJacobian3d.cpp)
 meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
-meshfields_add_exe(OmegahTriTests test/testOmegahTri.cpp)
+meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(PointMapping test/testPointMapping.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
-  meshfields_add_exe(CabanaTests test/testCabana.cpp)
-  test_func(CabanaTests ./CabanaTests)
+  meshfields_add_smoke_exe(CabanaTests test/testCabana.cpp)
+  smoke_test_func(CabanaTests ./CabanaTests)
   test_func(ControllerPerformance ./ControllerPerformance)
 endif()
 
-test_func(KokkosTests ./KokkosTests)
+smoke_test_func(KokkosTests ./KokkosTests)
 test_func(SerializationTests ./SerializationTests)
 test_func(ElementTests ./ElementTests)
 test_func(ElementJacobian1d ./ElementJacobian1d)
 test_func(ElementJacobian2d ./ElementJacobian2d)
 test_func(ElementJacobian3d ./ElementJacobian3d)
 test_func(CountIntegrator ./CountIntegrator)
-test_func(OmegahTriTests ./OmegahTriTests)
+smoke_test_func(OmegahTriTests ./OmegahTriTests)
 test_func(PointMapping ./PointMapping)
-test_func(OmegahTetTest, ./OmegahTetTest)
+test_func(OmegahTetTest ./OmegahTetTest)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)

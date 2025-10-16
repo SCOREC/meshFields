@@ -8,7 +8,7 @@
 namespace {
 template <typename Array> KOKKOS_INLINE_FUNCTION bool sumsToOne(Array &xi) {
   auto sum = 0.0;
-  for (int i = 0; i < xi.size(); i++) {
+  for (size_t i = 0; i < xi.size(); i++) {
     sum += xi[i];
   }
   return (Kokkos::fabs(sum - 1) <= MeshField::MachinePrecision);
@@ -17,7 +17,7 @@ template <typename Array> KOKKOS_INLINE_FUNCTION bool sumsToOne(Array &xi) {
 template <typename Array>
 KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi) {
   auto gt = true;
-  for (int i = 0; i < xi.size(); i++) {
+  for (size_t i = 0; i < xi.size(); i++) {
     gt = gt && (xi[i] >= 0);
   }
   return gt;

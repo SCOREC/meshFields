@@ -170,14 +170,15 @@ struct FieldElement {
    */
   KOKKOS_INLINE_FUNCTION ValArray
   getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
-    assert(ent < numMeshEnts);
+    assert(ent >= 0);
+    assert(static_cast<size_t>(ent) < numMeshEnts);
     ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
-    for (int ci = 0; ci < NumComponents; ++ci)
+    for (size_t ci = 0; ci < NumComponents; ++ci)
       c[ci] = 0;
     for (auto topo : elm2dof.getTopology()) { // element topology
-      for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (int ci = 0; ci < NumComponents; ++ci) {
+      for (size_t ni = 0; ni < shapeFn.numNodes; ++ni) {
+        for (size_t ci = 0; ci < NumComponents; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
           const auto fval =
               field(map.entity, map.node, map.component, map.topo);
@@ -194,8 +195,8 @@ struct FieldElement {
   KOKKOS_INLINE_FUNCTION NodeArray getNodeValues(int ent) const {
     NodeArray c;
     for (auto topo : elm2dof.getTopology()) { // element topology
-      for (int ni = 0; ni < ShapeType::numNodes; ++ni) {
-        for (int d = 0; d < ShapeType::meshEntDim; ++d) {
+      for (size_t ni = 0; ni < ShapeType::numNodes; ++ni) {
+        for (size_t d = 0; d < ShapeType::meshEntDim; ++d) {
           auto map = elm2dof(ni, d, ent, topo);
           const auto fval =
               field(map.entity, map.node, map.component, map.topo);
@@ -219,11 +220,12 @@ struct FieldElement {
    * @return the result of evaluation
    */
   KOKKOS_INLINE_FUNCTION Real getJacobian1d(int ent) const {
-    assert(ent < numMeshEnts);
+    assert(ent >= 0);
+    assert(static_cast<size_t>(ent) < numMeshEnts);
     const auto nodalGradients = shapeFn.getLocalGradients();
     const auto nodeValues = getNodeValues(ent);
     auto g = nodalGradients[0] * nodeValues[0];
-    for (int i = 1; i < shapeFn.numNodes; ++i) {
+    for (size_t i = 1; i < shapeFn.numNodes; ++i) {
       g = g + nodalGradients[i] * nodeValues[i];
     }
     return g;
@@ -328,7 +330,7 @@ struct FieldElement {
           KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
             Real sum = 0;
             LO isError = 0;
-            for (int i = 0; i < localCoords.extent(1); i++) {
+            for (size_t i = 0; i < localCoords.extent(1); i++) {
               if (localCoords(ent, i) < 0)
                 isError++;
               sum += localCoords(ent, i);
@@ -449,7 +451,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
         KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
           Real sum = 0;
           LO isError = 0;
-          for (int i = 0; i < localCoords.extent(1); i++) {
+          for (size_t i = 0; i < localCoords.extent(1); i++) {
             if (localCoords(ent, i) < 0)
               isError++;
             sum += localCoords(ent, i);
@@ -477,7 +479,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
   LO numLocalCoords;
   Kokkos::deep_copy(numLocalCoords,
                     Kokkos::subview(offsets, offsets.size() - 1));
-  if (localCoords.extent(0) != numLocalCoords) {
+  if (localCoords.extent(0) != static_cast<size_t>(numLocalCoords)) {
     fail("The size of dimension 0 of the local coordinates input array (%zu) "
          "does not match the last entry of the offsets array (%d).\n",
          localCoords.extent(0), numLocalCoords);
@@ -491,10 +493,10 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
         Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
         // TODO use nested parallel for?
         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-          for (int i = 0; i < localCoords.extent(1); i++) // better way?
+          for (size_t i = 0; i < localCoords.extent(1); i++) // better way?
             lc[i] = localCoords(pt, i);
           const auto val = fes.getValue(ent, lc);
-          for (int i = 0; i < numComponents; i++)
+          for (size_t i = 0; i < numComponents; i++)
             res(pt, i) = val[i];
         }
       });
