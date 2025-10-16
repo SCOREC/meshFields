@@ -9,9 +9,6 @@ option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 
 find_package(Kokkos REQUIRED)
 find_package(Omega_h REQUIRED)
-#Clear the omegah compilation flags that it passes to cuda.  Using the
-# kokkos target, and nvcc_wrapper, provide sufficient flags.
-set_property(TARGET Omega_h::omega_h PROPERTY INTERFACE_COMPILE_OPTIONS "")
 
 if(MeshFields_USE_Cabana)
   find_package(Cabana 0.7.0 REQUIRED)
