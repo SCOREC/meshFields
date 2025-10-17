@@ -29,6 +29,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Scan.hpp
   src/MeshField_Field.hpp
   src/MeshField.hpp
+  src/MeshField_SPR_ErrorEstimator.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
 if(MeshFields_USE_Cabana)
@@ -184,6 +185,7 @@ meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(PointMapping test/testPointMapping.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
+meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
