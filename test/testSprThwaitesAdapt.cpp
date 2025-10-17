@@ -168,11 +168,10 @@ int main(int argc, char** argv) {
   auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);
   mesh.add_tag<Real>(VERT, "recoveredStrain", 1, recoveredStrain);
 
-  MeshField::OmegahMeshField<ExecutionSpace, MeshField::KokkosController> omf(
-        mesh);
-
   const auto MeshDim = 2;
   const auto ShapeOrder = 1;
+  MeshField::OmegahMeshField<ExecutionSpace, MeshDim, MeshField::KokkosController> omf(
+        mesh);
   auto recoveredStrainField = omf.CreateLagrangeField<Real, ShapeOrder, MeshDim>();
   setFieldAtVertices(mesh, recoveredStrain, recoveredStrainField);
 
