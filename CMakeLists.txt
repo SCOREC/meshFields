@@ -10,6 +10,11 @@ option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 find_package(Kokkos REQUIRED)
 find_package(Omega_h REQUIRED)
 
+# Verify Omega_h was built with Kokkos enabled
+if(NOT Omega_h_USE_Kokkos)
+  message(FATAL_ERROR "Omega_h must be built with Kokkos enabled (Omega_h_USE_Kokkos=ON)")
+endif()
+
 if(MeshFields_USE_Cabana)
   find_package(Cabana 0.7.0 REQUIRED)
 endif()
