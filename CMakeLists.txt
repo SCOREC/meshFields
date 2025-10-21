@@ -211,6 +211,9 @@ else()
   will_fail_test_func(ExceptionTest ./ExceptionTest)
 endif()
 
+meshfields_add_exe(OmegahSprAdapt test/testSprThwaitesAdapt.cpp)
+test_func(OmegahSprAdapt ./OmegahSprAdapt ${CMAKE_SOURCE_DIR}/meshes)
+
 #Code Coverage set up -------------------------------------------------------
 
 option(meshfields_ENABLE_COVERAGE_BUILD "Do a coverage build" OFF)
