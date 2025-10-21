@@ -164,6 +164,8 @@ int main(int argc, char** argv) {
                        "_maxSz_" + std::to_string(max_size) +
                        "_minSz_" + std::to_string(min_size);
 
+  std::cout << "mesh elements " << mesh.nelems() << " vertices " << mesh.nverts() << '\n';
+
   auto effectiveStrain = getEffectiveStrainRate(mesh);
   auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);
   mesh.add_tag<Real>(VERT, "recoveredStrain", 1, recoveredStrain);

@@ -168,8 +168,13 @@ class Error : public SInt
             const auto diff = eps_elm - eps_star_Pt;
             const auto wPt = w(pt);
             const auto dVPt = dV(pt);
+            if(elm==13266) {
+              Kokkos::printf("elm 13266 %f eps_start_Pt %f diff %f wPt %f dVPt %f\n",
+                  eps_star_Pt, diff, wPt, dVPt);
+            }
             sum += (diff * diff) * wPt * dVPt;
           }
+          assert(sum>0);
           r_local += Kokkos::pow(Kokkos::sqrt(sum), ((2 * meshDim) / (2 * orderP + meshDim)));
           errorNorm(elm) = Kokkos::pow(Kokkos::sqrt(sum), -(2 / (2 * orderP + meshDim)));  
         },
