@@ -217,7 +217,13 @@ else()
 endif()
 
 meshfields_add_exe(OmegahSprAdapt test/testSprThwaitesAdapt.cpp)
-test_func(OmegahSprAdapt ./OmegahSprAdapt ${CMAKE_SOURCE_DIR}/meshes)
+test_func(OmegahSprAdapt ./OmegahSprAdapt
+  ${CMAKE_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh/
+  thwaitesAdapted #output prefix
+  0.1 # adapt ratio
+  1.0 # min size
+  16.0 # max size
+)
 
 #Code Coverage set up -------------------------------------------------------
 
