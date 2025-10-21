@@ -126,7 +126,7 @@ template <typename ShapeField>
 void setFieldAtVertices(Omega_h::Mesh &mesh, Reals recoveredStrain, ShapeField field) {
   const auto MeshDim = mesh.dim();
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
-    field(0, 0, vtx, MeshField::Vertex) = recoveredStrain[vtx];
+    field(vtx, 0, 0, MeshField::Vertex) = recoveredStrain[vtx];
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
                           setFieldAtVertices, "setFieldAtVertices");
