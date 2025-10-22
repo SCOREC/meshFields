@@ -173,6 +173,7 @@ meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(PointMapping test/testPointMapping.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
 meshfields_add_exe(IntegratorTest test/testIntegrator.cpp)
+meshfields_add_exe(BoxIntegratorTest test/testBoxIntegrator.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
@@ -192,6 +193,8 @@ test_func(OmegahTriTests ./OmegahTriTests)
 test_func(PointMapping ./PointMapping)
 test_func(OmegahTetTest, ./OmegahTetTest)
 test_func(IntegratorTest ./IntegratorTest)
+test_func(BoxIntegratorTest ./BoxIntegratorTest)
+
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)
