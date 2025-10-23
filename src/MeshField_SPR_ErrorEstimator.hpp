@@ -32,7 +32,7 @@ class Estimation {
   private:
   Estimation() {}
   public:
-  Estimation(Omega_h::Mesh& mesh_in, Omega_h::Reals eps_in, ShapeField eps_star_in,
+  Estimation(Omega_h::Mesh& mesh_in, Omega_h::Reals eps_in, ShapeField& eps_star_in,
       MeshField::Real tolerance_in) 
     : mesh(mesh_in), eps(eps_in), eps_star(eps_star_in), 
       tolerance(tolerance_in), size_factor(getNaN())
