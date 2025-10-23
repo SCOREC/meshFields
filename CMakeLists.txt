@@ -10,6 +10,11 @@ option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 find_package(Kokkos REQUIRED)
 find_package(Omega_h REQUIRED)
 
+# Verify Omega_h was built with Kokkos enabled
+if(NOT Omega_h_USE_Kokkos)
+  message(FATAL_ERROR "Omega_h must be built with Kokkos enabled (Omega_h_USE_Kokkos=ON)")
+endif()
+
 if(MeshFields_USE_Cabana)
   find_package(Cabana 0.7.0 REQUIRED)
 endif()
@@ -29,6 +34,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Scan.hpp
   src/MeshField_Field.hpp
   src/MeshField.hpp
+  src/MeshField_SPR_ErrorEstimator.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
 if(MeshFields_USE_Cabana)
@@ -184,6 +190,7 @@ meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(PointMapping test/testPointMapping.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
+meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
@@ -208,6 +215,19 @@ if(MeshFields_USE_EXCEPTIONS)
 else()
   will_fail_test_func(ExceptionTest ./ExceptionTest)
 endif()
+
+meshfields_add_exe(OmegahSprAdapt test/testSprThwaitesAdapt.cpp)
+test_func(OmegahSprAdapt ./OmegahSprAdapt
+  ${CMAKE_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh/
+  thwaitesAdapted #output prefix
+  0.1 # adapt ratio
+  1.0 # min size
+  16.0 # max size
+)
+set_tests_properties(OmegahSprAdapt PROPERTIES
+  PASS_REGULAR_EXPRESSION "afterAdapt nTri: 14439")
+set_tests_properties(OmegahSprAdapt PROPERTIES
+  PASS_REGULAR_EXPRESSION "solution_1 min -4084.78 max 213.322")
 
 #Code Coverage set up -------------------------------------------------------
 
