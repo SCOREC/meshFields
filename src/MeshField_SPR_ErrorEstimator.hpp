@@ -204,7 +204,8 @@ void getElementSizeField(EstimationT& e, ErrorT& errorIntegrator) {
   const auto errorNorm = errorIntegrator.errorNorm;
   const auto size_factor = e.size_factor;
   const auto currentElmSize = e.mesh.ask_sizes();
-  e.mesh.template add_tag<MeshField::Real>(e.mesh.dim(), "curElmSize", 1, currentElmSize);
+  e.mesh.template add_tag<MeshField::Real>(e.mesh.dim(), "curElmSize", 1, currentElmSize,
+      false, Omega_h::ArrayType::VectorND);
   Kokkos::parallel_for(e.mesh.nelems(), KOKKOS_LAMBDA(const int elm) {
     const double h = currentElmSize[elm]; // h_e^current
     eSize(elm) = h * errorNorm(elm) * size_factor;
@@ -215,7 +216,8 @@ void getElementSizeField(EstimationT& e, ErrorT& errorIntegrator) {
 Kokkos::View<MeshField::Real*>
 averageToVertex(Omega_h::Mesh& mesh, const Kokkos::View<MeshField::Real*>& elmSize) {
   Omega_h::Write<MeshField::Real> elmSize_oh(elmSize);
-  mesh.add_tag<MeshField::Real>(mesh.dim(), "elmSizeField", 1, elmSize_oh);
+  mesh.add_tag<MeshField::Real>(mesh.dim(), "elmSizeField", 1, elmSize_oh, false,
+      Omega_h::ArrayType::VectorND);
   Kokkos::View<MeshField::Real*> sizeField("sizeField", mesh.nverts());
   const auto v2e = mesh.ask_up(Omega_h::VERT, mesh.dim());
   const auto v2e_offsets = v2e.a2ab;

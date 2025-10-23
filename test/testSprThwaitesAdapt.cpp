@@ -167,7 +167,8 @@ int main(int argc, char** argv) {
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
   auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);
-  mesh.add_tag<Real>(VERT, "recoveredStrain", 1, recoveredStrain);
+  mesh.add_tag<Real>(VERT, "recoveredStrain", 1, recoveredStrain, false,
+      Omega_h::ArrayType::VectorND);
 
   const auto MeshDim = 2;
   const auto ShapeOrder = 1;
@@ -185,7 +186,8 @@ int main(int argc, char** argv) {
 
   const auto tgtLength = getSprSizeField(estimation, omf, coordFe);
   Omega_h::Write<MeshField::Real> tgtLength_oh(tgtLength);
-  mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh);
+  mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh, false,
+      Omega_h::ArrayType::VectorND);
 
   { //write vtk
   const std::string vtkFileName = "beforeAdapt" + outname + ".vtk";
