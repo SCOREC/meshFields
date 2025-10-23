@@ -224,6 +224,8 @@ test_func(OmegahSprAdapt ./OmegahSprAdapt
   1.0 # min size
   16.0 # max size
 )
+set_tests_properties(OmegahSprAdapt PROPERTIES
+  PASS_REGULAR_EXPRESSION "afterAdapt nTri: 14439")
 
 #Code Coverage set up -------------------------------------------------------
 
