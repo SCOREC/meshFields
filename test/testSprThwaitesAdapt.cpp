@@ -13,6 +13,7 @@
 #include <Omega_h_atomics.hpp> //Omega_h::atomic_fetch_add
 #include <sstream> //ostringstream
 #include <iomanip> //precision
+#include <string_view>
 #include <Omega_h_dbg.hpp>
 #include <Omega_h_for.hpp>
 
@@ -132,10 +133,10 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, Reals recoveredStrain, ShapeField f
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
-void printTriCount(Mesh* mesh) {
+void printTriCount(Mesh* mesh, std::string_view prefix) {
   const auto nTri = mesh->nglobal_ents(2);
   if (!mesh->comm()->rank())
-    std::cout << "nTri: " << nTri << "\n";
+    std::cout << prefix << " nTri: " << nTri << "\n";
 }
 
 
@@ -163,8 +164,6 @@ int main(int argc, char** argv) {
   const auto outname = prefix + "_adaptRatio_" + std::string(argv[3]) +
                        "_maxSz_" + std::to_string(max_size) +
                        "_minSz_" + std::to_string(min_size);
-
-  std::cout << "mesh elements " << mesh.nelems() << " vertices " << mesh.nverts() << '\n';
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
   auto recoveredStrain = recoverLinearStrain(mesh,effectiveStrain);
@@ -198,12 +197,14 @@ int main(int argc, char** argv) {
   //adapt
   auto opts = Omega_h::AdaptOpts(&mesh);
   setupFieldTransfer(opts);
-  printTriCount(&mesh);
+  printTriCount(&mesh, "beforeAdapt");
 
-  auto verbose = true;
+  auto verbose = false;
   const auto isos = Omega_h::isos_from_lengths(tgtLength_oh);
   auto metric = clamp_metrics(mesh.nverts(), isos, min_size, max_size);
   Omega_h::grade_fix_adapt(&mesh, opts, metric, verbose);
+
+  printTriCount(&mesh, "afterAdapt");
 
   { //write vtk and osh for adapted mesh
   const std::string outfilename = "afterAdapt" + outname;
