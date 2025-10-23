@@ -206,6 +206,11 @@ int main(int argc, char** argv) {
 
   printTriCount(&mesh, "afterAdapt");
 
+  const auto sol = mesh.get_array<Omega_h::Real>(VERT, "solution_1");
+  const auto sol_min = Omega_h::get_min(sol);
+  const auto sol_max = Omega_h::get_max(sol);
+  std::cout << "solution_1 min " << sol_min << " max " << sol_max << '\n';
+
   { //write vtk and osh for adapted mesh
   const std::string outfilename = "afterAdapt" + outname;
   Omega_h::vtk::write_parallel(outfilename + ".vtk", &mesh, 2);
