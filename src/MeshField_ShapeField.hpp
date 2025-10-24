@@ -95,13 +95,13 @@ struct QuadraticAccessor {
   using BaseType = typename VtxAccessor::BaseType;
 
   KOKKOS_FUNCTION
-  auto &operator()(int node, int component, int entity, Mesh_Topology t) const {
+  auto &operator()(int entity, int node, int component, Mesh_Topology t) const {
     if (t != Vertex && t != Edge) {
       Kokkos::printf("%d is not a support topology\n", t);
       assert(false);
     }
-    return (t == Vertex) ? vtxField(node, component, entity)
-                         : edgeField(node, component, entity);
+    return (t == Vertex) ? vtxField(entity, node, component)
+                         : edgeField(entity, node, component);
   }
 };
 
