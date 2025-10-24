@@ -67,11 +67,46 @@ public:
     }
     virtual int getAccuracy() const { return 2; }
   }; // end N2
-  virtual int countIntegrations() const { return 2; }
+    class N6 : public Integration<3> {
+  public:
+    virtual int countPoints() const { return 12; }
+    virtual std::vector<IntegrationPoint<3>> getPoints() const {
+      return {
+          IntegrationPoint(Vector3{0.873821971, 0.063089014, 0.063089014},
+                           0.0508449063702 / 2.0),
+          IntegrationPoint(Vector3{0.063089014, 0.873821971, 0.063089014},
+                           0.0508449063702 / 2.0),
+          IntegrationPoint(Vector3{0.063089014, 0.063089014, 0.873821971},
+                           0.0508449063702 / 2.0),
+
+          IntegrationPoint(Vector3{0.501426509, 0.249286745, 0.249286745},
+                           0.1167862757264 / 2.0),
+          IntegrationPoint(Vector3{0.249286745, 0.501426509, 0.249286745},
+                           0.1167862757264 / 2.0),
+          IntegrationPoint(Vector3{0.249286745, 0.249286745, 0.501426509},
+                           0.1167862757264 / 2.0),
+
+          IntegrationPoint(Vector3{0.636502499, 0.310352451, 0.053145050},
+                           0.0828510756184 / 2.0),
+          IntegrationPoint(Vector3{0.636502499, 0.053145050, 0.310352451},
+                           0.0828510756184 / 2.0),
+          IntegrationPoint(Vector3{0.310352451, 0.636502499, 0.053145050},
+                           0.0828510756184 / 2.0),
+          IntegrationPoint(Vector3{0.310352451, 0.053145050, 0.636502499},
+                           0.0828510756184 / 2.0),
+          IntegrationPoint(Vector3{0.053145050, 0.636502499, 0.310352451},
+                           0.0828510756184 / 2.0),
+          IntegrationPoint(Vector3{0.053145050, 0.310352451, 0.636502499},
+                           0.0828510756184 / 2.0)};
+    }
+    virtual int getAccuracy() const { return 6; }
+  }; // end N6
+  virtual int countIntegrations() const { return 3; }
   virtual Integration<3> const *getIntegration(int i) const {
     static N1 i1;
     static N2 i2;
-    static Integration<3> *integrations[2] = {&i1, &i2};
+    static N6 i6;
+    static Integration<3> *integrations[3] = {&i1, &i2, &i6};
     return integrations[i];
   }
 };
