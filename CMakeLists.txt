@@ -146,6 +146,12 @@ function(test_func TEST_NAME)
   endif()
 endfunction(test_func)
 
+function(add_test_property TEST_NAME PROP)
+  if(TEST ${TEST_NAME})
+    set_property(TEST ${TEST_NAME} PROPERTY ${PROP} ${ARGN})
+  endif()
+endfunction(add_test_property)
+
 # Unlike test_func, will_fail_test_func assumes the command for the test will fail
 function(will_fail_test_func TEST_NAME)
   if(MeshFields_IS_TESTING)
@@ -224,9 +230,9 @@ test_func(OmegahSprAdapt ./OmegahSprAdapt
   1.0 # min size
   16.0 # max size
 )
-set_tests_properties(OmegahSprAdapt PROPERTIES
+add_test_property(OmegahSprAdapt 
   PASS_REGULAR_EXPRESSION "afterAdapt nTri: 14439")
-set_tests_properties(OmegahSprAdapt PROPERTIES
+add_test_property(OmegahSprAdapt 
   PASS_REGULAR_EXPRESSION "solution_1 min -4084.78 max 213.322")
 
 #Code Coverage set up -------------------------------------------------------
