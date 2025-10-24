@@ -313,7 +313,7 @@ public:
     auto field_view = field.vtxField.serialize();
     Omega_h::Write<FieldDataType> field_write(field_view);
     mesh.add_tag(0, "field", 1, Omega_h::read(field_write), false,
-        Omega_h::ArrayType::VectorND);
+                 Omega_h::ArrayType::VectorND);
     Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
   }
 
