@@ -9,6 +9,9 @@
 #include <MeshField_ShapeField.hpp>
 #include <Omega_h_mesh.hpp>
 
+namespace MeshField {
+namespace SPR {
+
 /* useful for initializing values to quickly
    detect "uninitialized" value bugs */
 static double getNaN() { return std::numeric_limits<double>::quiet_NaN(); }
@@ -234,5 +237,8 @@ getSprSizeField(EstimationT &e, OmegahMeshField &omf, FieldElement &coordFe) {
   getElementSizeField(e, errorIntegrator);
   return averageToVertex(e.mesh, e.element_size);
 }
+
+} // end namespace SPR
+} // end namespace MeshField
 
 #endif

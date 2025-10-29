@@ -192,10 +192,11 @@ int main(int argc, char **argv) {
       MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);
 
-  auto estimation =
-      Estimation(mesh, effectiveStrain, recoveredStrainField, adaptRatio);
+  auto estimation = MeshField::SPR::Estimation(
+      mesh, effectiveStrain, recoveredStrainField, adaptRatio);
 
-  const auto tgtLength = getSprSizeField(estimation, omf, coordFe);
+  const auto tgtLength =
+      MeshField::SPR::getSprSizeField(estimation, omf, coordFe);
   Omega_h::Write<MeshField::Real> tgtLength_oh(tgtLength);
   mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh, false,
                      Omega_h::ArrayType::VectorND);
