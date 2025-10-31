@@ -195,8 +195,9 @@ int main(int argc, char **argv) {
   auto estimation = MeshField::SPR::Estimation(
       mesh, effectiveStrain, recoveredStrainField, adaptRatio);
 
-  const auto tgtLength =
+  const auto [tgtLength, error] =
       MeshField::SPR::getSprSizeField(estimation, omf, coordFe);
+  std::cout << "Error: " << error << '\n';
   Omega_h::Write<MeshField::Real> tgtLength_oh(tgtLength);
   mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh, false,
                      Omega_h::ArrayType::VectorND);
