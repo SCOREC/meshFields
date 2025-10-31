@@ -227,31 +227,37 @@ averageToVertex(Omega_h::Mesh &mesh,
   return sizeField;
 }
 
-
 /**
- * @brief Computes the SPR (Superconvergent Patch Recovery) size field for mesh adaptation
+ * @brief Computes the SPR (Superconvergent Patch Recovery) size field for mesh
+ * adaptation
  *
- * This function performs error estimation using the SPR method and computes desired element
- * sizes based on the error between the original field and the recovered field. The resulting
- * size field can be used to guide adaptive mesh refinement.
+ * This function performs error estimation using the SPR method and computes
+ * desired element sizes based on the error between the original field and the
+ * recovered field. The resulting size field can be used to guide adaptive mesh
+ * refinement.
  *
- * @tparam EstimationT The estimation type containing mesh, fields, tolerance, and other parameters
+ * @tparam EstimationT The estimation type containing mesh, fields, tolerance,
+ *                     and other parameters
  * @tparam OmegahMeshField The Omega_h mesh field type for field evaluation
  * @tparam FieldElement The field element type for coordinate field operations
  *
- * @param e (In) The estimation object containing the mesh, input field (eps), recovered field (eps_star),
- *          tolerance, and storage for intermediate results
- * @param omf (In) The Omega_h mesh field object used for evaluating fields at integration points
- * @param coordFe (In) The coordinate field element used for integration over mesh elements
+ * @param e (In) The estimation object containing the mesh, input field (eps),
+ *               recovered field (eps_star), tolerance, and storage for
+ *               intermediate results
+ * @param omf (In) The Omega_h mesh field object used for evaluating fields at
+ *                 integration points
+ * @param coordFe (In) The coordinate field element used for integration over
+ *                     mesh elements
  *
  * @return A tuple containing:
- *         - Kokkos::View<MeshField::Real *>: The vertex-averaged size field indicating desired
- *           element sizes at mesh vertices
- *         - MeshField::Real: The sum of error norms raised to the power (2d/(2p+d)) over all elements,
- *           where d is the mesh dimension and p is the recovered field polynomial order
+ * - Kokkos::View<MeshField::Real *>: The vertex-averaged size field
+ * indicating desired element sizes at mesh vertices
+ * - MeshField::Real: The sum of error norms raised to the power
+ * (2d/(2p+d)) over all elements, where d is the mesh dimension and p is the
+ * recovered field polynomial order
  */
 template <typename EstimationT, typename OmegahMeshField, typename FieldElement>
-std::tuple< Kokkos::View<MeshField::Real *>, MeshField::Real >
+std::tuple<Kokkos::View<MeshField::Real *>, MeshField::Real>
 getSprSizeField(EstimationT &e, OmegahMeshField &omf, FieldElement &coordFe) {
   Error errorIntegrator(e, omf);
   errorIntegrator.process(coordFe);
