@@ -238,6 +238,61 @@ struct QuadraticTetrahedronToField {
   }
 };
 
+struct ReducedQuinticTriangleToField {
+  Omega_h::LOs triVerts;
+  ReducedQuinticTriangleToField(Omega_h::Mesh &mesh)
+      : triVerts(mesh.ask_elem_verts()) {
+    if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
+  }
+
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
+    return {MeshField::Triangle};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
+             MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Triangle);
+    const MeshField::LO triNode2DofHolder[18] = {
+        0,0,0,0,0,0,  // vertex 0 DOFs (6)
+        1,1,1,1,1,1,  // vertex 1 DOFs (6)
+        2,2,2,2,2,2   // vertex 2 DOFs (6)
+    };
+    const MeshField::Mesh_Topology triNode2DofHolderTopo[18] = {
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex
+    };
+    const auto dofHolderIdx = triNode2DofHolder[triNodeIdx];
+    const auto dofHolderTopo = triNode2DofHolderTopo[triNodeIdx];
+
+    Omega_h::LO osh_ent;
+    if (dofHolderTopo == MeshField::Vertex) {
+      const auto triDim = 2;
+      const auto vtxDim = 0;
+      const auto ignored = -1;
+      const auto localVtxIdx = (Omega_h::simplex_down_template(
+                                    triDim, vtxDim, dofHolderIdx, ignored) +
+                                2) %
+                               3;
+      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+      osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+    } else {
+      assert(false);
+    }
+
+    return {0, triCompIdx, osh_ent, dofHolderTopo};
+  }
+};
+
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
@@ -254,6 +309,13 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
     };
     return result{MeshField::QuadraticTriangleShape(),
                   QuadraticTriangleToField(mesh)};
+  } else if constexpr (ShapeOrder == 5) {
+    struct result {
+      MeshField::ReducedQuinticImplicitShape shp;
+      ReducedQuinticTriangleToField map;
+    };
+    return result{MeshField::ReducedQuinticImplicitShape(),
+                  ReducedQuinticTriangleToField(mesh)};
   }
 }
 template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
@@ -347,8 +409,8 @@ public:
       MeshField::fail("input mesh must be 2d\n");
     }
     const auto ShapeOrder = ShapeField::Order;
-    if (ShapeOrder != 1 && ShapeOrder != 2) {
-      MeshField::fail("input field order must be 1 or 2\n");
+    if (ShapeOrder != 1 && ShapeOrder != 2 && ShapeOrder != 5) {
+      MeshField::fail("input field order must be 1 or 2 or 5\n");
     }
 
     const auto [shp, map] = Omegah::getTriangleElement<ShapeOrder>(mesh);
