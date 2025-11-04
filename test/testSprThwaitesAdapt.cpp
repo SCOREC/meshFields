@@ -157,6 +157,7 @@ int main(int argc, char **argv) {
   auto world = lib.world();
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[1], world, &mesh);
+  mesh.balance();
   const auto prefix = std::string(argv[2]);
   // adaptRatio = 0.1 is used in scorec/core:cws/sprThwaites test/spr_test.cc
   const MeshField::Real adaptRatio = std::stof(argv[3]);

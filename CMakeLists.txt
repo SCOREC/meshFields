@@ -9,6 +9,7 @@ option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 
 find_package(Kokkos REQUIRED)
 find_package(Omega_h REQUIRED)
+find_package(MPI REQUIRED)
 
 # Verify Omega_h was built with Kokkos enabled
 if(NOT Omega_h_USE_Kokkos)
@@ -231,6 +232,18 @@ test_func(OmegahSprAdapt ./OmegahSprAdapt
   16.0 # max size
 )
 add_test_property(OmegahSprAdapt 
+  PASS_REGULAR_EXPRESSION
+  "afterAdapt nTri: 14439; solution_1 min -4084.78 max 213.322")
+
+test_func(OmegahSprAdapt_p2
+  ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
+  ./OmegahSprAdapt ${CMAKE_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh/
+  thwaitesAdapted #output prefix
+  0.1 # adapt ratio
+  1.0 # min size
+  16.0 # max size
+)
+add_test_property(OmegahSprAdapt_p2
   PASS_REGULAR_EXPRESSION
   "afterAdapt nTri: 14439; solution_1 min -4084.78 max 213.322")
 
