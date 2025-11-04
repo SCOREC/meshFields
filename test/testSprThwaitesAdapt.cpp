@@ -157,7 +157,7 @@ int main(int argc, char **argv) {
   auto world = lib.world();
   Omega_h::Mesh mesh(&lib);
   Omega_h::binary::read(argv[1], world, &mesh);
-  mesh.balance();
+
   const auto prefix = std::string(argv[2]);
   // adaptRatio = 0.1 is used in scorec/core:cws/sprThwaites test/spr_test.cc
   const MeshField::Real adaptRatio = std::stof(argv[3]);
@@ -167,12 +167,19 @@ int main(int argc, char **argv) {
       argv[5]); // a value of 8 or 16 roughly maintains the boundary shape
                 // in the downstream parts of the domain
                 // where there is significant coarsening
-  std::cout << "input mesh: " << argv[1] << " outputMeshPrefix: " << prefix
-            << " adaptRatio: " << adaptRatio << " max_size: " << max_size
-            << " min_size: " << min_size << "\n";
+  if (!mesh.comm()->rank()) {
+    std::cout << "input mesh: " << argv[1] << " outputMeshPrefix: " << prefix
+              << " adaptRatio: " << adaptRatio << " max_size: " << max_size
+              << " min_size: " << min_size << "\n";
+  }
   const auto outname = prefix + "_adaptRatio_" + std::string(argv[3]) +
                        "_maxSz_" + std::to_string(max_size) + "_minSz_" +
                        std::to_string(min_size);
+
+  //equally distribute elements among processes; required when loading a serial mesh
+  mesh.balance();
+  //Omega_h::project_by_fit used by spr requires ghosts
+  mesh.set_parting(Omega_h_Parting::OMEGA_H_GHOSTED);
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
   auto recoveredStrain = recoverLinearStrain(mesh, effectiveStrain);
@@ -204,10 +211,10 @@ int main(int argc, char **argv) {
                      Omega_h::ArrayType::VectorND);
 
   { // write vtk
-    const std::string vtkFileName = "beforeAdapt" + outname + ".vtk";
+    const std::string vtkFileName = "beforeAdapt_" + outname + ".vtk";
     Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
     const std::string vtkFileName_edges =
-        "beforeAdapt" + outname + "_edges.vtk";
+        "beforeAdapt_" + outname + "_edges.vtk";
     Omega_h::vtk::write_parallel(vtkFileName_edges, &mesh, 1);
   }
 
@@ -224,12 +231,14 @@ int main(int argc, char **argv) {
   printTriCount(&mesh, "afterAdapt");
 
   const auto sol = mesh.get_array<Omega_h::Real>(VERT, "solution_1");
-  const auto sol_min = Omega_h::get_min(sol);
-  const auto sol_max = Omega_h::get_max(sol);
-  std::cout << "solution_1 min " << sol_min << " max " << sol_max << '\n';
+  const auto sol_min = Omega_h::get_min(mesh.comm(), sol);
+  const auto sol_max = Omega_h::get_max(mesh.comm(), sol);
+  if(!mesh.comm()->rank()) {
+    std::cout << "solution_1 min " << sol_min << " max " << sol_max << '\n';
+  }
 
   { // write vtk and osh for adapted mesh
-    const std::string outfilename = "afterAdapt" + outname;
+    const std::string outfilename = "afterAdapt_" + outname;
     Omega_h::vtk::write_parallel(outfilename + ".vtk", &mesh, 2);
     Omega_h::binary::write(outfilename + ".osh", &mesh);
     std::cout << "wrote adapted mesh: " << outfilename + ".osh"
