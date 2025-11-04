@@ -238,7 +238,7 @@ add_test_property(OmegahSprAdapt
 test_func(OmegahSprAdapt_p2
   ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
   ./OmegahSprAdapt ${CMAKE_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh/
-  thwaitesAdapted #output prefix
+  thwaitesAdapted_p2 #output prefix
   0.1 # adapt ratio
   1.0 # min size
   16.0 # max size
