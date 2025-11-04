@@ -114,6 +114,40 @@ private:
   OmegahMeshField &omf;
 };
 
+template <typename EstimationT, typename EpsStarT, typename ErrorNormT,
+          typename WeightsT, typename DerJacobiansT>
+MeshField::Real
+error_par_reduce_impl(EstimationT &estimation, EpsStarT eps_star_atPts,
+                      ErrorNormT errorNorm, WeightsT w, DerJacobiansT dV,
+                      const size_t numPtsPerElem) {
+  const auto meshDim = static_cast<double>(estimation.mesh.dim());
+  const auto orderP = static_cast<double>(estimation.recovered_order);
+  const auto &eps = estimation.eps;
+  MeshField::Real r = 0;
+  Kokkos::parallel_reduce(
+      "eval", estimation.mesh.nelems(),
+      KOKKOS_LAMBDA(const int &elm, MeshField::Real &r_local) {
+        const auto first = elm * numPtsPerElem;
+        const auto last = first + numPtsPerElem;
+        const auto eps_elm = eps[elm];
+        MeshField::Real sum = 0;
+        for (auto pt = first; pt < last; pt++) {
+          const auto eps_star_Pt = eps_star_atPts(pt, 0);
+          const auto diff = eps_elm - eps_star_Pt;
+          const auto wPt = w(pt);
+          const auto dVPt = dV(pt);
+          sum += (diff * diff) * wPt * dVPt;
+        }
+        assert(sum > 0);
+        r_local += Kokkos::pow(Kokkos::sqrt(sum),
+                               ((2 * meshDim) / (2 * orderP + meshDim)));
+        errorNorm(elm) =
+            Kokkos::pow(Kokkos::sqrt(sum), -(2 / (2 * orderP + meshDim)));
+      },
+      r); // $\sum_{i=1}^n \|e_\epsilon\|^{\frac{2d}{2p+d}}$
+  return r;
+}
+
 /* computes the integral over the element of the
    sum of the squared differences between the
    original and recovered fields */
@@ -138,28 +172,8 @@ public:
     double orderP = estimation.recovered_order;
 
     const auto &eps = estimation.eps;
-    r = 0;
-    Kokkos::parallel_reduce(
-        "eval", estimation.mesh.nelems(),
-        KOKKOS_CLASS_LAMBDA(const int &elm, MeshField::Real &r_local) {
-          const auto first = elm * numPtsPerElem;
-          const auto last = first + numPtsPerElem;
-          const auto eps_elm = eps[elm];
-          MeshField::Real sum = 0;
-          for (auto pt = first; pt < last; pt++) {
-            const auto eps_star_Pt = eps_star_atPts(pt, 0);
-            const auto diff = eps_elm - eps_star_Pt;
-            const auto wPt = w(pt);
-            const auto dVPt = dV(pt);
-            sum += (diff * diff) * wPt * dVPt;
-          }
-          assert(sum > 0);
-          r_local += Kokkos::pow(Kokkos::sqrt(sum),
-                                 ((2 * meshDim) / (2 * orderP + meshDim)));
-          errorNorm(elm) =
-              Kokkos::pow(Kokkos::sqrt(sum), -(2 / (2 * orderP + meshDim)));
-        },
-        r); // $\sum_{i=1}^n \|e_\epsilon\|^{\frac{2d}{2p+d}}$
+    r = error_par_reduce_impl(estimation, eps_star_atPts, errorNorm, w, dV,
+                              numPtsPerElem);
   }
   EstimationT &estimation;
   OmegahMeshField &omf;
