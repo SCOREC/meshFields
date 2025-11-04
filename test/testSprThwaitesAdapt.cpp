@@ -176,9 +176,10 @@ int main(int argc, char **argv) {
                        "_maxSz_" + std::to_string(max_size) + "_minSz_" +
                        std::to_string(min_size);
 
-  //equally distribute elements among processes; required when loading a serial mesh
+  // equally distribute elements among processes; required when loading a serial
+  // mesh
   mesh.balance();
-  //Omega_h::project_by_fit used by spr requires ghosts
+  // Omega_h::project_by_fit used by spr requires ghosts
   mesh.set_parting(Omega_h_Parting::OMEGA_H_GHOSTED);
 
   auto effectiveStrain = getEffectiveStrainRate(mesh);
@@ -233,7 +234,7 @@ int main(int argc, char **argv) {
   const auto sol = mesh.get_array<Omega_h::Real>(VERT, "solution_1");
   const auto sol_min = Omega_h::get_min(mesh.comm(), sol);
   const auto sol_max = Omega_h::get_max(mesh.comm(), sol);
-  if(!mesh.comm()->rank()) {
+  if (!mesh.comm()->rank()) {
     std::cout << "solution_1 min " << sol_min << " max " << sol_max << '\n';
   }
 

@@ -270,7 +270,8 @@ template <typename EstimationT, typename OmegahMeshField, typename FieldElement>
 std::tuple<Kokkos::View<MeshField::Real *>, MeshField::Real>
 getSprSizeField(EstimationT &e, OmegahMeshField &omf, FieldElement &coordFe) {
   Error errorIntegrator(e, omf);
-  errorIntegrator.process(coordFe);
+  errorIntegrator.process(
+      coordFe); // FIXME - needs to sync results across processes
   computeSizeFactor(e, omf, coordFe, errorIntegrator);
   getElementSizeField(e, errorIntegrator);
   return {averageToVertex(e.mesh, e.element_size), errorIntegrator.r};
