@@ -89,7 +89,6 @@ public:
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
 
-    std::cerr << "SelfProduct::atPoints(...)\n";
     const size_t numPtsPerElem = p.extent(0) / estimation.mesh.nelems();
     auto eps_star_atPts =
         omf.triangleLocalPointEval(p, numPtsPerElem, estimation.eps_star);
@@ -127,7 +126,6 @@ public:
   void atPoints(Kokkos::View<MeshField::Real **> p,
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
-    std::cerr << "SelfProduct::atPoints(...)\n";
     const size_t numPtsPerElem = p.extent(0) / estimation.mesh.nelems();
     // FIXME eps isn't a ShapeField so we can't call
     //       omf.triangleLocalPointEval.  For now, just get
@@ -176,14 +174,12 @@ void computeSizeFactor(EstimationT &e, OmegahMeshField &omf,
   SelfProduct sp(e, omf);
   sp.process(coordFe);
   const double epsStarNorm = Kokkos::sqrt(sp.r);
-  std::cout << "SelfProduct: " << epsStarNorm << "\n";
   const double a = e.tolerance * e.tolerance * // (n^hat)^2
                    epsStarNorm * epsStarNorm;  // ||e*||^2
   const double b =
       a / errorIntegrator.r; // term in parenthesis in section 4 of spr.tex
   const double p = e.recovered_order;
   e.size_factor = Kokkos::pow(b, 1.0 / (2.0 * p));
-  std::cout << "size_factor: " << e.size_factor << "\n";
 }
 
 /* computes h_e^new from section 4 of spr.tex */
