@@ -9,6 +9,7 @@
 #include "Omega_h_file.hpp"    //move
 #include "Omega_h_mesh.hpp"    //move
 #include "Omega_h_simplex.hpp" //move
+#include "MeshField_Shape.hpp"
 
 namespace {
 
@@ -294,7 +295,7 @@ struct ReducedQuinticTriangleToField {
 };
 
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
-  static_assert(ShapeOrder == 1 || ShapeOrder == 2);
+  static_assert(ShapeOrder == 1 || ShapeOrder == 2 || ShapeOrder == 5);
   if constexpr (ShapeOrder == 1) {
     struct result {
       MeshField::LinearTriangleShape shp;
@@ -335,6 +336,15 @@ template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
     return result{MeshField::QuadraticTetrahedronShape(),
                   QuadraticTetrahedronToField(mesh)};
   }
+}
+
+inline auto getReducedQuinticImplicitElement(Omega_h::Mesh &mesh) {
+  struct result {
+    MeshField::ReducedQuinticImplicitShape shp;
+    ReducedQuinticTriangleToField map;
+  };
+  return result{MeshField::ReducedQuinticImplicitShape(),
+                ReducedQuinticTriangleToField(mesh)};
 }
 
 } // namespace Omegah

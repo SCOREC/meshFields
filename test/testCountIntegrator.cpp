@@ -74,7 +74,7 @@ void doRun(Omega_h::Mesh &mesh,
 
   CountIntegrator countInt(fes);
   countInt.process(fes);
-  assert(mesh.nelems() == countInt.getCount());
+  assert(static_cast<size_t>(mesh.nelems()) == countInt.getCount());
 }
 
 int main(int argc, char **argv) {

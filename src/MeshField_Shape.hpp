@@ -275,16 +275,24 @@ struct ReducedQuinticImplicitShape {
   }
 
   KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes * meshEntDim> getLocalGradients() const {
+    Vector3 xi = {1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0};
+    const auto grads = getLocalGradients(xi);
+
+    Kokkos::Array<Real, numNodes * meshEntDim> flat{};
+    for (int i = 0; i < numNodes; ++i) {
+      flat[i * meshEntDim + 0] = grads[i][0];
+      flat[i * meshEntDim + 1] = grads[i][1];
+    }
+    return flat;
+  }
+
+  KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi) const {
     assert(greaterThanOrEqualZero(xi));
     assert(sumsToOne(xi));
 
-    const Real L1 = 1.0 - xi[0] - xi[1];
-    const Real L2 = xi[0];
-    const Real L3 = xi[1];
-
     const Real eps = 1e-6;
-
     Vector3 xp = {xi[0] + eps, xi[1], 0.0};
     Vector3 yp = {xi[0], xi[1] + eps, 0.0};
 
@@ -293,7 +301,7 @@ struct ReducedQuinticImplicitShape {
     auto Ny = getValues(yp);
 
     Kokkos::Array<Vector2, numNodes> dN;
-    for (int i = 0; i < numNodes; i++) {
+    for (int i = 0; i < numNodes; ++i) {
       dN[i][0] = (Nx[i] - N0[i]) / eps;
       dN[i][1] = (Ny[i] - N0[i]) / eps;
     }
