@@ -196,9 +196,12 @@ auto getJacobianDeterminants(FieldElement &fes,
  * - `post`: Called after the integration process ends.
  * - `atPoints`: Called for each integration point to perform user-defined
  *   computations.
+ * - `parallelReduce`: Called after `atPoints` to reduce process-local
+ *   integrations into a global mesh integration.
  *
  * To use this class, derive from it and implement the `atPoints` method.
- * Optionally, override `pre` and `post` for additional setup or cleanup.
+ * Optionally, override `parallelReduce`, `pre` and `post` for distributed
+ * memory support, additional setup, or cleanup.
  */
 class Integrator {
 public:
@@ -227,9 +230,18 @@ public:
    */
   virtual void atPoints(Kokkos::View<Real **> p, Kokkos::View<Real *> w,
                         Kokkos::View<Real *> dV) = 0;
+
+  /** \brief User callback: distributed memory accumulation.
+   *
+   * \details If needed, this function supports the use of
+   * inter-process communication (e.g., MPI) to reduce
+   * process-local integrations into a global
+   * mesh integration.
+   */
+  virtual void parallelReduce(){};
+
   /** \brief Run the Integrator over the local field elements.
-   * \param fes FieldElement
-   * FIXME make the sensible
+   *  \param fes FieldElement
    * */
   template <typename FieldElement> void process(FieldElement &fes) {
     constexpr auto topo = decltype(FieldElement::elm2dof)::getTopology();
@@ -239,9 +251,8 @@ public:
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords, ip.size());
     atPoints(localCoords, weights, dV);
+    parallelReduce();
     post();
-    // TODO support distributed meshes by running a parallel reduction with user
-    // functor
   }
 
 protected:
