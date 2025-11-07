@@ -19,9 +19,12 @@ static double getNaN() { return std::numeric_limits<double>::quiet_NaN(); }
 /* common base for Scalar Integrator. */
 class SInt : public MeshField::Integrator {
 public:
-  SInt(int order) : MeshField::Integrator(order), r(0) {}
+  SInt(int order, Omega_h::CommPtr comm_in)
+      : MeshField::Integrator(order), r(0), comm(comm_in) {}
   void reset() { r = 0; }
   MeshField::Real r;
+  Omega_h::CommPtr comm;
+  void parallelReduce() { comm->allreduce(r, OMEGA_H_SUM); }
 };
 
 template <typename ShapeField> class Estimation {
@@ -83,8 +86,8 @@ template <typename EstimationT, typename OmegahMeshField>
 class SelfProduct : public SInt {
 public:
   SelfProduct(EstimationT &estimation_in, OmegahMeshField &omf_in)
-      : SInt(estimation_in.integration_order), estimation(estimation_in),
-        omf(omf_in) {}
+      : SInt(estimation_in.integration_order, estimation_in.mesh.comm()),
+        estimation(estimation_in), omf(omf_in) {}
   void atPoints(Kokkos::View<MeshField::Real **> p,
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
@@ -155,8 +158,9 @@ template <typename EstimationT, typename OmegahMeshField>
 class Error : public SInt {
 public:
   Error(EstimationT &estimation_in, OmegahMeshField &omf_in)
-      : SInt(estimation_in.integration_order), estimation(estimation_in),
-        omf(omf_in), errorNorm("errorNorm", estimation_in.mesh.nelems()) {}
+      : SInt(estimation_in.integration_order, estimation_in.mesh.comm()),
+        estimation(estimation_in), omf(omf_in),
+        errorNorm("errorNorm", estimation_in.mesh.nelems()) {}
   void atPoints(Kokkos::View<MeshField::Real **> p,
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
