@@ -27,6 +27,13 @@ jobs:
         sudo apt-get install -yq cmake
         cmake --version
 
+    # There is a known bug using MPICH ubuntu-24.04 (ubuntu-latest as of 11/10/2025)
+    # https://bugs.launchpad.net/ubuntu/+source/mpich/+bug/2072338
+    - name: Install mpi
+      run: |
+        sudo apt-get update -yq
+        sudo apt-get install -yq openmpi-bin libopenmpi-dev
+
     ## Kokkos
     - name: Kokkos Checkout repo
       uses: actions/checkout@v4
