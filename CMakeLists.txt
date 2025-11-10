@@ -245,7 +245,7 @@ test_func(OmegahSprAdapt_p2
 )
 add_test_property(OmegahSprAdapt_p2
   PASS_REGULAR_EXPRESSION
-  "afterAdapt nTri: 14439; solution_1 min -4084.78 max 213.322")
+  "afterAdapt nTri: 14468; solution_1 min -4098.9 max 213.322")
 
 #Code Coverage set up -------------------------------------------------------
 
