@@ -24,7 +24,7 @@ public:
   void reset() { r = 0; }
   MeshField::Real r;
   Omega_h::CommPtr comm;
-  void parallelReduce() { comm->allreduce(r, OMEGA_H_SUM); }
+  void parallelReduce() { r = comm->allreduce(r, OMEGA_H_SUM); }
 };
 
 template <typename ShapeField> class Estimation {
