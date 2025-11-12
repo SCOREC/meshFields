@@ -101,9 +101,13 @@ int main(int argc, char **argv) {
   auto len = 1.0;
 #ifdef MESHFIELDS_ENABLE_CABANA
   {
-    Omega_h::Mesh mesh3D = Omega_h::build_box(world, family, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0);
+    Omega_h::Mesh mesh3D = Omega_h::build_box(world, family, 1.0, 1.0, 1.0, len, len, len);
     MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::CabanaController>
         omf3D(mesh3D);
+    Omega_h::Mesh mesh2D = Omega_h::build_box(world, family, 1.0, 1.0, 0.0, len, len, 0.0);
+    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::CabanaController> omf2D(mesh2D);
+    doRun<MeshField::CabanaController, 1>(mesh2D, omf2D);
+    doRun<MeshField::CabanaController, 2>(mesh2D, omf2D);
     doRun<MeshField::CabanaController, 1>(mesh3D, omf3D);
     doRun<MeshField::CabanaController, 2>(mesh3D, omf3D);
   }
