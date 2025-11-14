@@ -204,12 +204,73 @@ void quadraticTetrahedronLocalPointEval() {
   auto x = MeshField::evaluate(f, lc);
 }
 
+struct ReducedQuinticTriangleToField {
+  KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() const {
+    return {MeshField::Triangle};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
+             MeshField::LO ent, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Triangle);
+    assert(ent == 0);
+
+    MeshField::LO node2Dof[18] = {
+        0, 1, 2,       
+        3, 4, 5,      
+        6, 7, 8,        
+        6, 7, 8,        
+        6, 7, 8,        
+        3, 4, 5        
+    };
+
+    MeshField::Mesh_Topology nodeTopo[18] = {
+        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
+        MeshField::Edge, MeshField::Edge, MeshField::Edge,
+        MeshField::Triangle, MeshField::Triangle, MeshField::Triangle,
+        MeshField::Triangle, MeshField::Triangle, MeshField::Triangle,
+        MeshField::Triangle, MeshField::Triangle, MeshField::Triangle,
+        MeshField::Edge, MeshField::Edge, MeshField::Edge
+    };
+
+    return {0, 0, node2Dof[triNodeIdx], nodeTopo[triNodeIdx]};
+  }
+};
+
+void reducedQuinticTriangleLocalPointEval() {
+  const MeshField::MeshInfo meshInfo{
+      .numVtx = 3,
+      .numEdge = 3,
+      .numTri = 1,
+      .dim = 2
+  };
+
+  auto field = MeshField::CreateLagrangeField<
+      ExecutionSpace,
+      MeshField::KokkosController,
+      MeshField::Real,
+      5, 2, 1>(meshInfo);
+
+  MeshField::FieldElement f(meshInfo.numTri, field,
+                            MeshField::ReducedQuinticImplicitShape(),
+                            ReducedQuinticTriangleToField());
+
+  Kokkos::View<MeshField::Real[1][3]> lc("localCoords");
+  Kokkos::deep_copy(lc, 1.0 / 3);
+
+  size_t numLocalCoords = lc.extent(0);
+  auto x = MeshField::evaluate(f, lc, numLocalCoords);
+}
+
+
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   triangleLocalPointEval();
   edgeLocalPointEval();
   quadraticTriangleLocalPointEval();
   quadraticTetrahedronLocalPointEval();
+  reducedQuinticTriangleLocalPointEval();
   Kokkos::finalize();
   return 0;
 }

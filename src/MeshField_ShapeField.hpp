@@ -164,8 +164,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                 "CreateLagrangeField only supports single and double precision "
                 "floating point fields\n");
   static_assert(
-      (order == 1 || order == 2),
-      "CreateLagrangeField only supports linear and quadratic fields\n");
+      (order == 1 || order == 2 || order == 5),
+      "CreateLagrangeField only supports linear, quadratic, and quintic fields\n");
   static_assert((dim == 1 || dim == 2 || dim == 3),
                 "CreateLagrangeField only supports 1d, 2d, and 3d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;

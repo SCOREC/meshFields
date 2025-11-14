@@ -1,87 +1,73 @@
 #include "MeshField.hpp"
 #include "MeshField_Field.hpp"
 #include "MeshField_Element.hpp"
-#include "MeshField_Integrate.hpp"
 #include "MeshField_Shape.hpp"
 #include "KokkosController.hpp"
+
 #include "Kokkos_Core.hpp"
 #include "Omega_h_build.hpp"
-#include "Omega_h_file.hpp"
 #include "Omega_h_simplex.hpp"
-#include <iostream>
+
 #include <cassert>
 #include <cmath>
+#include <iostream>
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 
-inline double analyticFunction(double x, double y, double z = 0.0) {
-    return 1.0 + x + y + z;
-}
+inline double analytic(double x, double y) { return 1.0 + x + y; }
 
-const MeshField::MeshInfo meshInfo{.numVtx = 5, .numTri = 3, .numTet = 1};
-
-template <size_t dim>
-Omega_h::Mesh createMesh(Omega_h::Library &lib) {
+Omega_h::Mesh create_mesh(Omega_h::Library& lib) {
     auto world = lib.world();
-    const auto family = OMEGA_H_SIMPLEX;
-    auto len = 1.0;
-    const auto numEnts3d = (dim == 3 ? 3 : 0);
-    return Omega_h::build_box(world, family, len, len, len, 3, 3, numEnts3d);
+    return Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 1, 1, 0);
 }
 
 template <template <typename...> typename Controller, size_t dim>
-void doRun(Omega_h::Mesh &mesh) {
-    Omega_h::Reals coords = mesh.coords();
+void run_test(Omega_h::Mesh& mesh) {
+    MeshField::MeshInfo info{};
+    info.numVtx = mesh.nverts();
+    info.numTri = (dim==2 ? mesh.nfaces() : 0);
+    info.numTet = (dim==3 ? mesh.nregions() : 0);
 
-    auto coordField = MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(meshInfo);
+    auto coords = mesh.coords();
+    auto elemVerts = mesh.ask_elem_verts();
 
-    auto field = MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(meshInfo);
-    
-    for (int i = 0; i < meshInfo.numVtx; ++i) {
+    int v0 = elemVerts[0];
+    int v1 = elemVerts[1];
+    int v2 = elemVerts[2];
+
+    auto field = MeshField::CreateLagrangeField<ExecutionSpace, Controller, double, 1, dim, 1>(info);
+
+    for (int i = 0; i < info.numVtx; ++i) {
         double x = coords[i*dim + 0];
         double y = coords[i*dim + 1];
-        double z = (dim == 3 ? coords[i*dim + 2] : 0.0);
-        field(i, 0, 0, MeshField::Vertex) = analyticFunction(x, y, z);
+        field(i, 0, 0, MeshField::Vertex) = analytic(x, y);
     }
 
-    Kokkos::parallel_for(meshInfo.numVtx, KOKKOS_LAMBDA(const int &i){
-        for (size_t d = 0; d < dim; ++d)
-            coordField(i, 0, d, MeshField::Vertex) = coords[i*dim + d];
-    });
-
-    MeshField::ReducedQuinticImplicitShape integrator;
-
-    auto elemShape = MeshField::Omegah::getTriangleElement<1>(mesh);
-    auto &shp = elemShape.shp;
-    auto &map = elemShape.map;
-    MeshField::FieldElement fes(meshInfo.numTri, coordField, shp, map);
-
+    MeshField::ReducedQuinticImplicitShape shape;
     MeshField::Vector3 xi;
-    xi[0] = 1.0/3.0;
-    xi[1] = 1.0/3.0;
-    xi[2] = 1.0/3.0;
+    xi[0] = 1.0/3.0; xi[1] = 1.0/3.0; xi[2] = 1.0/3.0;
 
-    auto vals = integrator.getValues(xi);
-    double sum = 0.0;
-    for (size_t i = 0; i < vals.size(); ++i) sum += vals[i];
+    auto N = shape.getValues(xi);
 
-    double val = 0.0;
-    for (size_t i = 0; i < vals.size(); ++i) {
-        val += vals[i] / sum * field(i, 0, 0, MeshField::Vertex);
-    }
+    double approx = 0.0;
+    approx += N[0] * field(v0, 0, 0, MeshField::Vertex);
+    approx += N[1] * field(v1, 0, 0, MeshField::Vertex);
+    approx += N[2] * field(v2, 0, 0, MeshField::Vertex);
 
-    double expected = analyticFunction(xi[0], xi[1]);
-    assert(std::fabs(val - expected) < 1e-6);
+    double xb = (coords[v0*dim+0] + coords[v1*dim+0] + coords[v2*dim+0]) / 3.0;
+    double yb = (coords[v0*dim+1] + coords[v1*dim+1] + coords[v2*dim+1]) / 3.0;
+    double exact = analytic(xb, yb);
+
+    std::cout<<"approx: "<<approx<<"exact: "<<exact<<std::endl;
+    assert(std::fabs(approx - exact) < 1e-6);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     Kokkos::initialize(argc, argv);
     Omega_h::Library lib(&argc, &argv);
 
-    {
-        auto mesh2D = createMesh<2>(lib);
-        doRun<MeshField::KokkosController,2>(mesh2D);
-    }
+    auto mesh = create_mesh(lib);
+    run_test<MeshField::KokkosController, 2>(mesh);
 
     Kokkos::finalize();
     return 0;
