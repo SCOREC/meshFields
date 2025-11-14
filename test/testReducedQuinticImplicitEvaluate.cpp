@@ -31,7 +31,10 @@ void runReducedQuinticEvaluate(Omega_h::Mesh &mesh,
   MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 
   MeshField::ReducedQuinticImplicitShape shapeFn;
-  MeshField::Vector3 xi = {1.0 / 3.0, 1.0 / 3.0, 0.0};
+  MeshField::Vector3 xi;
+  xi[0] = 1.0/3.0;
+  xi[1] = 1.0/3.0;
+  xi[2] = 1.0/3.0;
   auto N = shapeFn.getValues(xi);
   auto dN = shapeFn.getLocalGradients(xi);
 
