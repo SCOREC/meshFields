@@ -1,95 +1,89 @@
-#include "KokkosController.hpp"
 #include "MeshField.hpp"
+#include "MeshField_Field.hpp"
+#include "MeshField_Element.hpp"
+#include "MeshField_Integrate.hpp"
+#include "MeshField_Shape.hpp"
+#include "KokkosController.hpp"
+#include "Kokkos_Core.hpp"
 #include "Omega_h_build.hpp"
 #include "Omega_h_file.hpp"
 #include "Omega_h_simplex.hpp"
-#include <Kokkos_Core.hpp>
-#include <MeshField_Integrate.hpp>
 #include <iostream>
+#include <cassert>
 #include <cmath>
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 
-Omega_h::Mesh createMesh(Omega_h::Library &lib) {
-  auto world = lib.world();
-  const auto family = OMEGA_H_SIMPLEX;
-  const auto len = 1.0;
-  return Omega_h::build_box(world, family, len, len, 0.0, 2, 2, 0);
+inline double analyticFunction(double x, double y, double z = 0.0) {
+    return 1.0 + x + y + z;
 }
 
-template <typename FieldElement>
-class ReducedQuinticImplicitIntegrator : public MeshField::Integrator {
-public:
-  ReducedQuinticImplicitIntegrator(FieldElement &fes_in)
-      : MeshField::Integrator(5), fes(fes_in), totalValue(0.0) {}
+const MeshField::MeshInfo meshInfo{.numVtx = 5, .numTri = 3, .numTet = 1};
 
-  void atPoints(Kokkos::View<MeshField::Real **> p,
-                Kokkos::View<MeshField::Real *> w,
-                Kokkos::View<MeshField::Real *> dV) override {
-    const auto numPts = p.extent(0);
-    double localSum = 0.0;
+template <size_t dim>
+Omega_h::Mesh createMesh(Omega_h::Library &lib) {
+    auto world = lib.world();
+    const auto family = OMEGA_H_SIMPLEX;
+    auto len = 1.0;
+    const auto numEnts3d = (dim == 3 ? 3 : 0);
+    return Omega_h::build_box(world, family, len, len, len, 3, 3, numEnts3d);
+}
 
-    Kokkos::parallel_reduce(
-        "IntegrateReducedQuinticImplicit", numPts,
-        KOKKOS_LAMBDA(const int i, double &sum) {
-          const double weight = w(i);
-          const double jac = dV(i);
-          const double f = 1.0; // constant field
-          sum += f * weight * jac;
-        },
-        localSum);
+template <template <typename...> typename Controller, size_t dim>
+void doRun(Omega_h::Mesh &mesh) {
+    Omega_h::Reals coords = mesh.coords();
 
-    totalValue += localSum;
-  }
+    auto coordField = MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(meshInfo);
 
-  void post() override {
-    printf("[ReducedQuinticImplicit] Integrated Value = %.12e\n", totalValue);
-  }
+    auto field = MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(meshInfo);
+    
+    for (int i = 0; i < meshInfo.numVtx; ++i) {
+        double x = coords[i*dim + 0];
+        double y = coords[i*dim + 1];
+        double z = (dim == 3 ? coords[i*dim + 2] : 0.0);
+        field(i, 0, 0, MeshField::Vertex) = analyticFunction(x, y, z);
+    }
 
-  double getResult() const { return totalValue; }
+    Kokkos::parallel_for(meshInfo.numVtx, KOKKOS_LAMBDA(const int &i){
+        for (size_t d = 0; d < dim; ++d)
+            coordField(i, 0, d, MeshField::Vertex) = coords[i*dim + d];
+    });
 
-private:
-  FieldElement &fes;
-  double totalValue;
-};
+    MeshField::ReducedQuinticImplicitShape integrator;
 
-template <template <typename...> typename Controller>
-void runReducedQuinticImplicit(Omega_h::Mesh &mesh,
-                               MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> &omf) {
-  constexpr auto ShapeOrder = 5;
+    auto elemShape = MeshField::Omegah::getTriangleElement<1>(mesh);
+    auto &shp = elemShape.shp;
+    auto &map = elemShape.map;
+    MeshField::FieldElement fes(meshInfo.numTri, coordField, shp, map);
 
-  auto field = omf.getCoordField();
-  const auto [shp, map] = MeshField::Omegah::getReducedQuinticImplicitElement(mesh);
-  MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
+    MeshField::Vector3 xi;
+    xi[0] = 1.0/3.0;
+    xi[1] = 1.0/3.0;
+    xi[2] = 1.0/3.0;
 
-  ReducedQuinticImplicitIntegrator integrator(fes);
-  integrator.process(fes);
+    auto vals = integrator.getValues(xi);
+    double sum = 0.0;
+    for (size_t i = 0; i < vals.size(); ++i) sum += vals[i];
 
-  const double expected = 1.0;
-  const double result = integrator.getResult();
-  const double error = std::fabs(result - expected);
+    double val = 0.0;
+    for (size_t i = 0; i < vals.size(); ++i) {
+        val += vals[i] / sum * field(i, 0, 0, MeshField::Vertex);
+    }
 
-  std::cout << "\nExpected Integral = " << expected
-            << "\nComputed Integral = " << result
-            << "\nAbsolute Error   = " << error << "\n";
-
-  if (error < 1e-6)
-    std::cout << "[PASS] ReducedQuinticImplicit integration test succeeded\n";
-  else
-    std::cerr << "[FAIL] Integration mismatch\n", exit(EXIT_FAILURE);
+    double expected = analyticFunction(xi[0], xi[1]);
+    assert(std::fabs(val - expected) < 1e-6);
 }
 
 int main(int argc, char **argv) {
-  Kokkos::initialize(argc, argv);
-  Omega_h::Library lib(&argc, &argv);
+    Kokkos::initialize(argc, argv);
+    Omega_h::Library lib(&argc, &argv);
 
-  {
-    auto mesh2D = createMesh(lib);
-    MeshField::OmegahMeshField<ExecutionSpace, 2, MeshField::KokkosController> omf2D(mesh2D);
-    runReducedQuinticImplicit<MeshField::KokkosController>(mesh2D, omf2D);
-  }
+    {
+        auto mesh2D = createMesh<2>(lib);
+        doRun<MeshField::KokkosController,2>(mesh2D);
+    }
 
-  Kokkos::finalize();
-  return 0;
+    Kokkos::finalize();
+    return 0;
 }
 
