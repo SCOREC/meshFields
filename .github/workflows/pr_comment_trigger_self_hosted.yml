@@ -5,9 +5,6 @@ on:
   issue_comment:                                     
     types: [created]
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-
 jobs:
   build_and_test:
     permissions:
@@ -34,11 +31,11 @@ jobs:
         run: |
           set +e #avoid exiting when lua modules return non-zero on 'warning' messages
           source /etc/profile #provides module command
-          module use /opt/scorec/spack/rhel9/v0201_4/lmod/linux-rhel9-x86_64/Core/
-          module load gcc/12.3.0-iil3lno 
-          module load mpich/4.1.1-xpoyz4t
-          module load cmake/3.26.3-2duxfcd
-          module load cuda/12.1.1-zxa4msk
+          module use /opt/scorec/spack/rhel9/v0222_2/lmod/linux-rhel9-x86_64/Core/
+          module load gcc/13.2.0-4eahhas
+          module load mpich/4.2.3-62uy3hd
+          module load cuda/12.6.2-gqq65nw
+          module load cmake
           set -e
 
           echo "github.workspace ${{github.workspace}}"
@@ -93,7 +90,7 @@ jobs:
             -DCMAKE_CUDA_ARCHITECTURES="80" \
             -DKokkos_PREFIX=$kkbdir/install \
             -DBUILD_SHARED_LIBS=on
-          cmake --build $ohbdir -j 4 --target install
+          cmake --build $ohbdir -j 6 --target install
 
           #meshfields
           mfbdir=${workDir}/build-meshfields
@@ -101,7 +98,8 @@ jobs:
             -DMeshFields_USE_Cabana=on \
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
-            -DCabana_ROOT=$cabbdir/install
+            -DCabana_ROOT=$cabbdir/install \
+            -DMeshFields_IS_TESTING=on
           cmake --build $mfbdir -j4
           ctest --test-dir $mfbdir
 

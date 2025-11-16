@@ -6,28 +6,29 @@
 // SCOREC/core apf/apfShape.cc @ 7cd76473
 
 namespace {
-template <typename Array> KOKKOS_INLINE_FUNCTION bool sumsToOne(Array &xi) {
-  auto sum = 0.0;
-  for (int i = 0; i < xi.size(); i++) {
-    sum += xi[i];
-  }
-  bool sums_to_one = (Kokkos::fabs(sum - 1) <= 10*MeshField::MachinePrecision);
+template <typename Array> KOKKOS_INLINE_FUNCTION bool sumsToOne(Array &xi, double tol=10*MeshField::MachinePrecision) {
+  const bool sums_to_one = [](){
+    auto sum = 0.0;
+    for (size_t i = 0; i < xi.size(); i++) {
+      sum += xi[i];
+    }
+    return (Kokkos::fabs(sum - 1) <= tol);
+  }();
   if(!sums_to_one) {
    for (int i = 0; i < xi.size(); i++) {
       printf("%e ", xi[i]);
    }
    printf("\n");
-   printf("sum %e %e \n", std::fabs(sum-1), MeshField::MachinePrecision);
+   printf("sum: %e tol: %e \n", std::fabs(sum-1), tol);
   }
-  return (Kokkos::fabs(sum - 1) <= 1E-12);
+  return sums_to_one;
 }
 
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi) {
-  auto gt = true;
-  for (int i = 0; i < xi.size(); i++) {
-    if(xi[i] < -1E-12){
-      printf("failure %d, %e, %e\n", i, xi[i],  10*MeshField::MachinePrecision);
+KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi, double tol=1E-12) {
+  for (size_t i = 0; i < xi.size(); i++) {
+    if(xi[i] < -tol){
+      printf("failure %d, %e, %e\n", i, xi[i],  tol);
       return false;
     }
   }
