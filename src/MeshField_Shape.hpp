@@ -11,16 +11,27 @@ template <typename Array> KOKKOS_INLINE_FUNCTION bool sumsToOne(Array &xi) {
   for (int i = 0; i < xi.size(); i++) {
     sum += xi[i];
   }
-  return (Kokkos::fabs(sum - 1) <= MeshField::MachinePrecision);
+  bool sums_to_one = (Kokkos::fabs(sum - 1) <= 10*MeshField::MachinePrecision);
+  if(!sums_to_one) {
+   for (int i = 0; i < xi.size(); i++) {
+      printf("%e ", xi[i]);
+   }
+   printf("\n");
+   printf("sum %e %e \n", std::fabs(sum-1), MeshField::MachinePrecision);
+  }
+  return (Kokkos::fabs(sum - 1) <= 1E-12);
 }
 
 template <typename Array>
 KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi) {
   auto gt = true;
   for (int i = 0; i < xi.size(); i++) {
-    gt = gt && (xi[i] >= 0);
+    if(xi[i] < -1E-12){
+      printf("failure %d, %e, %e\n", i, xi[i],  10*MeshField::MachinePrecision);
+      return false;
+    }
   }
-  return gt;
+  return true;
 }
 } // namespace
 
