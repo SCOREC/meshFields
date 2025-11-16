@@ -9,7 +9,8 @@ namespace {
 template <typename Array>
 KOKKOS_INLINE_FUNCTION bool
 sumsToOne(Array &xi, double tol = 10 * MeshField::MachinePrecision) {
-  const bool sums_to_one = []() {
+  // IIFE, capture by reference is preferred
+  const bool sums_to_one = [&]() {
     auto sum = 0.0;
     for (size_t i = 0; i < xi.size(); i++) {
       sum += xi[i];
@@ -21,7 +22,6 @@ sumsToOne(Array &xi, double tol = 10 * MeshField::MachinePrecision) {
       printf("%e ", xi[i]);
     }
     printf("\n");
-    printf("sum: %e tol: %e \n", std::fabs(sum - 1), tol);
   }
   return sums_to_one;
 }
@@ -31,7 +31,6 @@ KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi,
                                                    double tol = 1E-12) {
   for (size_t i = 0; i < xi.size(); i++) {
     if (xi[i] < -tol) {
-      printf("failure %d, %e, %e\n", i, xi[i], tol);
       return false;
     }
   }
