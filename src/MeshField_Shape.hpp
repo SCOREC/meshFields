@@ -17,18 +17,12 @@ sumsToOne(Array &xi, double tol = 10 * MeshField::MachinePrecision) {
     }
     return (Kokkos::fabs(sum - 1) <= tol);
   }();
-  if (!sums_to_one) {
-    for (int i = 0; i < xi.size(); i++) {
-      printf("%e ", xi[i]);
-    }
-    printf("\n");
-  }
   return sums_to_one;
 }
 
 template <typename Array>
 KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi,
-                                                   double tol = 1E-12) {
+                                                   double tol = MeshField::Epsilon) {
   for (size_t i = 0; i < xi.size(); i++) {
     if (xi[i] < -tol) {
       return false;
