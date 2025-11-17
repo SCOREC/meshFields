@@ -6,21 +6,29 @@
 // SCOREC/core apf/apfShape.cc @ 7cd76473
 
 namespace {
-template <typename Array> KOKKOS_INLINE_FUNCTION bool sumsToOne(Array &xi) {
-  auto sum = 0.0;
-  for (size_t i = 0; i < xi.size(); i++) {
-    sum += xi[i];
-  }
-  return (Kokkos::fabs(sum - 1) <= MeshField::MachinePrecision);
+template <typename Array>
+KOKKOS_INLINE_FUNCTION bool
+sumsToOne(Array &xi, double tol = 10 * MeshField::MachinePrecision) {
+  // IIFE, capture by reference is preferred
+  const bool sums_to_one = [&]() {
+    auto sum = 0.0;
+    for (size_t i = 0; i < xi.size(); i++) {
+      sum += xi[i];
+    }
+    return (Kokkos::fabs(sum - 1) <= tol);
+  }();
+  return sums_to_one;
 }
 
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi) {
-  auto gt = true;
+KOKKOS_INLINE_FUNCTION bool
+greaterThanOrEqualZero(Array &xi, double tol = MeshField::Epsilon) {
   for (size_t i = 0; i < xi.size(); i++) {
-    gt = gt && (xi[i] >= 0);
+    if (xi[i] < -tol) {
+      return false;
+    }
   }
-  return gt;
+  return true;
 }
 } // namespace
 
