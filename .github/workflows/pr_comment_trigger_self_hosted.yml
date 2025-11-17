@@ -101,7 +101,7 @@ jobs:
             -DCabana_ROOT=$cabbdir/install \
             -DMeshFields_IS_TESTING=on
           cmake --build $mfbdir -j4
-          ctest --test-dir --output-on-failure $mfbdir
+          ctest --test-dir $mfbdir --output-on-failure 
 
       - name: Save Result Link
         if: ${{ !cancelled() }} #prepare report unless the job was cancelled
