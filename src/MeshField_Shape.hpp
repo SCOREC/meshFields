@@ -21,8 +21,8 @@ sumsToOne(Array &xi, double tol = 10 * MeshField::MachinePrecision) {
 }
 
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool greaterThanOrEqualZero(Array &xi,
-                                                   double tol = MeshField::Epsilon) {
+KOKKOS_INLINE_FUNCTION bool
+greaterThanOrEqualZero(Array &xi, double tol = MeshField::Epsilon) {
   for (size_t i = 0; i < xi.size(); i++) {
     if (xi[i] < -tol) {
       return false;
