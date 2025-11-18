@@ -369,7 +369,8 @@ public:
 
   template <typename ViewType, typename ShapeField>
   auto tetrahedronLocalPointEval(ViewType localCoords,
-                                 Kokkos::View<LO *> offsets, ShapeField field) const {
+                                 Kokkos::View<LO *> offsets,
+                                 ShapeField field) const {
     const auto MeshDim = 3;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 3d\n");
