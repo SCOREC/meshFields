@@ -330,8 +330,8 @@ public:
 
   // evaluate a field at the specified local coordinate for each triangle
   template <typename ViewType, typename ShapeField>
-  auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                              ShapeField field) const {
+  auto triangleLocalPointEval(const ViewType &localCoords, size_t NumPtsPerElem,
+                              const ShapeField &field) const {
     auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
     auto eval = triangleLocalPointEval<ViewType, ShapeField>(localCoords,
                                                              offsets, field);
@@ -340,8 +340,9 @@ public:
 
   // evaluate a field at the specified local coordinates for each triangle
   template <typename ViewType, typename ShapeField>
-  auto triangleLocalPointEval(ViewType localCoords, Kokkos::View<LO *> offsets,
-                              ShapeField field) const {
+  auto triangleLocalPointEval(const ViewType &localCoords,
+                              Kokkos::View<LO *> offsets,
+                              const ShapeField &field) const {
     const auto MeshDim = 2;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");
@@ -360,17 +361,18 @@ public:
   }
 
   template <typename ViewType, typename ShapeField>
-  auto tetrahedronLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                                 ShapeField field) const {
+  auto tetrahedronLocalPointEval(const ViewType &localCoords,
+                                 size_t NumPtsPerElem,
+                                 const ShapeField &field) const {
     auto offsets = createOffsets(meshInfo.numTet, NumPtsPerElem);
     auto eval = tetrahedronLocalPointEval(localCoords, offsets, field);
     return eval;
   }
 
   template <typename ViewType, typename ShapeField>
-  auto tetrahedronLocalPointEval(ViewType localCoords,
+  auto tetrahedronLocalPointEval(const ViewType &localCoords,
                                  Kokkos::View<LO *> offsets,
-                                 ShapeField field) const {
+                                 const ShapeField &field) const {
     const auto MeshDim = 3;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 3d\n");
