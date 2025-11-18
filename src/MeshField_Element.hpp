@@ -236,7 +236,7 @@ struct FieldElement {
    * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
    */
   template <typename Matrices>
-  Kokkos::View<Real *> getJacobianDeterminants(Matrices const &J) {
+  Kokkos::View<Real *> getJacobianDeterminants(Matrices const &J) const {
     static_assert(has_static_rank<Matrices>::value,
                   "Matrices must have a static rank() method.");
     static_assert(has_extent_method<Matrices>::value,
@@ -321,7 +321,7 @@ struct FieldElement {
    * @return Kokkos::View containing the jacobian for all the mesh elements
    */
   Kokkos::View<Real ***> getJacobians(Kokkos::View<Real **> localCoords,
-                                      Kokkos::View<LO *> offsets) {
+                                      Kokkos::View<LO *> offsets) const {
     if (Debug) {
       // check input parametric coords are positive and sum to one
       LO numErrors = 0;
