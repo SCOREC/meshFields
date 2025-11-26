@@ -218,7 +218,7 @@ struct QuadraticTriangleShape {
     const Real L0 = 1 - xi[0] - xi[1];
     const Real L1 = xi[0];
     const Real L2 = xi[1];
-    // clang-format off  //CHECK THIS - ordering and value
+    // clang-format off
     return {
       -4*L0+1   , -4*L0+1   , 
       4*L1-1    , 0         , 
