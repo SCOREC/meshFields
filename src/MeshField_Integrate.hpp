@@ -13,10 +13,16 @@ namespace MeshField {
 template <size_t pointSize> struct IntegrationPoint {
   // template parameter pointSize specifies the length of the integration point
   // array for one point
-  IntegrationPoint(Kokkos::Array<Real, pointSize> const &p, double w)
-      : param(p), weight(w) {}
+  IntegrationPoint(Kokkos::Array<Real, pointSize> const &p, double w, int d,
+                   int i)
+      : param(p), weight(w), dim(d), idx(i) {}
   Kokkos::Array<Real, pointSize> param;
   double weight;
+  // dim and idx represent the topological mesh entity the point is classified
+  // on dim represents whether it is edge, vertex, face, etc idx represents the
+  // index of the entity as defined by the shape function
+  int dim;
+  int idx;
 };
 template <size_t pointSize> class Integration {
 public:
@@ -47,7 +53,8 @@ public:
   public:
     virtual int countPoints() const { return 1; }
     virtual std::vector<IntegrationPoint<3>> getPoints() const {
-      return {IntegrationPoint(Vector3{1. / 3., 1. / 3., 1. / 3.}, 1.0 / 2.0)};
+      return {IntegrationPoint(Vector3{1. / 3., 1. / 3., 1. / 3.}, 1.0 / 2.0, 2,
+                               0)};
     }
     virtual int getAccuracy() const { return 1; }
   }; // end N1
@@ -57,13 +64,13 @@ public:
     virtual std::vector<IntegrationPoint<3>> getPoints() const {
       return {IntegrationPoint(Vector3{0.666666666666667, 0.166666666666667,
                                        0.166666666666667},
-                               1. / 3. / 2.0),
+                               1. / 3. / 2.0, 2, 0),
               IntegrationPoint(Vector3{0.166666666666667, 0.666666666666667,
                                        0.166666666666667},
-                               1. / 3. / 2.0),
+                               1. / 3. / 2.0, 2, 0),
               IntegrationPoint(Vector3{0.166666666666667, 0.166666666666667,
                                        0.666666666666667},
-                               1. / 3. / 2.0)};
+                               1. / 3. / 2.0, 2, 0)};
     }
     virtual int getAccuracy() const { return 2; }
   }; // end N2
@@ -82,7 +89,8 @@ public:
   public:
     virtual int countPoints() const { return 1; }
     virtual std::vector<IntegrationPoint<4>> getPoints() const {
-      return {IntegrationPoint(Vector4{0.25, 0.25, 0.25, 0.25}, 1.0 / 6.0)};
+      return {
+          IntegrationPoint(Vector4{0.25, 0.25, 0.25, 0.25}, 1.0 / 6.0, 3, 0)};
     }
     virtual int getAccuracy() const { return 1; }
   };
@@ -93,16 +101,16 @@ public:
 
       return {IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
                                        0.138196601125011, 0.585410196624969},
-                               0.25 / 6.0),
+                               0.25 / 6.0, 3, 0),
               IntegrationPoint(Vector4{0.585410196624969, 0.138196601125011,
                                        0.138196601125011, 0.138196601125011},
-                               0.25 / 6.0),
+                               0.25 / 6.0, 3, 0),
               IntegrationPoint(Vector4{0.138196601125011, 0.585410196624969,
                                        0.138196601125011, 0.138196601125011},
-                               0.25 / 6.0),
+                               0.25 / 6.0, 3, 0),
               IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
                                        0.585410196624969, 0.138196601125011},
-                               0.25 / 6.0)};
+                               0.25 / 6.0, 3, 0)};
     }
     virtual int getAccuracy() const { return 2; }
   };
