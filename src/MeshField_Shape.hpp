@@ -295,7 +295,7 @@ struct QuadraticTetrahedronShape {
 
     const Real d3 = 1 - 4 * L0;
     // clang-format off
-    return { // CHECK THIS - ordering and values
+    return {
       d3        , d3        , d3        , 
       4*L1-1    , 0         , 0         , 
       0         , 4*L2-1    , 0         , 
@@ -305,7 +305,7 @@ struct QuadraticTetrahedronShape {
       -4*L3     , -4*L3     , 4*L0-4*L3 , 
       4*L2      , 4*L1      , 0         , 
       0         , 4*L3      , 4*L2      , 
-      4*L3      , 0         , 4*L0
+      4*L3      , 0         , 4*L1
     };
     // clang-format on
   }
