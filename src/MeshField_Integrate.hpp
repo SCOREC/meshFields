@@ -18,9 +18,9 @@ template <size_t pointSize> struct IntegrationPoint {
       : param(p), weight(w), dim(d), idx(i) {}
   Kokkos::Array<Real, pointSize> param;
   double weight;
-  //dim and idx represent the topological mesh entity the point is classified on
-  //dim represents whether it is edge, vertex, face, etc
-  //idx represents the index of the entity as defined by the shape function
+  // dim and idx represent the topological mesh entity the point is classified
+  // on dim represents whether it is edge, vertex, face, etc idx represents the
+  // index of the entity as defined by the shape function
   int dim;
   int idx;
 };
