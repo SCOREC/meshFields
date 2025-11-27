@@ -8,6 +8,6 @@ include(CMakeFindDependencyMacro)
 
 find_dependency(Omega_h CONFIG HINTS @Omega_h_DIR@)
 if (MeshFields_USE_Cabana)
-  find_dependency(Cabana)
+  find_dependency(Cabana CONFIG HINTS @Cabana_DIR@)
 endif()
 
