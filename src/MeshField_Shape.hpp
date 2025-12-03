@@ -128,45 +128,6 @@ struct LinearTriangleCoordinateShape {
   }
 };
 
-struct LinearTetrahedronShape {
-  static const size_t numNodes = 4;
-  static const size_t meshEntDim = 3;
-  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
-  constexpr static size_t Order = 1;
-
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
-    // clang-format off
-    return {0,0,0,   //node 0
-            1,0,0,   //node 1
-            0,1,0,   //node 2
-            0,0,1};  //node 3
-    // clang-format on
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
-    assert(greaterThanOrEqualZero(xi));
-    assert(lessThanOrEqualOne(xi));
-    // clang-format off
-    return {1 - xi[0] - xi[1] - xi[2],  //L0
-            xi[0],  //L1
-            xi[1],  //L2
-            xi[2]}; //L3
-    // clang-format on
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
-    // clang-format off
-    return {-1, -1, -1, 
-             1,  0,  0, 
-             0,  1,  0, 
-             0,  0,  1};
-    // clang-format on
-  }
-};
-
 struct QuadraticTriangleShape {
   // shape functions and ordering from 
   // Zienkiewicz, Taylor, and Zhu
@@ -227,6 +188,45 @@ struct QuadraticTriangleShape {
       4*L2      , 4*L1      , 
       -4*L2     , 4*(L0-L2)
     };
+    // clang-format on
+  }
+};
+
+struct LinearTetrahedronShape {
+  static const size_t numNodes = 4;
+  static const size_t meshEntDim = 3;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
+    // clang-format off
+    return {0,0,0,   //node 0
+            1,0,0,   //node 1
+            0,1,0,   //node 2
+            0,0,1};  //node 3
+    // clang-format on
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(lessThanOrEqualOne(xi));
+    // clang-format off
+    return {1 - xi[0] - xi[1] - xi[2],  //L0
+            xi[0],  //L1
+            xi[1],  //L2
+            xi[2]}; //L3
+    // clang-format on
+  }
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
+    // clang-format off
+    return {-1, -1, -1,
+             1,  0,  0,
+             0,  1,  0,
+             0,  0,  1};
     // clang-format on
   }
 };
