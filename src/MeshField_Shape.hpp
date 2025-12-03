@@ -23,7 +23,7 @@ namespace {
  * @param val Reference value
  * @return true if xi >= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(Real xi, const Real val) {
+KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshField::Real val) {
   if ( xi > val ) return true;
   return (Kokkos::fabs(xi - val) <= MeshField::MachinePrecision);
 }
@@ -36,10 +36,10 @@ KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(Real xi, const Real val) {
  * @return true if all xi[i] >= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const Real val) {
+KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::Real val) {
   auto gt = true;
   for (size_t i = 0; i < xi.size(); i++) {
-    gt = gt && greaterThanOrEqual(xi,val);
+    gt = gt && greaterThanOrEqual(xi[i],val);
   }
   return gt;
 }
@@ -50,7 +50,7 @@ KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const Real val) {
  * @param val Reference value
  * @return true if xi <= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(Real xi, const Real val) {
+KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField::Real val) {
   if ( xi < val ) return true;
   return (Kokkos::fabs(xi - val) <= MeshField::MachinePrecision);
 }
@@ -63,10 +63,10 @@ KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(Real xi, const Real val) {
  * @return true if all xi[i] <= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi, const Real val) {
+KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi, const MeshField::Real val) {
   auto lt = true;
   for (size_t i = 0; i < xi.size(); i++) {
-    lt = lt && lessThanOrEqual(xi,val);
+    lt = lt && lessThanOrEqual(xi[i],val);
   }
   return lt;
 }
@@ -106,7 +106,7 @@ struct LinearEdgeShape {
   Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
     // clang-format off
     return {-1,  //node 0
-            1}   //node 1
+            1};   //node 1
     // clang-format on
   }
 
@@ -464,7 +464,7 @@ struct QuadraticTetrahedronShape {
       0.5 , 0.5 , 0   ,
       0   , 0.5 , 0.5 ,
       0.5 , 0   , 0.5
-    }
+    };
     // clang-format on
   }
 

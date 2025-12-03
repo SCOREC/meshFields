@@ -9,6 +9,9 @@
 #include <type_traits> // has_static_size helper
 
 namespace MeshField {
+
+using Vector4 = Kokkos::Array<Real, 4>;
+
 // directly copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.[h|cc]
 template <size_t pointSize> struct IntegrationPoint {
   // template parameter pointSize specifies the length of the integration point
