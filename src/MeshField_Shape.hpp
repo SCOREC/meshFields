@@ -6,7 +6,8 @@
 // SCOREC/core apf/apfShape.cc @ 7cd76473
 
 namespace {
-template <typename Array> KOKKOS_INLINE_FUNCTION bool lessThanOrEqualOne(Array &xi) {
+template <typename Array>
+KOKKOS_INLINE_FUNCTION bool lessThanOrEqualOne(Array &xi) {
   auto sum = 0.0;
   for (size_t i = 0; i < xi.size(); i++) {
     sum += xi[i];
@@ -38,7 +39,7 @@ struct LinearEdgeShape {
   constexpr static size_t Order = 1;
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
     // clang-format off
     return {-1,  //node 0
             1}   //node 1
@@ -72,7 +73,7 @@ struct LinearTriangleShape {
   constexpr static size_t Order = 1;
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
     // clang-format off
     return {0,0,   //node 0
             1,0,   //node 1
@@ -108,7 +109,7 @@ struct LinearTriangleCoordinateShape {
   constexpr static size_t Order = 1;
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
     // clang-format off
     return {0,0,   //node 0
             1,0,   //node 1
@@ -129,7 +130,7 @@ struct LinearTriangleCoordinateShape {
 };
 
 struct QuadraticTriangleShape {
-  // shape functions and ordering from 
+  // shape functions and ordering from
   // Zienkiewicz, Taylor, and Zhu
   // 'The Finite Element Method: Its Basis and Fundamentals', 2013
   static const size_t numNodes = 6;
@@ -140,7 +141,7 @@ struct QuadraticTriangleShape {
   constexpr static size_t Order = 2;
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
     // clang-format off
     return {
       //nodes at vertices
@@ -148,8 +149,8 @@ struct QuadraticTriangleShape {
       1   , 0   , //node 1
       0   , 1   , //...
       //nodes at middle of edges
-      0.5 , 0   , 
-      0.5 , 0.5 , 
+      0.5 , 0   ,
+      0.5 , 0.5 ,
       0   , 0.5   //node 5
     };
     // clang-format on
@@ -181,11 +182,11 @@ struct QuadraticTriangleShape {
     const Real L2 = xi[1];
     // clang-format off
     return {
-      -4*L0+1   , -4*L0+1   , 
-      4*L1-1    , 0         , 
-      0         , 4*L2-1    , 
-      4*(L0-L1) , -4*L1     , 
-      4*L2      , 4*L1      , 
+      -4*L0+1   , -4*L0+1   ,
+      4*L1-1    , 0         ,
+      0         , 4*L2-1    ,
+      4*(L0-L1) , -4*L1     ,
+      4*L2      , 4*L1      ,
       -4*L2     , 4*(L0-L2)
     };
     // clang-format on
@@ -199,7 +200,7 @@ struct LinearTetrahedronShape {
   constexpr static size_t Order = 1;
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
     // clang-format off
     return {0,0,0,   //node 0
             1,0,0,   //node 1
@@ -232,7 +233,7 @@ struct LinearTetrahedronShape {
 };
 
 struct QuadraticTetrahedronShape {
-  // shape functions and ordering from 
+  // shape functions and ordering from
   // Zienkiewicz, Taylor, and Zhu
   // 'The Finite Element Method: Its Basis and Fundamentals', 2013
   static const size_t numNodes = 10;
@@ -243,20 +244,20 @@ struct QuadraticTetrahedronShape {
   constexpr static size_t Order = 2;
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
     // clang-format off
     return {
       //nodes at vertices
       0,0,0,   //node 0
       1,0,0,   //node 1
       0,1,0,   //...
-      0,0,1,   //node 3 
+      0,0,1,   //node 3
       //nodes at middle of edges
-      0.5 , 0   , 0   , 
-      0   , 0.5 , 0   , 
-      0   , 0   , 0.5 , 
-      0.5 , 0.5 , 0   , 
-      0   , 0.5 , 0.5 , 
+      0.5 , 0   , 0   ,
+      0   , 0.5 , 0   ,
+      0   , 0   , 0.5 ,
+      0.5 , 0.5 , 0   ,
+      0   , 0.5 , 0.5 ,
       0.5 , 0   , 0.5
     }
     // clang-format on
