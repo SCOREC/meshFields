@@ -485,7 +485,7 @@ struct QuadraticTetrahedronShape {
     assert(lessThanOrEqual(L0,1.0));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
-    const Real L3 = xi[1];
+    const Real L3 = xi[2];
     // clang-format off
     return {L0*(2*L0-1),
             L1*(2*L1-1),
@@ -514,7 +514,7 @@ struct QuadraticTetrahedronShape {
     assert(lessThanOrEqual(L0,1.0));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
-    const Real L3 = xi[1];
+    const Real L3 = xi[2];
 
     const Real d3 = 1 - 4 * L0;
     // clang-format off
