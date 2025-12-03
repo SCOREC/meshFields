@@ -77,7 +77,6 @@ struct LinearEdgeShape {
 };
 
 struct LinearTriangleShape {
-  static const size_t order = 1;
   static const size_t numNodes = 3;
   static const size_t numComponentsPerDof = 1;
   static const size_t meshEntDim = 2;
