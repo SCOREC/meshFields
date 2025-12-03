@@ -40,7 +40,7 @@ struct LinearEdgeShape {
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes*meshEntDim> getNodeParametricCoords() const {
     // clang-format off
-    return {0,   //node 0
+    return {-1,  //node 0
             1}   //node 1
     // clang-format on
   }
