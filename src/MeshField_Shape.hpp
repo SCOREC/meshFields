@@ -6,15 +6,6 @@
 // SCOREC/core apf/apfShape.cc @ 7cd76473
 
 namespace {
-template <typename Array>
-KOKKOS_INLINE_FUNCTION bool sumIsLessThanOrEqualOne(Array &xi) {
-  auto sum = 0.0;
-  for (size_t i = 0; i < xi.size(); i++) {
-    sum += xi[i];
-  }
-  return (Kokkos::fabs(sum - 1) <= MeshField::MachinePrecision) || (sum < 1);
-}
-
 KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(Real xi, const Real val) {
   if ( xi > val ) return true;
   return (Kokkos::fabs(xi - val) <= MeshField::MachinePrecision);
@@ -204,8 +195,8 @@ struct QuadraticTriangleShape {
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi) const {
-    assert(greaterThanOrEqualZero(xi));
-    assert(sumsToOne(xi));
+    assert(eachLessThanOrEqual(xi,1.0));
+    assert(eachGreaterThanOrEqual(xi,0.0));
     const Real L0 = 1 - xi[0] - xi[1];
     assert(greaterThanOrEqual(L0,0.0));
     assert(lessThanOrEqual(L0,1.0));
@@ -242,8 +233,8 @@ struct LinearTetrahedronShape {
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
-    assert(greaterThanOrEqualZero(xi));
-    assert(sumIsLessThanOrEqualOne(xi));
+    assert(eachLessThanOrEqual(xi,1.0));
+    assert(eachGreaterThanOrEqual(xi,0.0));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
     assert(greaterThanOrEqual(L0,0.0));
     assert(lessThanOrEqual(L0,1.0));
@@ -299,8 +290,8 @@ struct QuadraticTetrahedronShape {
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
-    assert(greaterThanOrEqualZero(xi));
-    assert(sumIsLessThanOrEqualOne(xi));
+    assert(eachLessThanOrEqual(xi,1.0));
+    assert(eachGreaterThanOrEqual(xi,0.0));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
     assert(greaterThanOrEqual(L0,0.0));
     assert(lessThanOrEqual(L0,1.0));
