@@ -241,58 +241,72 @@ struct QuadraticTetrahedronToField {
 
 struct ReducedQuinticTriangleToField {
   Omega_h::LOs triVerts;
+
   ReducedQuinticTriangleToField(Omega_h::Mesh &mesh)
       : triVerts(mesh.ask_elem_verts()) {
-    if (mesh.dim() != 2 && mesh.family() != OMEGA_H_SIMPLEX) {
+    if (mesh.dim() != 2 || mesh.family() != OMEGA_H_SIMPLEX) {
       MeshField::fail(
-          "The mesh passed to %s must be 2D and simplex (triangles)\n",
-          __func__);
+          "ReducedQuinticTriangleToField requires 2D simplex mesh\n");
     }
   }
 
-  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
-  getTopology() {
+  static constexpr KOKKOS_FUNCTION
+  Kokkos::Array<MeshField::Mesh_Topology, 1> getTopology() {
     return {MeshField::Triangle};
   }
 
-  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
-  operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
-             MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+  KOKKOS_FUNCTION
+  MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx,
+             MeshField::LO triCompIdx,
+             MeshField::LO tri,
+             MeshField::Mesh_Topology topo) const
+  {
     assert(topo == MeshField::Triangle);
-    const MeshField::LO triNode2DofHolder[18] = {
-        0,0,0,0,0,0,  // vertex 0 DOFs (6)
-        1,1,1,1,1,1,  // vertex 1 DOFs (6)
-        2,2,2,2,2,2   // vertex 2 DOFs (6)
-    };
-    const MeshField::Mesh_Topology triNode2DofHolderTopo[18] = {
-        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
-        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
-        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
-        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
-        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
-        MeshField::Vertex, MeshField::Vertex, MeshField::Vertex
-    };
-    const auto dofHolderIdx = triNode2DofHolder[triNodeIdx];
-    const auto dofHolderTopo = triNode2DofHolderTopo[triNodeIdx];
 
-    Omega_h::LO osh_ent;
-    if (dofHolderTopo == MeshField::Vertex) {
-      const auto triDim = 2;
-      const auto vtxDim = 0;
-      const auto ignored = -1;
-      const auto localVtxIdx = (Omega_h::simplex_down_template(
-                                    triDim, vtxDim, dofHolderIdx, ignored) +
-                                2) %
-                               3;
-      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
-      osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
-    } else {
-      assert(false);
+    MeshField::LO osh_ent = -1;
+    MeshField::LO nodeInHolder = -1;
+
+    if (triNodeIdx == 0) {
+      osh_ent = triVerts[3*tri + 0];
+      nodeInHolder = 0;
     }
-
-    return {0, triCompIdx, osh_ent, dofHolderTopo};
+    else if (triNodeIdx == 1) {
+      osh_ent = triVerts[3*tri + 1];
+      nodeInHolder = 0;
+    }
+    else if (triNodeIdx == 2) {
+      osh_ent = triVerts[3*tri + 2];
+      nodeInHolder = 0;
+    }
+    else if (triNodeIdx >= 3 && triNodeIdx <= 6) {
+      const MeshField::LO v0 = triVerts[3*tri + 0];
+      const MeshField::LO v1 = triVerts[3*tri + 1];
+      osh_ent = v0;  
+      nodeInHolder = triNodeIdx - 3 + 1;
+    }
+    else if (triNodeIdx >= 7 && triNodeIdx <= 10) {
+      const MeshField::LO v1 = triVerts[3*tri + 1];
+      osh_ent = v1;
+      nodeInHolder = triNodeIdx - 7 + 1;
+    }
+    else if (triNodeIdx >= 11 && triNodeIdx <= 14) {
+      const MeshField::LO v2 = triVerts[3*tri + 2];
+      osh_ent = v2;
+      nodeInHolder = triNodeIdx - 11 + 1;
+    }
+    else if (triNodeIdx >= 15 && triNodeIdx <= 20) {
+      const MeshField::LO v0 = triVerts[3*tri + 0];
+      osh_ent = v0;
+      nodeInHolder = triNodeIdx - 15 + 5;
+    }
+    else {
+      MeshField::fail("Invalid node index in ReducedQuinticTriangleToField\n");
+    }
+    return { nodeInHolder, triCompIdx, osh_ent, MeshField::Vertex };
   }
 };
+
 
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2 || ShapeOrder == 5);
