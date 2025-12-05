@@ -2,8 +2,8 @@
 #define MESHFIELD_SHAPE_H
 #include <MeshField_Defines.hpp>
 
-// getValues(...) implementation copied from SCOREC/core apf/apfShape.cc @
-// 7cd76473
+// getValues(...) implementation copied from
+// SCOREC/core apf/apfShape.cc @ 7cd76473
 
 namespace { template <typename Array> KOKKOS_INLINE_FUNCTION bool
 	sumsToOne(Array &xi) { auto sum = 0.0; for (int i = 0; i < xi.size();
@@ -17,132 +17,197 @@ template <typename Array> KOKKOS_INLINE_FUNCTION bool
 
 namespace MeshField {
 
-using Vector2 = Kokkos::Array<Real, 2>; using Vector3 = Kokkos::Array<Real, 3>;
+using Vector2 = Kokkos::Array<Real, 2>;
+using Vector3 = Kokkos::Array<Real, 3>;
 using Vector4 = Kokkos::Array<Real, 4>;
 
-struct LinearEdgeShape { static const size_t numNodes = 2; static const size_t
-	meshEntDim = 1; constexpr static Mesh_Topology DofHolders[1] =
-	{Vertex}; constexpr static size_t Order = 1;
+struct LinearEdgeShape {
+  static const size_t numNodes = 2;
+  static const size_t meshEntDim = 1;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, numNodes> getValues(Vector2 const
-		  &xi) const { assert(greaterThanOrEqualZero(xi));
-	  assert(sumsToOne(xi));
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
     // clang-format off
-    return {(1.0 - xi[0]) / 2.0, (1.0 + xi[0]) / 2.0};
+    return {(1.0 - xi[0]) / 2.0,
+            (1.0 + xi[0]) / 2.0};
     // clang-format on
   }
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, numNodes> getLocalGradients()
-	  const {
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getLocalGradients() const {
     // clang-format off
     return {-0.5, 0.5};
     // clang-format on
-  } };
+  }
+};
 
-struct LinearTriangleShape { static const size_t order = 1; static const size_t
-	numNodes = 3; static const size_t numComponentsPerDof = 1; static const
-		size_t meshEntDim = 2; constexpr static Mesh_Topology
-		DofHolders[1] = {Vertex}; constexpr static size_t Order = 1;
+struct LinearTriangleShape {
+  static const size_t order = 1;
+  static const size_t numNodes = 3;
+  static const size_t numComponentsPerDof = 1;
+  static const size_t meshEntDim = 2;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, numNodes> getValues(Vector3 const
-		  &xi) const { assert(greaterThanOrEqualZero(xi));
-	  assert(sumsToOne(xi));
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
     // clang-format off
-    return {1 - xi[0] - xi[1], xi[0], xi[1]};
+    return {1 - xi[0] - xi[1],
+            xi[0],
+            xi[1]};
     // clang-format on
   }
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, meshEntDim * numNodes>
-	  getLocalGradients() const {
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
     // clang-format off
-    return { -1,-1,  //first vector 1, 0, 0, 1};
+    return { -1,-1,  //first vector
+              1, 0,
+              0, 1};
     // clang-format on
-  } };
+  }
+};
 
-struct LinearTriangleCoordinateShape { static const size_t numNodes = 3; static
-	const size_t meshEntDim = 2; constexpr static Mesh_Topology
-		DofHolders[1] = {Vertex}; constexpr static size_t Order = 1;
+struct LinearTriangleCoordinateShape {
+  static const size_t numNodes = 3;
+  static const size_t meshEntDim = 2;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, numNodes> getValues(Vector3 const
-		  &xi) const { assert(greaterThanOrEqualZero(xi));
-	  assert(sumsToOne(xi));
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
     // clang-format off
-    return {1 - xi[0] - xi[1], xi[0], xi[1]};
+    return {1 - xi[0] - xi[1],
+            xi[0],
+            xi[1]};
     // clang-format on
-  } };
+  }
+};
 
-struct LinearTetrahedronShape { static const size_t numNodes = 4; static const
-	size_t meshEntDim = 3; constexpr static Mesh_Topology DofHolders[1] =
-	{Vertex}; constexpr static size_t Order = 1;
+struct LinearTetrahedronShape {
+  static const size_t numNodes = 4;
+  static const size_t meshEntDim = 3;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 1;
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, numNodes> getValues(Vector4 const
-		  &xi) const { assert(greaterThanOrEqualZero(xi));
-	  assert(sumsToOne(xi));
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector4 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
     // clang-format off
-    return {1 - xi[0] - xi[1] - xi[2], xi[0], xi[1], xi[2]};
+    return {1 - xi[0] - xi[1] - xi[2], 
+            xi[0], xi[1], 
+            xi[2]};
     // clang-format on
   }
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, meshEntDim * numNodes>
-	  getLocalGradients() const {
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
     // clang-format off
-    return {-1, -1, -1, 1,  0,  0, 0,  1,  0, 0,  0,  1};
+    return {-1, -1, -1, 
+             1,  0,  0, 
+             0,  1,  0, 
+             0,  0,  1};
     // clang-format on
-  } };
+  }
+};
 
-struct QuadraticTriangleShape { static const size_t numNodes = 6; static const
-	size_t meshEntDim = 2; constexpr static Mesh_Topology DofHolders[2] =
-	{Vertex, Edge}; constexpr static size_t NumDofHolders[2] = {3, 3};
-	constexpr static size_t DofsPerHolder[2] = {1, 1}; constexpr static
-		size_t Order = 2;
+struct QuadraticTriangleShape {
+  static const size_t numNodes = 6;
+  static const size_t meshEntDim = 2;
+  constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};
+  constexpr static size_t NumDofHolders[2] = {3, 3};
+  constexpr static size_t DofsPerHolder[2] = {1, 1};
+  constexpr static size_t Order = 2;
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, numNodes> getValues(Vector3 const
-		  &xi) const { assert(greaterThanOrEqualZero(xi));
-	  assert(sumsToOne(xi)); const Real xi2 = 1 - xi[0] - xi[1];
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    const Real xi2 = 1 - xi[0] - xi[1];
     // clang-format off
-    return {xi2 * (2 * xi2 - 1), xi[0] * (2 * xi[0] - 1), xi[1] * (2 * xi[1] -
-		    1), 4 * xi[0] * xi2, 4 * xi[0] * xi[1], 4 * xi[1] * xi2};
+    return {xi2 * (2 * xi2 - 1),
+            xi[0] * (2 * xi[0] - 1),
+            xi[1] * (2 * xi[1] - 1),
+            4 * xi[0] * xi2,
+            4 * xi[0] * xi[1],
+            4 * xi[1] * xi2};
     // clang-format on
   }
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Vector2, numNodes>
-	  getLocalGradients(Vector3 const &xi) const {
-		  assert(greaterThanOrEqualZero(xi)); assert(sumsToOne(xi));
-		  const Real xi2 = 1 - xi[0] - xi[1];
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    const Real xi2 = 1 - xi[0] - xi[1];
     // clang-format off
-    return {-4*xi2+1,-4*xi2+1, 4*xi[0]-1,0, 0,4*xi[1]-1,
-	    4*(xi2-xi[0]),-4*xi[0], 4*xi[1],4*xi[0], -4*xi[1],4*(xi2-xi[1]) };
+    return {-4*xi2+1,-4*xi2+1,
+             4*xi[0]-1,0,
+             0,4*xi[1]-1,
+             4*(xi2-xi[0]),-4*xi[0],
+             4*xi[1],4*xi[0],
+             -4*xi[1],4*(xi2-xi[1]) };
     // clang-format on
-  } };
+  }
+};
 
-struct QuadraticTetrahedronShape { static const size_t numNodes = 10; static
-	const size_t meshEntDim = 3; constexpr static Mesh_Topology
-		DofHolders[2] = {Vertex, Edge}; constexpr static size_t
-		NumDofHolders[2] = {4, 6}; constexpr static size_t
-		DofsPerHolder[2] = {1, 1}; constexpr static size_t Order = 2;
-  // ordering taken from mfem see mfem/mfem fem/fe/fe_fixed_order.cpp @597cba8
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, numNodes> getValues(Vector4 const
-		  &xi) const { assert(greaterThanOrEqualZero(xi));
-	  assert(sumsToOne(xi)); const Real xi3 = 1 - xi[0] - xi[1] - xi[2];
+struct QuadraticTetrahedronShape {
+  static const size_t numNodes = 10;
+  static const size_t meshEntDim = 3;
+  constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};
+  constexpr static size_t NumDofHolders[2] = {4, 6};
+  constexpr static size_t DofsPerHolder[2] = {1, 1};
+  constexpr static size_t Order = 2;
+  // ordering taken from mfem
+  // see mfem/mfem fem/fe/fe_fixed_order.cpp @597cba8
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector4 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    const Real xi3 = 1 - xi[0] - xi[1] - xi[2];
     // clang-format off
-    return {xi3*(2*xi3-1), xi[0]*(2*xi[0]-1), xi[1]*(2*xi[1]-1),
-	    xi[2]*(2*xi[2]-1), 4*xi[0]*xi3, 4*xi[1]*xi3, 4*xi[2]*xi3,
-	    4*xi[0]*xi[1], 4*xi[2]*xi[0], 4*xi[1]*xi[2]};
+    return {xi3*(2*xi3-1),
+            xi[0]*(2*xi[0]-1),
+            xi[1]*(2*xi[1]-1),
+            xi[2]*(2*xi[2]-1),
+            4*xi[0]*xi3,
+            4*xi[1]*xi3,
+            4*xi[2]*xi3,
+            4*xi[0]*xi[1],
+            4*xi[2]*xi[0],
+            4*xi[1]*xi[2]};
     // clang-format on
   }
 
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Vector3, numNodes>
-	  getLocalGradients(Vector4 const &xi) const {
-		  assert(greaterThanOrEqualZero(xi)); assert(sumsToOne(xi));
-		  const Real xi3 = 1 - xi[0] - xi[1] - xi[2]; const Real d3 = 1
-			  - 4 * xi3;
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Vector3, numNodes> getLocalGradients(Vector4 const &xi) const {
+    assert(greaterThanOrEqualZero(xi));
+    assert(sumsToOne(xi));
+    const Real xi3 = 1 - xi[0] - xi[1] - xi[2];
+    const Real d3 = 1 - 4 * xi3;
     // clang-format off
-    return {d3,d3,d3, 4*xi[0]-1,0,0, 0,4*xi[1]-1,0, 0,0,4*xi[2]-1,
-	    4*xi3-4*xi[0],-4*xi[0],-4*xi[0], -4*xi[1],4*xi3-4*xi[1],-4*xi[1],
-	    -4*xi[2],-4*xi[2],4*xi3-4*xi[2], 4*xi[1],4*xi[0],0,
-	    4*xi[2],0,4*xi[0], 0,4*xi[2],4*xi[1]};
+    return {d3,d3,d3,
+            4*xi[0]-1,0,0,
+            0,4*xi[1]-1,0,
+            0,0,4*xi[2]-1,
+            4*xi3-4*xi[0],-4*xi[0],-4*xi[0],
+            -4*xi[1],4*xi3-4*xi[1],-4*xi[1],
+            -4*xi[2],-4*xi[2],4*xi3-4*xi[2],
+            4*xi[1],4*xi[0],0,
+            4*xi[2],0,4*xi[0],
+            0,4*xi[2],4*xi[1]};
     // clang-format on
-  } };
+  }
+};
+
 
 struct ReducedQuinticImplicitShape {
   static const size_t numNodes = 21;
@@ -156,8 +221,8 @@ struct ReducedQuinticImplicitShape {
     assert(sumsToOne(xi));
 
     const Real L1 = 1.0 - xi[0] - xi[1];
-    const Real L2 = xi[0];               
-    const Real L3 = xi[1];               
+    const Real L2 = xi[0];
+    const Real L3 = xi[1];
 
     Real powL1[6], powL2[6], powL3[6];
     powL1[0] = powL2[0] = powL3[0] = 1.0;
@@ -224,8 +289,8 @@ struct ReducedQuinticImplicitShape {
         if (j > 0) dN_dL2 = coeff * double(j) * powL1[i] * powL2[j - 1] * powL3[k];
         if (k > 0) dN_dL3 = coeff * double(k) * powL1[i] * powL2[j] * powL3[k - 1];
 
-        const double dNdX = -dN_dL1 + dN_dL2; // xi[0] corresponds to L2
-        const double dNdY = -dN_dL1 + dN_dL3; // xi[1] corresponds to L3
+        const double dNdX = -dN_dL1 + dN_dL2;
+        const double dNdY = -dN_dL1 + dN_dL3;
 
         dN[idx][0] = dNdX;
         dN[idx][1] = dNdY;

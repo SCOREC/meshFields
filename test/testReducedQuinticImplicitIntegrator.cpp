@@ -62,7 +62,7 @@ public:
     double local = 0.0;
     Kokkos::parallel_reduce("RQ_integrate", npts,
       KOKKOS_LAMBDA(const int i, double &acc) {
-        acc += double(w(i)) * double(dV(i));
+        acc += double(w(i));
       }, local);
 
     total += local;
@@ -130,23 +130,24 @@ void runTest(Omega_h::Mesh &mesh) {
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
-  Omega_h::Library lib(&argc, &argv);
+  {
+    Omega_h::Library lib(&argc, &argv);
 
-  Omega_h::Reals coords({
-    0.0, 0.0,
-    1.0, 0.0,
-    0.0, 1.0
-  });
+    Omega_h::Reals coords({
+        0.0, 0.0,
+        1.0, 0.0,
+        0.0, 1.0
+    });
 
-  Omega_h::LOs verts({0,1,2});
+    Omega_h::LOs verts({0,1,2});
 
-  Omega_h::Mesh mesh(&lib);
-  Omega_h::build_from_elems_and_coords(
-      &mesh, OMEGA_H_SIMPLEX, 2, verts, coords);
+    Omega_h::Mesh mesh(&lib);
+    Omega_h::build_from_elems_and_coords(
+        &mesh, OMEGA_H_SIMPLEX, 2, verts, coords);
 
-  runTest<MeshField::KokkosController>(mesh);
+    runTest<MeshField::KokkosController>(mesh);
+    }
 
   Kokkos::finalize();
   return 0;
 }
-
