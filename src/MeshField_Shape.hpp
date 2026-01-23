@@ -97,6 +97,16 @@ struct LinearTriangleCoordinateShape {
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
   constexpr static size_t Order = 1;
 
+  // Get Parametric Coordinates
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes> getParamCoords() const {
+    // clang-format off
+    return { 0,0,  //first vector
+              1, 0,
+              0, 1};
+    // clang-format on
+  }
+
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
     assert(greaterThanOrEqualZero(xi));
