@@ -1,6 +1,7 @@
 #include "mfem.hpp"
 #include <fstream>
 #include <iostream>
+#include <chrono>
 
 using namespace std;
 using namespace mfem;
@@ -22,17 +23,35 @@ int main(int argc, char *argv[]) {
   args.AddOption(&type, "-t", "--type", "type of element(1 for tet, 0 for triangle");
   args.ParseCheck();
   
-  Mesh mesh = Mesh::MakeCartesian3D(numberOfElements, numberOfElements, type == 1 ? numberOfElements : 1, type == 1 ? Element::TETRAHEDRON : Element::TRIANGLE, size, size, type == 1 ? size : 1, false);
-  H1_FECollection fec(order, mesh.Dimension());
-  FiniteElementSpace fespace(&mesh, &fec);
+  if (type == 1) {
+    Mesh mesh = Mesh::MakeCartesian3D(numberOfElements, numberOfElements, numberOfElements, Element::TETRAHEDRON, size, size, size);
+    H1_FECollection fec(order, mesh.Dimension());
+    FiniteElementSpace fespace(&mesh, &fec);
   
-  FunctionCoefficient custom(intFunc);
+    FunctionCoefficient custom(intFunc);
 
-  LinearForm b(&fespace);
+    LinearForm b(&fespace);
 
-  b.AddDomainIntegrator(new DomainLFIntegrator(custom)); 
+    b.AddDomainIntegrator(new DomainLFIntegrator(custom)); 
+    auto start = std::chrono::high_resolution_clock::now();
+    b.Assemble(); 
+    auto end = std::chrono::high_resolution_clock::now();
+    cout << "RESULT: " << mfem::GetGitStr() << "," << mesh.GetNE() << "," << order << "," << b.Sum() << "," << std::chrono::duration<double>(end - start).count() << endl;
 
-  b.Assemble(); 
-  cout << b.Sum() << endl;
+  }
+  else { 
+    Mesh mesh = Mesh::MakeCartesian2D(numberOfElements, numberOfElements, Element::TRIANGLE, size, size);
+    H1_FECollection fec(order, mesh.Dimension());
+    FiniteElementSpace fespace(&mesh, &fec);
+  
+    FunctionCoefficient custom(intFunc);
+
+    LinearForm b(&fespace);
+
+    b.AddDomainIntegrator(new DomainLFIntegrator(custom)); 
+
+    b.Assemble(); 
+    cout << "RESULT: " << mfem::GetGitStr() << "," << mesh.GetNE() << "," << order << "," << b.Sum() << "," << std::chrono::duration<double>(end - start).count() << endl;
+  }
   return 0;
 }
