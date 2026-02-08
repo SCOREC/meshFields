@@ -4,6 +4,7 @@ project(meshfields VERSION 0.1.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(CheckGit.cmake)
 
 option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 
@@ -67,6 +68,9 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/src/MeshField_Config.hpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp")
 
+
+CheckGitSetup()
+target_sources(meshfields PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/MeshField_GetHash.cpp)
 if(MeshFields_USE_Cabana)
   target_link_libraries(meshfields INTERFACE Cabana::Core)
   target_compile_definitions(meshfields INTERFACE MESHFIELDS_ENABLE_CABANA)
@@ -178,8 +182,10 @@ meshfields_add_exe(BoxIntegratorTest test/testBoxIntegrator.cpp)
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
   meshfields_add_exe(CabanaTests test/testCabana.cpp)
+  meshfields_add_exe(IntegratorPerformance test/testIntegratorPerformance.cpp)
   test_func(CabanaTests ./CabanaTests)
   test_func(ControllerPerformance ./ControllerPerformance)
+  test_func(IntegratorPerformance ./IntegratorPerformance)
 endif()
 
 test_func(KokkosTests ./KokkosTests)
