@@ -267,37 +267,24 @@ struct ReducedQuinticTriangleToField {
     MeshField::LO osh_ent = -1;
     MeshField::LO nodeInHolder = -1;
 
-    if (triNodeIdx == 0) {
-      osh_ent = triVerts[3*tri + 0];
-      nodeInHolder = 0;
-    }
-    else if (triNodeIdx == 1) {
-      osh_ent = triVerts[3*tri + 1];
-      nodeInHolder = 0;
-    }
-    else if (triNodeIdx == 2) {
-      osh_ent = triVerts[3*tri + 2];
+    if (triNodeIdx < 3) {
+      osh_ent = triVerts[3*tri + triNodeIdx];
       nodeInHolder = 0;
     }
     else if (triNodeIdx >= 3 && triNodeIdx <= 6) {
-      const MeshField::LO v0 = triVerts[3*tri + 0];
-      const MeshField::LO v1 = triVerts[3*tri + 1];
-      osh_ent = v0;  
+      osh_ent = triVerts[3*tri + 0];
       nodeInHolder = triNodeIdx - 3 + 1;
     }
     else if (triNodeIdx >= 7 && triNodeIdx <= 10) {
-      const MeshField::LO v1 = triVerts[3*tri + 1];
-      osh_ent = v1;
+      osh_ent = triVerts[3*tri + 1];
       nodeInHolder = triNodeIdx - 7 + 1;
     }
     else if (triNodeIdx >= 11 && triNodeIdx <= 14) {
-      const MeshField::LO v2 = triVerts[3*tri + 2];
-      osh_ent = v2;
+      osh_ent = triVerts[3*tri + 2];
       nodeInHolder = triNodeIdx - 11 + 1;
     }
     else if (triNodeIdx >= 15 && triNodeIdx <= 20) {
-      const MeshField::LO v0 = triVerts[3*tri + 0];
-      osh_ent = v0;
+      osh_ent = triVerts[3*tri + 0];
       nodeInHolder = triNodeIdx - 15 + 5;
     }
     else {

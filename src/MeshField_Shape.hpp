@@ -232,19 +232,22 @@ struct ReducedQuinticImplicitShape {
       powL3[p] = powL3[p - 1] * L3;
     }
 
-    auto fact = [](int n) {
+    const double f5 = []{
       double r = 1.0;
-      for (int i = 2; i <= n; ++i) r *= double(i);
+      for (int i = 2; i <= 5; ++i) r *= double(i);
       return r;
-    };
-    const double f5 = fact(5);
+    }();
 
+    // Multinomial Bernstein basis of degree 5:
+    // N_{ijk} = (5! / (i! j! k!)) L1^i L2^j L3^k
+    // where i + j + k = 5
+    const double fact[6] = {1,1,2,6,24,120};
     Kokkos::Array<Real, numNodes> N;
     int idx = 0;
     for (int i = 0; i <= 5; ++i) {
       for (int j = 0; j <= 5 - i; ++j) {
         int k = 5 - i - j;
-        double coeff = f5 / (fact(i) * fact(j) * fact(k));
+        double coeff = f5 / (fact[i] * fact[j] * fact[k]);
         N[idx++] = coeff * powL1[i] * powL2[j] * powL3[k];
       }
     }
