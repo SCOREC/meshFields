@@ -208,110 +208,140 @@ struct QuadraticTetrahedronShape {
   }
 };
 
-
 struct ReducedQuinticImplicitShape {
-  static const size_t numNodes = 21;
-  static const size_t meshEntDim = 2;
+
+  static constexpr int Order      = 5;
+  static constexpr int meshEntDim = 2;
+  static constexpr int numNodes   = 21;
+
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
-  constexpr static size_t Order = 5;
+
+  inline static constexpr double coeff[numNodes] = {
+    // i = 0
+     1,  5, 10, 10,  5,  1,
+    // i = 1
+     5, 20, 30, 20,  5,
+    // i = 2
+    10, 30, 30, 10,
+    // i = 3
+    10, 20, 10,
+    // i = 4
+     5,  5,
+    // i = 5
+     1
+  };
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
+  void computePowers(
+      const Vector3& xi,
+      Real& L1, Real& L2, Real& L3,
+      Real (&p1)[Order+1],
+      Real (&p2)[Order+1],
+      Real (&p3)[Order+1]) const
+  {
     assert(greaterThanOrEqualZero(xi));
     assert(sumsToOne(xi));
 
-    const Real L1 = 1.0 - xi[0] - xi[1];
-    const Real L2 = xi[0];
-    const Real L3 = xi[1];
+    L1 = 1.0 - xi[0] - xi[1];
+    L2 = xi[0];
+    L3 = xi[1];
 
-    Real powL1[6], powL2[6], powL3[6];
-    powL1[0] = powL2[0] = powL3[0] = 1.0;
-    for (int p = 1; p <= 5; ++p) {
-      powL1[p] = powL1[p - 1] * L1;
-      powL2[p] = powL2[p - 1] * L2;
-      powL3[p] = powL3[p - 1] * L3;
+    p1[0] = p2[0] = p3[0] = 1.0;
+    for (int d = 1; d <= Order; ++d) {
+      p1[d] = p1[d-1] * L1;
+      p2[d] = p2[d-1] * L2;
+      p3[d] = p3[d-1] * L3;
     }
+  }
 
-    const double f5 = []{
-      double r = 1.0;
-      for (int i = 2; i <= 5; ++i) r *= double(i);
-      return r;
-    }();
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes>
+  getValues(Vector3 const &xi) const
+  {
+    Real L1, L2, L3;
+    Real p1[Order+1], p2[Order+1], p3[Order+1];
 
-    // Multinomial Bernstein basis of degree 5:
-    // N_{ijk} = (5! / (i! j! k!)) L1^i L2^j L3^k
-    // where i + j + k = 5
-    const double fact[6] = {1,1,2,6,24,120};
+    computePowers(xi, L1, L2, L3, p1, p2, p3);
+
     Kokkos::Array<Real, numNodes> N;
+
     int idx = 0;
-    for (int i = 0; i <= 5; ++i) {
-      for (int j = 0; j <= 5 - i; ++j) {
-        int k = 5 - i - j;
-        double coeff = f5 / (fact[i] * fact[j] * fact[k]);
-        N[idx++] = coeff * powL1[i] * powL2[j] * powL3[k];
+    for (int i = 0; i <= Order; ++i) {
+      for (int j = 0; j <= Order - i; ++j) {
+        int k = Order - i - j;
+
+        N[idx] =
+          coeff[idx] *
+          p1[i] *
+          p2[j] *
+          p3[k];
+
+        ++idx;
       }
     }
+
     return N;
   }
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi) const {
-    assert(greaterThanOrEqualZero(xi));
-    assert(sumsToOne(xi));
+  Kokkos::Array<Vector2, numNodes>
+  getLocalGradients(Vector3 const &xi) const
+  {
+    Real L1, L2, L3;
+    Real p1[Order+1], p2[Order+1], p3[Order+1];
 
-    const Real L1 = 1.0 - xi[0] - xi[1];
-    const Real L2 = xi[0];
-    const Real L3 = xi[1];
-
-    Real powL1[6], powL2[6], powL3[6];
-    powL1[0] = powL2[0] = powL3[0] = 1.0;
-    for (int p = 1; p <= 5; ++p) {
-      powL1[p] = powL1[p - 1] * L1;
-      powL2[p] = powL2[p - 1] * L2;
-      powL3[p] = powL3[p - 1] * L3;
-    }
-
-    auto fact = [](int n) {
-      double r = 1.0;
-      for (int i = 2; i <= n; ++i) r *= double(i);
-      return r;
-    };
-    const double f5 = fact(5);
+    computePowers(xi, L1, L2, L3, p1, p2, p3);
 
     Kokkos::Array<Vector2, numNodes> dN;
+
     int idx = 0;
-    for (int i = 0; i <= 5; ++i) {
-      for (int j = 0; j <= 5 - i; ++j) {
-        int k = 5 - i - j;
-        double coeff = f5 / (fact(i) * fact(j) * fact(k));
+    for (int i = 0; i <= Order; ++i) {
+      for (int j = 0; j <= Order - i; ++j) {
+        int k = Order - i - j;
 
-        double dN_dL1 = 0.0;
-        double dN_dL2 = 0.0;
-        double dN_dL3 = 0.0;
-        if (i > 0) dN_dL1 = coeff * double(i) * powL1[i - 1] * powL2[j] * powL3[k];
-        if (j > 0) dN_dL2 = coeff * double(j) * powL1[i] * powL2[j - 1] * powL3[k];
-        if (k > 0) dN_dL3 = coeff * double(k) * powL1[i] * powL2[j] * powL3[k - 1];
+        const double c = coeff[idx];
 
-        const double dNdX = -dN_dL1 + dN_dL2;
-        const double dNdY = -dN_dL1 + dN_dL3;
+        double dL1 = 0.0;
+        double dL2 = 0.0;
+        double dL3 = 0.0;
+
+        if (i > 0)
+          dL1 = c * i * p1[i-1] * p2[j]   * p3[k];
+
+        if (j > 0)
+          dL2 = c * j * p1[i]   * p2[j-1] * p3[k];
+
+        if (k > 0)
+          dL3 = c * k * p1[i]   * p2[j]   * p3[k-1];
+
+        const double dNdX = -dL1 + dL2;
+        const double dNdY = -dL1 + dL3;
 
         dN[idx][0] = dNdX;
         dN[idx][1] = dNdY;
+
         ++idx;
       }
     }
+
     return dN;
   }
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes * meshEntDim> getLocalGradients() const {
-    Vector3 xi = {1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0};
-    auto gvec = getLocalGradients(xi);
+  Kokkos::Array<Real, numNodes * meshEntDim>
+  getLocalGradients() const
+  {
+    Vector3 xi = {1.0/3.0, 1.0/3.0, 1.0/3.0};
+
+    auto g = getLocalGradients(xi);
+
     Kokkos::Array<Real, numNodes * meshEntDim> flat{};
-    for (int n = 0; n < (int)numNodes; ++n) {
-      flat[n * meshEntDim + 0] = gvec[n][0];
-      flat[n * meshEntDim + 1] = gvec[n][1];
+
+    for (int n = 0; n < numNodes; ++n) {
+      flat[2*n + 0] = g[n][0];
+      flat[2*n + 1] = g[n][1];
     }
+
     return flat;
   }
 };
