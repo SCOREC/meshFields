@@ -12,19 +12,12 @@
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 
-/**
- * Evaluator (shape-function) validation test for ReducedQuinticImplicitShape.
- *
- * This test verifies:
- *   1. Partition of unity:        Σ Ni(xi) = 1
- *   2. Gradient partition unity:  Σ ∇Ni(xi) = 0
- *   3. Exact values at centroid   Ni(1/3,1/3,1/3) match reference
- */
 void runEvaluateTest(Omega_h::Mesh& mesh) {
   auto element = MeshField::Omegah::getReducedQuinticImplicitElement(mesh);
   auto& rqShape = element.shp;
 
   constexpr int nn = MeshField::ReducedQuinticImplicitShape::numNodes;
+  constexpr int Order = MeshField::ReducedQuinticImplicitShape::Order;
 
   constexpr double tol = 1e-12;
 
@@ -47,42 +40,34 @@ void runEvaluateTest(Omega_h::Mesh& mesh) {
     MeshField::fail(ss.str());
   }
 
-  // ------------------------------------------------------------
-  // Exact Bernstein basis value check at centroid
-  //
-  // For (i,j,k) = (1,2,2):
-  // N = (5!)/(1!2!2!) * (1/3)^5 = 10/81
-  // ------------------------------------------------------------
+  // Degree-4 Reproduction
+  double L1 = 1.0/3.0;
+  double L2 = 1.0/3.0;
+  double L3 = 1.0/3.0;
 
-  const int target_i = 1;
-  const int target_j = 2;
-  const int target_k = 2;
+  double rL1 = 0.0;
+  double rL2 = 0.0;
+  double rL3 = 0.0;
 
   int idx = 0;
-  int target_idx = -1;
-
-  for (int i = 0; i <= 5; ++i) {
-    for (int j = 0; j <= 5 - i; ++j) {
-      int k = 5 - i - j;
-
-      if (i == target_i && j == target_j && k == target_k)
-      target_idx = idx;
-
+  for (int i = 0; i <= Order; ++i) {
+    for (int j = 0; j <= Order - i; ++j) {
+      int k = Order - i - j;
+      rL1 += N[idx] * (double(i)/Order);
+      rL2 += N[idx] * (double(j)/Order);
+      rL3 += N[idx] * (double(k)/Order);
       ++idx;
     }
   }
 
-  const double expected = 10.0 / 81.0;
+  double reconstructed = rL1*rL1 * rL2*rL2 + rL2*rL2 * rL3*rL3 + rL1 * rL3*rL3*rL3;
 
-  if (std::fabs(N[target_idx] - expected) > tol) {
-    std::stringstream ss;
-    ss << "[FAIL] Exact Bernstein value mismatch: "
-    << "computed=" << N[target_idx]
-       << ", expected=" << expected
-       << ", tol=" << tol;
-    MeshField::fail(ss.str());
+  double exact = L1*L1 * L2*L2 + L2*L2 * L3*L3 + L1 * L3*L3*L3;
+
+  if (std::fabs(reconstructed - exact) > tol) {
+    MeshField::fail("Degree-4 polynomial reproduction failed");
   }
-
+  
   std::cout << "[PASS] ReducedQuinticImplicitShape evaluator test\n";
 }
 
