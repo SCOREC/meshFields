@@ -251,7 +251,89 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     // clang-format on
     QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
     return qlsf;
-  } else {
+  }
+  else if constexpr (order == 5 && dim == 2) {
+
+  if (meshInfo.numVtx <= 0) {
+    fail("mesh has no vertices\n");
+  }
+  if (meshInfo.numEdge <= 0) {
+    fail("mesh has no edges\n");
+  }
+
+#ifdef MESHFIELDS_ENABLE_CABANA
+
+  using Ctrlr = std::conditional_t<
+      std::is_same_v<
+          Controller<ExecutionSpace, MemorySpace, DataType>,
+          MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
+      Controller<ExecutionSpace, MemorySpace,
+                 DataType[1][numComp],   // vertices
+                 DataType[1][numComp]>,  // edges
+      Controller<MemorySpace, ExecutionSpace,
+                 DataType ***,           // vertices
+                 DataType ***>>;         // edges
+
+  auto createController =
+      [](auto numVtx, auto numEdge) {
+
+    if constexpr (std::is_same_v<
+                      Controller<ExecutionSpace, MemorySpace, DataType>,
+                      MeshField::CabanaController<
+                          ExecutionSpace, MemorySpace, DataType>>) {
+
+      return Ctrlr({numVtx, numEdge});
+
+    } else {
+
+      return Ctrlr({
+          /* field 0 */ numVtx,  1, numComp,
+          /* field 1 */ numEdge, 1, numComp});
+    }
+  };
+
+  Ctrlr kk_ctrl =
+      createController(meshInfo.numVtx,
+                       meshInfo.numEdge);
+
+#else
+
+  using Ctrlr =
+      Controller<MemorySpace, ExecutionSpace,
+                 DataType ***,  // vertices
+                 DataType ***>; // edges
+
+  Ctrlr kk_ctrl({
+      /* field 0 */ meshInfo.numVtx,  1, numComp,
+      /* field 1 */ meshInfo.numEdge, 1, numComp});
+
+#endif
+
+  auto vtxField  = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+  auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
+
+  // IMPORTANT: reuse QuadraticAccessor (same storage pattern)
+  using QA =
+      QuadraticAccessor<
+          decltype(vtxField),
+          decltype(edgeField)>;
+
+  using ReducedQuinticLagrangeShapeField =
+      ShapeField<
+          numComp,
+          Ctrlr,
+          ReducedQuinticImplicitShape,
+          QA>;
+
+  ReducedQuinticLagrangeShapeField rqsf(
+      kk_ctrl,
+      meshInfo,
+      {vtxField, edgeField});
+
+  return rqsf;
+}
+  
+  else {
     fail("CreateLagrangeField does not support the specified "
          "combination of order %d and dimension %d.\n",
          order, dim);

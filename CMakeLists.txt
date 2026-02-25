@@ -193,7 +193,7 @@ test_func(OmegahTriTests ./OmegahTriTests)
 test_func(PointMapping ./PointMapping)
 test_func(OmegahTetTest, ./OmegahTetTest)
 test_func(ReducedQuinticImplicitIntegratorTest ./ReducedQuinticImplicitIntegratorTest)
-test_func(ReducedQuinticImplicitEvalauteTest ./ReducedQuinticImplicitEvaluateTest)
+test_func(ReducedQuinticImplicitEvaluateTest ./ReducedQuinticImplicitEvaluateTest)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)
