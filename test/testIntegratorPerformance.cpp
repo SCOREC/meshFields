@@ -31,7 +31,6 @@ public:
   void atPoints(Kokkos::View<MeshField::Real **> p,
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
-    std::cout << p.extent(0) << ":" << p.extent(1) << ":" << p.extent(2) << std::endl;
     const auto globalCoords = MeshField::evaluate(fes, p, p.extent(0) / fes.numMeshEnts);
     Kokkos::parallel_reduce("integrate", p.extent(0),
     KOKKOS_LAMBDA(const int &ent, MeshField::Real &integ) {
@@ -46,11 +45,10 @@ public:
 };
 
 template <size_t dim, size_t ShapeOrder, template <typename ...> typename Controller>
-void doRun(size_t size, Omega_h::Library &lib) {
+void doRun(size_t size, size_t numberOfElems, Omega_h::Library &lib) {
   auto world = lib.world();
   const auto family = OMEGA_H_SIMPLEX;
-  auto len = 1.0;
-  auto mesh = Omega_h::build_box(world, family, len, len, dim == 3 ? len : 0.0, size, size, dim == 3 ? size : 0);
+  auto mesh = Omega_h::build_box(world, family, size, size, dim == 3 ? size : 0, numberOfElems, numberOfElems, dim == 3 ? numberOfElems : 0);
   MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
   auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, dim>();
   auto coords = mesh.coords();
@@ -104,19 +102,21 @@ int main(int argc, char **argv) {
   size_t order = 2;
   size_t size = 2;
   size_t dim = 3;
-  if (argc == 5) {
+  size_t numberOfElems = 1;
+  if (argc == 6) {
     useCab = atoi(argv[1]);
     order = atoi(argv[2]);
     size = atoi(argv[3]);
-    dim = atoi(argv[4]);
+    numberOfElems = atoi(argv[4]);
+    dim = atoi(argv[5]);
   }
   // [dim][order][controller]
-  void (* funcCall[2][2][2])(size_t, Omega_h::Library &) = {
+  void (* funcCall[2][2][2])(size_t, size_t, Omega_h::Library &) = {
   {{doRun<2, 1, MeshField::KokkosController>, doRun<2, 1, MeshField::CabanaController>}, 
   {doRun<2, 2, MeshField::KokkosController>, doRun<2, 2, MeshField::CabanaController>}}, 
   {{doRun<3, 1, MeshField::KokkosController>, doRun<3, 1, MeshField::CabanaController>}, 
   {doRun<3, 2, MeshField::KokkosController>, doRun<3, 2, MeshField::CabanaController>}}};
-  funcCall[dim - 2][order - 1][useCab](size, lib);
+  funcCall[dim - 2][order - 1][useCab](size, numberOfElems, lib);
   Kokkos::finalize();
   return 0;
 }

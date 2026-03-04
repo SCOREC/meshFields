@@ -49,8 +49,9 @@ int main(int argc, char *argv[]) {
     LinearForm b(&fespace);
 
     b.AddDomainIntegrator(new DomainLFIntegrator(custom)); 
-
+    auto start = std::chrono::high_resolution_clock::now();
     b.Assemble(); 
+    auto end = std::chrono::high_resolution_clock::now();
     cout << "RESULT: " << mfem::GetGitStr() << "," << mesh.GetNE() << "," << order << "," << b.Sum() << "," << std::chrono::duration<double>(end - start).count() << endl;
   }
   return 0;
