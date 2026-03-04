@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
   args.AddOption(&size, "-s", "--size", "Size of mesh");
   args.AddOption(&numberOfElements, "-n", "--numElem", "number of elements in each direction");
   args.AddOption(&type, "-t", "--type", "type of element(1 for tet, 0 for triangle");
-  args.ParseCheck();
+  args.Parse();
   
   if (type == 1) {
     Mesh mesh = Mesh::MakeCartesian3D(numberOfElements, numberOfElements, numberOfElements, Element::TETRAHEDRON, size, size, size);
