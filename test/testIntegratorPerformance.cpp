@@ -45,7 +45,7 @@ public:
 };
 
 template <size_t dim, size_t ShapeOrder, template <typename ...> typename Controller>
-void doRun(size_t size, size_t numberOfElems, Omega_h::Library &lib) {
+void doRun(size_t size, size_t numberOfElems, Omega_h::Library &lib, size_t runs) {
   auto world = lib.world();
   const auto family = OMEGA_H_SIMPLEX;
   auto mesh = Omega_h::build_box(world, family, size, size, dim == 3 ? size : 0, numberOfElems, numberOfElems, dim == 3 ? numberOfElems : 0);
@@ -87,11 +87,13 @@ void doRun(size_t size, size_t numberOfElems, Omega_h::Library &lib) {
   };
   const auto [shp, map] = shapeSet();
   MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
-  testIntegrator testInt(fes, ShapeOrder);
-  auto start = std::chrono::high_resolution_clock::now();
-  testInt.process(fes); 
-  auto end = std::chrono::high_resolution_clock::now();
-  std::cout << "RESULT: " << GitHash << "," << mesh.nelems() << "," << ShapeOrder << "," << testInt.getIntegral() << "," << std::chrono::duration<double>(end - start).count() << std::endl;
+  for (int i = 0; i < runs; ++i) {
+    testIntegrator testInt(fes, ShapeOrder);
+    auto start = std::chrono::high_resolution_clock::now();
+    testInt.process(fes); 
+    auto end = std::chrono::high_resolution_clock::now();
+    std::cout << "RESULT: " << GitHash << "," << mesh.nelems() << "," << ShapeOrder << "," << testInt.getIntegral() << "," << std::chrono::duration<double>(end - start).count() << std::endl;
+  }
 }
 
 
@@ -103,20 +105,22 @@ int main(int argc, char **argv) {
   size_t size = 2;
   size_t dim = 3;
   size_t numberOfElems = 1;
-  if (argc == 6) {
+  size_t runs = 1;
+  if (argc == 7) {
     useCab = atoi(argv[1]);
     order = atoi(argv[2]);
     size = atoi(argv[3]);
     numberOfElems = atoi(argv[4]);
     dim = atoi(argv[5]);
+    runs = atoi(argv[6]);
   }
   // [dim][order][controller]
-  void (* funcCall[2][2][2])(size_t, size_t, Omega_h::Library &) = {
+  void (* funcCall[2][2][2])(size_t, size_t, Omega_h::Library &, size_t) = {
   {{doRun<2, 1, MeshField::KokkosController>, doRun<2, 1, MeshField::CabanaController>}, 
   {doRun<2, 2, MeshField::KokkosController>, doRun<2, 2, MeshField::CabanaController>}}, 
   {{doRun<3, 1, MeshField::KokkosController>, doRun<3, 1, MeshField::CabanaController>}, 
   {doRun<3, 2, MeshField::KokkosController>, doRun<3, 2, MeshField::CabanaController>}}};
-  funcCall[dim - 2][order - 1][useCab](size, numberOfElems, lib);
+  funcCall[dim - 2][order - 1][useCab](size, numberOfElems, lib, runs);
   Kokkos::finalize();
   return 0;
 }
