@@ -377,6 +377,11 @@ public:
                                           order, dim, numComp>(meshInfo);
   }
 
+  template <typename DataType, size_t numComp>
+  auto CreateReducedQuinticField() {
+    return MeshField::CreateReducedQuinticField<ExecutionSpace, Controller, DataType, dim, numComp>(this->meshInfo);
+  }
+
   auto getCoordField() { return coordField; }
 
   // FIXME support 2d and 3d and fields with order>1

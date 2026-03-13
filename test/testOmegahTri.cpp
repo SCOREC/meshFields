@@ -162,8 +162,24 @@ void runTest(Omega_h::Mesh &mesh,
              auto testCase, auto function) {
   using functionType = decltype(function);
   using ViewType = decltype(testCase.coords);
-  auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                numComponents>();
+  
+  decltype(auto) field =
+    [&]() {
+        if constexpr (ShapeOrder == 5)
+        {
+            return omf.template CreateReducedQuinticField<
+                MeshField::Real,
+                numComponents>();
+        }
+        else
+        {
+            return omf.template CreateLagrangeField<
+                MeshField::Real,
+                ShapeOrder,
+                numComponents>();
+        }
+    }();
+
   using FieldType = decltype(field);
   setVertices(mesh, function, field);
   if constexpr (ShapeOrder == 2) {

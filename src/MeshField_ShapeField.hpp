@@ -95,13 +95,13 @@ struct QuadraticAccessor {
   using BaseType = typename VtxAccessor::BaseType;
 
   KOKKOS_FUNCTION
-  auto &operator()(int node, int component, int entity, Mesh_Topology t) const {
+  auto &operator()(int entity, int node, int component, Mesh_Topology t) const {
     if (t != Vertex && t != Edge) {
       Kokkos::printf("%d is not a support topology\n", t);
       assert(false);
     }
-    return (t == Vertex) ? vtxField(node, component, entity)
-                         : edgeField(node, component, entity);
+    return (t == Vertex) ? vtxField(entity, node, component)
+                         : edgeField(entity, node, component);
   }
 };
 
@@ -164,8 +164,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
                 "CreateLagrangeField only supports single and double precision "
                 "floating point fields\n");
   static_assert(
-      (order == 1 || order == 2 || order == 5),
-      "CreateLagrangeField only supports linear, quadratic, and quintic fields\n");
+      (order == 1 || order == 2),
+      "CreateLagrangeField only supports linear and quadratic fields\n");
   static_assert((dim == 1 || dim == 2 || dim == 3),
                 "CreateLagrangeField only supports 1d, 2d, and 3d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
@@ -251,15 +251,36 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     // clang-format on
     QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
     return qlsf;
+  } else {
+    fail("CreateLagrangeField does not support the specified "
+         "combination of order %d and dimension %d.\n",
+         order, dim);
+    return nullptr; // silence compiler warning
   }
-  else if constexpr (order == 5 && dim == 2) {
+};
 
-  if (meshInfo.numVtx <= 0) {
+template <typename ExecutionSpace,
+          template <typename...>
+          typename Controller = MeshField::KokkosController,
+          typename DataType,
+          size_t dim,
+          size_t numComp>
+auto CreateReducedQuinticField(const MeshInfo &meshInfo)
+{
+  static_assert((std::is_same_v<Real4, DataType> ||
+                 std::is_same_v<Real8, DataType>),
+                "Reduced quintic field supports only float/double");
+
+  static_assert(dim == 2,
+                "Reduced quintic currently implemented only for 2D meshes");
+
+  using MemorySpace = typename ExecutionSpace::memory_space;
+
+  if (meshInfo.numVtx <= 0)
     fail("mesh has no vertices\n");
-  }
-  if (meshInfo.numEdge <= 0) {
+
+  if (meshInfo.numEdge <= 0)
     fail("mesh has no edges\n");
-  }
 
 #ifdef MESHFIELDS_ENABLE_CABANA
 
@@ -268,27 +289,27 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
           Controller<ExecutionSpace, MemorySpace, DataType>,
           MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
       Controller<ExecutionSpace, MemorySpace,
-                 DataType[1][numComp],   // vertices
-                 DataType[1][numComp]>,  // edges
+                 DataType[1][numComp],
+                 DataType[1][numComp]>,
       Controller<MemorySpace, ExecutionSpace,
-                 DataType ***,           // vertices
-                 DataType ***>>;         // edges
+                 DataType ***,
+                 DataType ***>>;
 
   auto createController =
-      [](auto numVtx, auto numEdge) {
-
+      [](auto numVtx, auto numEdge)
+  {
     if constexpr (std::is_same_v<
                       Controller<ExecutionSpace, MemorySpace, DataType>,
                       MeshField::CabanaController<
-                          ExecutionSpace, MemorySpace, DataType>>) {
-
+                          ExecutionSpace, MemorySpace, DataType>>)
+    {
       return Ctrlr({numVtx, numEdge});
-
-    } else {
-
+    }
+    else
+    {
       return Ctrlr({
-          /* field 0 */ numVtx,  1, numComp,
-          /* field 1 */ numEdge, 1, numComp});
+          numVtx,  1, numComp,
+          numEdge, 1, numComp});
     }
   };
 
@@ -300,46 +321,37 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
 
   using Ctrlr =
       Controller<MemorySpace, ExecutionSpace,
-                 DataType ***,  // vertices
-                 DataType ***>; // edges
+                 DataType ***,
+                 DataType ***>;
 
   Ctrlr kk_ctrl({
-      /* field 0 */ meshInfo.numVtx,  1, numComp,
-      /* field 1 */ meshInfo.numEdge, 1, numComp});
+      meshInfo.numVtx,  1, numComp,
+      meshInfo.numEdge, 1, numComp});
 
 #endif
 
   auto vtxField  = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
 
-  // IMPORTANT: reuse QuadraticAccessor (same storage pattern)
   using QA =
       QuadraticAccessor<
           decltype(vtxField),
           decltype(edgeField)>;
 
-  using ReducedQuinticLagrangeShapeField =
+  using ReducedQuinticShapeField =
       ShapeField<
           numComp,
           Ctrlr,
           ReducedQuinticImplicitShape,
           QA>;
 
-  ReducedQuinticLagrangeShapeField rqsf(
+  ReducedQuinticShapeField rqsf(
       kk_ctrl,
       meshInfo,
       {vtxField, edgeField});
 
   return rqsf;
 }
-  
-  else {
-    fail("CreateLagrangeField does not support the specified "
-         "combination of order %d and dimension %d.\n",
-         order, dim);
-    return nullptr; // silence compiler warning
-  }
-};
 
 /**
  * @brief
