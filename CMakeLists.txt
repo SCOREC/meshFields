@@ -36,6 +36,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Field.hpp
   src/MeshField.hpp
   src/MeshField_SPR_ErrorEstimator.hpp
+  src/MeshField_ReducedQuintic.hpp
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp"
 )
 if(MeshFields_USE_Cabana)
@@ -198,6 +199,8 @@ meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(PointMapping test/testPointMapping.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
+meshfields_add_exe(ReducedQuinticTest test/testReducedQuintic.cpp)
+meshfields_add_exe(OmegahReducedQuinticTest test/testOmegahTriReducedQuintic.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
@@ -216,6 +219,8 @@ test_func(CountIntegrator ./CountIntegrator)
 smoke_test_func(OmegahTriTests ./OmegahTriTests)
 test_func(PointMapping ./PointMapping)
 test_func(OmegahTetTest ./OmegahTetTest)
+test_func(ReducedQuinticTest ./ReducedQuinticTest)
+test_func(OmegahReducedQuinticTest ./OmegahReducedQuinticTest)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)

@@ -5,6 +5,7 @@
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
 #include <MeshField_Shape.hpp>
+#include <MeshField_ReducedQuintic.hpp>
 #include <MeshField_Utility.hpp> // getLastValue
 #include <iostream>
 #include <type_traits> // has_static_size helper
@@ -130,13 +131,24 @@ struct FieldElement {
   const FieldAccessor field;
   ShapeType shapeFn;
   ElementDofHolderAccessor elm2dof;
+  Kokkos::View<Real**> elemCoeffs;  // Optional: per-element coefficients for advanced shapes
 
   static const size_t MeshEntDim = ShapeType::meshEntDim;
+  
+  // Standard constructor (for shapes without per-element coefficients)
   FieldElement(size_t numMeshEntsIn, const FieldAccessor &fieldIn,
                const ShapeType shapeFnIn,
                const ElementDofHolderAccessor elm2dofIn)
       : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn),
-        elm2dof(elm2dofIn) {}
+        elm2dof(elm2dofIn), elemCoeffs() {}
+  
+  // Constructor with per-element coefficients (for reduced quintic, etc.)
+  FieldElement(size_t numMeshEntsIn, const FieldAccessor &fieldIn,
+               const ShapeType shapeFnIn,
+               const ElementDofHolderAccessor elm2dofIn,
+               Kokkos::View<Real**> elemCoeffsIn)
+      : numMeshEnts(numMeshEntsIn), field(fieldIn), shapeFn(shapeFnIn),
+        elm2dof(elm2dofIn), elemCoeffs(elemCoeffsIn) {}
   /* general template for baseType which simply sets type
    */
   template <typename T> struct baseType {
@@ -173,16 +185,70 @@ struct FieldElement {
     assert(ent >= 0);
     assert(static_cast<size_t>(ent) < numMeshEnts);
     ValArray c;
-    const auto shapeValues = shapeFn.getValues(localCoord);
+    
+    // Get shape function values
+    // For shapes that require per-element coefficients (e.g., reduced quintic), pass the coefficients to the shape function
+    auto shapeValues = [&]() {
+      if constexpr (std::is_same_v<std::decay_t<decltype(shapeFn)>,
+                                ReducedQuinticTriangleShape>) {
+        assert(elemCoeffs.data() != nullptr);
+        auto coeffSlice = Kokkos::subview(elemCoeffs, ent, Kokkos::ALL());
+        return shapeFn.getValues(localCoord, coeffSlice);
+      } else {
+        return shapeFn.getValues(localCoord);
+      }
+    }();
+    
     for (size_t ci = 0; ci < NumComponents; ++ci)
       c[ci] = 0;
-    for (auto topo : elm2dof.getTopology()) { // element topology
-      for (size_t ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (size_t ci = 0; ci < NumComponents; ++ci) {
-          auto map = elm2dof(ni, ci, ent, topo);
-          const auto fval =
-              field(map.entity, map.node, map.component, map.topo);
-          c[ci] += fval * shapeValues[ni];
+    
+    // For ReducedQuintic, we need to transform DOFs from physical to local coordinates
+    if constexpr (std::is_same_v<std::decay_t<decltype(shapeFn)>,
+                              ReducedQuinticTriangleShape>) {
+      assert(elemCoeffs.data() != nullptr);
+      auto coeffSlice = Kokkos::subview(elemCoeffs, ent, Kokkos::ALL());
+      
+      // Extract rotation parameters from coefficients
+      // elemCoeffs layout: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, ...]
+      const Real sin_theta = coeffSlice(6);
+      const Real cos_theta = coeffSlice(7);
+      
+      for (auto topo : elm2dof.getTopology()) {
+        // ReducedQuintic has 18 nodes: 3 vertices × 6 DOFs per vertex
+        const size_t numVertices = 3;
+        const size_t dofsPerVertex = 6;
+        
+        for (size_t vi = 0; vi < numVertices; ++vi) {
+          // Gather all 6 DOFs for this vertex in physical coordinates
+          Real physicalDofs[6];
+          for (size_t di = 0; di < dofsPerVertex; ++di) {
+            const size_t ni = vi * dofsPerVertex + di;
+            auto map = elm2dof(ni, 0, ent, topo); // ci=0 since ReducedQuintic is scalar
+            physicalDofs[di] = field(map.entity, map.node, map.component, map.topo);
+          }
+          
+          // Transform DOFs to local coordinates and accumulate
+          for (size_t di = 0; di < dofsPerVertex; ++di) {
+            const size_t ni = vi * dofsPerVertex + di;
+            const Real localDof = transformDofPhysicalToLocal(
+                di, sin_theta, cos_theta, physicalDofs);
+            
+            for (size_t ci = 0; ci < NumComponents; ++ci) {
+              c[ci] += localDof * shapeValues[ni];
+            }
+          }
+        }
+      }
+    } else {
+      // Standard DOF gathering for other shape functions
+      for (auto topo : elm2dof.getTopology()) {
+        for (size_t ni = 0; ni < shapeFn.numNodes; ++ni) {
+          for (size_t ci = 0; ci < NumComponents; ++ci) {
+            auto map = elm2dof(ni, ci, ent, topo);
+            const auto fval =
+                field(map.entity, map.node, map.component, map.topo);
+            c[ci] += fval * shapeValues[ni];
+          }
         }
       }
     }
