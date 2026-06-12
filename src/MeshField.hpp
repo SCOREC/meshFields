@@ -319,7 +319,41 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
 }
 
 // ReducedQuintic triangle element with precomputed coefficients
-inline auto getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
+// Functor for extracting triangle vertex coordinates on device
+struct ExtractTriCoords {
+  Omega_h::LOs triVerts_d;
+  Omega_h::Reals coords_d;
+  Kokkos::View<MeshField::Real**> triCoords_d;
+  
+  ExtractTriCoords(Omega_h::LOs triVerts_d_, Omega_h::Reals coords_d_,
+                   Kokkos::View<MeshField::Real**> triCoords_d_)
+    : triVerts_d(triVerts_d_), coords_d(coords_d_), triCoords_d(triCoords_d_) {}
+  
+  KOKKOS_INLINE_FUNCTION
+  void operator()(int tri) const {
+    for (int vi = 0; vi < 3; vi++) {
+      const auto triDim = 2;
+      const auto vtxDim = 0;
+      const auto ignored = -1;
+      const auto localVtxIdx = (Omega_h::simplex_down_template(triDim, vtxDim, vi, ignored) + 2) % 3;
+      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+      const Omega_h::LO vtx = triVerts_d[tri * triToVtxDegree + localVtxIdx];
+      
+      triCoords_d(tri, vi * 2 + 0) = coords_d[vtx * 2 + 0]; // x
+      triCoords_d(tri, vi * 2 + 1) = coords_d[vtx * 2 + 1]; // y
+    }
+  }
+};
+
+// Result type for getReducedQuinticTriangleElement
+struct ReducedQuinticTriangleElementResult {
+  MeshField::ReducedQuinticTriangleShape shp;
+  Omegah::ReducedQuinticTriangleToField map;
+  Kokkos::View<MeshField::Real**> coeffs;
+};
+
+inline ReducedQuinticTriangleElementResult
+getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
   if (mesh.dim() != 2 || mesh.family() != OMEGA_H_SIMPLEX) {
     MeshField::fail("getReducedQuinticTriangleElement requires 2D simplex mesh\n");
   }
@@ -327,39 +361,23 @@ inline auto getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
   const auto numTri = mesh.nfaces();
   const auto coords_d = mesh.coords();
   const auto triVerts_d = mesh.ask_elem_verts();
+  
+  // Allocate device view for triangle vertex coordinates [numTri][6]
+  // Layout: tri*6 + v*2 + d where v in {0,1,2} and d in {0,1} for (x,y)
+  Kokkos::View<MeshField::Real**> triCoords_d("triCoords_device", numTri, 6);
+  
+  // Extract triangle vertex coordinates entirely on device using functor
+  Kokkos::parallel_for(
+      "extractTriCoords", numTri,
+      ExtractTriCoords(triVerts_d, coords_d, triCoords_d));
+  
+  // Precompute coefficients for all triangles entirely on device
+  auto elemCoeffs = MeshField::precomputeReducedQuinticCoefficients(numTri, triCoords_d);
 
-  Omega_h::HostRead triVerts(triVerts_d);
-  Omega_h::HostRead coords(coords_d);
-  
-  // Extract triangle vertex coordinates
-  std::vector<MeshField::Real> triCoords(numTri * 6); // 3 vertices * 2 coords per triangle
-  
-  for (Omega_h::LO tri = 0; tri < numTri; tri++) {
-    for (int vi = 0; vi < 3; vi++) {
-      const auto triDim = 2;
-      const auto vtxDim = 0;
-      const auto ignored = -1;
-      const auto localVtxIdx = (Omega_h::simplex_down_template(triDim, vtxDim, vi, ignored) + 2) % 3;
-      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
-      const Omega_h::LO vtx = triVerts[tri * triToVtxDegree + localVtxIdx];
-      
-      triCoords[tri * 6 + vi * 2 + 0] = coords[vtx * 2 + 0]; // x
-      triCoords[tri * 6 + vi * 2 + 1] = coords[vtx * 2 + 1]; // y
-    }
-  }
-  
-  // Precompute coefficients for all triangles
-  auto elemCoeffs = MeshField::precomputeReducedQuinticCoefficients(numTri, triCoords.data());
-
-  struct result {
-    MeshField::ReducedQuinticTriangleShape shp;
-    ReducedQuinticTriangleToField map;
-    Kokkos::View<MeshField::Real**> coeffs;
-  };
-  
-  return result{MeshField::ReducedQuinticTriangleShape(),
-                ReducedQuinticTriangleToField(mesh),
-                elemCoeffs};
+  return ReducedQuinticTriangleElementResult{
+    MeshField::ReducedQuinticTriangleShape(),
+    Omegah::ReducedQuinticTriangleToField(mesh),
+    elemCoeffs};
 }
 template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);

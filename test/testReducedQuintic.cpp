@@ -355,13 +355,6 @@ bool testFieldEvaluation(const char* testName, Real coords[3][2], Real dofs[18],
             << "(" << coords[1][0] << "," << coords[1][1] << ") "
             << "(" << coords[2][0] << "," << coords[2][1] << ")\n";
   
-  // Precompute coefficients
-  std::vector<Real> triCoords(6);
-  for (int i = 0; i < 3; i++) {
-    triCoords[i*2 + 0] = coords[i][0];
-    triCoords[i*2 + 1] = coords[i][1];
-  }
-  
   // Get geometric parameters
   Real origin[2], a, b, c, sin_theta, cos_theta;
   int order[3];
@@ -375,7 +368,16 @@ bool testFieldEvaluation(const char* testName, Real coords[3][2], Real dofs[18],
     rotateDof(dofs+i*6, sin_theta, cos_theta);
   }
   
-  auto elemCoeffs = precomputeReducedQuinticCoefficients(1, triCoords.data());
+  // Precompute coefficients on device using Kokkos view
+  Kokkos::View<Real**> triCoords_d("triCoords_device", 1, 6);
+  auto triCoords_h = Kokkos::create_mirror_view(triCoords_d);
+  for (int i = 0; i < 3; i++) {
+    triCoords_h(0, i*2 + 0) = coords[i][0];
+    triCoords_h(0, i*2 + 1) = coords[i][1];
+  }
+  Kokkos::deep_copy(triCoords_d, triCoords_h);
+  
+  auto elemCoeffs = precomputeReducedQuinticCoefficients(1, triCoords_d);
   auto elemCoeffs_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), elemCoeffs);
   
   Real tol = 1e-8;

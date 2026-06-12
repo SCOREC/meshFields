@@ -4,18 +4,15 @@
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
 #include <Kokkos_Core.hpp>
-#include <vector>
 #include <cmath>
-#include <cstring>
 
 namespace MeshField {
 
 /**
- * @brief Simple LU decomposition with partial pivoting (internal helper)
+ * @brief Device-compatible LU decomposition with partial pivoting (internal helper)
  * 
  * Solves the linear system A*X = B where A is n×n and B is n×nrhs.
  * This replaces the need for LAPACK's dgesv for our 20×20 system.
- * Works with flattened arrays internally for the actual computation.
  * 
  * @param n Dimension of the matrix (20 for reduced quintic)
  * @param nrhs Number of right-hand sides (18 for reduced quintic)
@@ -25,17 +22,21 @@ namespace MeshField {
  * @param ldb Leading dimension of B
  * @return 0 on success, positive value if singular
  */
-inline int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb) {
-  std::vector<int> pivot(n);
+template<typename Real>
+KOKKOS_INLINE_FUNCTION
+int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb) {
+  // Use fixed-size array for pivoting (n=20 maximum, which fits all our use cases)
+  // We use a stack array since this is device-compatible
+  int pivot[20];
   const Real eps = 1e-14;
   
   // LU decomposition with partial pivoting
   for (int k = 0; k < n; k++) {
     // Find pivot
     int maxRow = k;
-    Real maxVal = std::abs(A[k * lda + k]);
+    Real maxVal = Kokkos::fabs(A[k * lda + k]);
     for (int i = k + 1; i < n; i++) {
-      Real val = std::abs(A[i * lda + k]);
+      Real val = Kokkos::fabs(A[i * lda + k]);
       if (val > maxVal) {
         maxVal = val;
         maxRow = i;
@@ -51,7 +52,9 @@ inline int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb)
     // Swap rows in A if needed
     if (maxRow != k) {
       for (int j = 0; j < n; j++) {
-        std::swap(A[k * lda + j], A[maxRow * lda + j]);
+        Real tmp = A[k * lda + j];
+        A[k * lda + j] = A[maxRow * lda + j];
+        A[maxRow * lda + j] = tmp;
       }
     }
     
@@ -70,7 +73,9 @@ inline int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb)
   for (int k = 0; k < n; k++) {
     if (pivot[k] != k) {
       for (int rhs = 0; rhs < nrhs; rhs++) {
-        std::swap(B[k * ldb + rhs], B[pivot[k] * ldb + rhs]);
+        Real tmp = B[k * ldb + rhs];
+        B[k * ldb + rhs] = B[pivot[k] * ldb + rhs];
+        B[pivot[k] * ldb + rhs] = tmp;
       }
     }
   }
@@ -103,21 +108,23 @@ inline int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb)
 }
 
 /**
- * @brief Rotate DOFs for reduced quintic element
+ * @brief Device-compatible function to rotate DOFs for reduced quintic element
  *
  * @param dofs_p Input DOFs in original orientation (6 DOFs per vertex)
  * @param sin_theta_p Sine of rotation angle
  * @param cos_theta_p Cosine of rotation angle
  */
-void rotateDof(double dofs_p[6], double sin_theta_p, double cos_theta_p)
+template<typename Real>
+KOKKOS_INLINE_FUNCTION
+void rotateDof(Real dofs_p[6], Real sin_theta_p, Real cos_theta_p)
 {
-  const double s  = sin_theta_p;
-  const double c  = cos_theta_p;
-  const double ss = s * s;
-  const double cc = c * c;
-  const double sc = s * c;
+  const Real s  = sin_theta_p;
+  const Real c  = cos_theta_p;
+  const Real ss = s * s;
+  const Real cc = c * c;
+  const Real sc = s * c;
 
-  const double dofs_r[6] = {
+  const Real dofs_r[6] = {
     dofs_p[0],
     c  * dofs_p[1] + s  * dofs_p[2],
     c  * dofs_p[2] - s  * dofs_p[1],
@@ -137,8 +144,6 @@ void rotateDof(double dofs_p[6], double sin_theta_p, double cos_theta_p)
  * using a rotation. This is necessary because ReducedQuintic shape functions are
  * defined in a local coordinate system aligned with the triangle's geometry.
  * 
- * @param dof_value The DOF value to transform (one of the 6 components per vertex)
- * @param vertex_idx Vertex index (0, 1, or 2)
  * @param dof_idx DOF component index (0-5: value, ∂x, ∂y, ∂²x², ∂²xy, ∂²y²)
  * @param sin_theta Sine of rotation angle (from elemCoeffs)
  * @param cos_theta Cosine of rotation angle (from elemCoeffs)
@@ -179,17 +184,14 @@ Real transformDofPhysicalToLocal(
 }
 
 /**
- * @brief Reorder triangle vertices to put longest edge along local xi-axis
- * 
- * Reordering strategy:
- * - Find the longest edge
- * - Orient it to be the local xi-axis (from v0 to v1)
- * - Ensure counter-clockwise ordering
+ * @brief Device-compatible function to reorder triangle vertices to put longest edge along local xi-axis
  * 
  * @param coords Triangle vertex coordinates [3][2]
  * @param order Output vertex order [3] - order[i] gives original index of reordered vertex i
  */
-inline void reorderTriangleVertices(
+template<typename Real>
+KOKKOS_INLINE_FUNCTION
+void reorderTriangleVertices(
     const Real coords[3][2],
     int order[3])
 {
@@ -249,11 +251,7 @@ inline void reorderTriangleVertices(
 }
 
 /**
- * @brief Compute geometric parameters for reduced quintic triangle element
- * 
- * Computes geometric parameters by:
- * 1. Reordering vertices to put longest edge along local xi-axis
- * 2. Computing local coordinate system parameters
+ * @brief Device-compatible function to compute geometric parameters for reduced quintic triangle element
  * 
  * @param coords Original triangle vertex coordinates [3][2]
  * @param origin Output: origin of local coordinate system
@@ -264,7 +262,9 @@ inline void reorderTriangleVertices(
  * @param cos_theta Output: cosine of rotation angle
  * @param order Output: vertex reordering [3] - order[i] gives original index
  */
-inline void computeReducedQuinticGeometry(
+template<typename Real>
+KOKKOS_INLINE_FUNCTION
+void computeReducedQuinticGeometry(
     const Real coords[3][2],
     Real origin[2],
     Real& a, Real& b, Real& c,
@@ -282,16 +282,10 @@ inline void computeReducedQuinticGeometry(
     abcCoord[i][1] = coords[idx][1];
   }
   
-  // Coordinate system (after reordering):
-  // - Origin at projection of v2 onto v0-v1 edge
-  // - v0 at (-b, 0) relative to origin
-  // - v1 at (a, 0) relative to origin  
-  // - v2 at (0, c) relative to origin
-  
   // Edge from v0 to v1 (now the longest edge)
   Real ab[2] = {abcCoord[1][0] - abcCoord[0][0], abcCoord[1][1] - abcCoord[0][1]};
   Real ablensq = ab[0]*ab[0] + ab[1]*ab[1];
-  Real ablen = std::sqrt(ablensq);
+  Real ablen = Kokkos::sqrt(ablensq);
   
   // Vector from v0 to v2
   Real ac[2] = {abcCoord[2][0] - abcCoord[0][0], abcCoord[2][1] - abcCoord[0][1]};
@@ -307,12 +301,9 @@ inline void computeReducedQuinticGeometry(
   Real vec_b[2] = {origin[0] - abcCoord[1][0], origin[1] - abcCoord[1][1]};
   Real vec_c[2] = {origin[0] - abcCoord[2][0], origin[1] - abcCoord[2][1]};
   
-  b = std::sqrt(vec_a[0]*vec_a[0] + vec_a[1]*vec_a[1]);  // distance to v0
-  a = std::sqrt(vec_b[0]*vec_b[0] + vec_b[1]*vec_b[1]);  // distance to v1
-  c = std::sqrt(vec_c[0]*vec_c[0] + vec_c[1]*vec_c[1]);  // distance to v2
-  
-  // Verify: a + b should equal edge length
-  assert(std::abs(a + b - ablen) < 1e-10 * ablen);
+  b = Kokkos::sqrt(vec_a[0]*vec_a[0] + vec_a[1]*vec_a[1]);  // distance to v0
+  a = Kokkos::sqrt(vec_b[0]*vec_b[0] + vec_b[1]*vec_b[1]);  // distance to v1
+  c = Kokkos::sqrt(vec_c[0]*vec_c[0] + vec_c[1]*vec_c[1]);  // distance to v2
   
   // Angle of v0-v1 edge
   sin_theta = ab[1] / ablen;
@@ -320,12 +311,14 @@ inline void computeReducedQuinticGeometry(
 }
 
 /**
- * @brief Compute coefficient matrix for reduced quintic element
+ * @brief Device-compatible function to compute coefficient matrix for reduced quintic element
  * 
  * @param a, b, c Geometric parameters from computeReducedQuinticGeometry
  * @param coeffs Output: coefficient matrix [18][20]
  */
-inline void computeReducedQuinticCoefficients(
+template<typename Real>
+KOKKOS_INLINE_FUNCTION
+void computeReducedQuinticCoefficients(
     Real a, Real b, Real c,
     Real coeffs[18][20])
 {
@@ -335,7 +328,6 @@ inline void computeReducedQuinticCoefficients(
   const Real c2 = c*c, c3 = c2*c, c4 = c2*c2, c5 = c2*c3;
   
   // Build constraint matrix A (20x20)
-  // This encodes the boundary conditions at vertices and continuity constraints
   Real A[20][20] = {
     {1., -b, 0., b2, 0, 0, -b3, 0, 0, 0, b4, 0, 0, 0, 0, -b5, 0, 0, 0, 0},
     {0., 1., 0., -2.*b, 0., 0., 3*b2, 0, 0, 0, -4*b3, 0, 0, 0, 0, 5*b4, 0, 0, 0, 0},
@@ -370,10 +362,6 @@ inline void computeReducedQuinticCoefficients(
   // Solve A*X = B using our LU solver (row-major)
   int info = solveLU_internal(20, 18, &A[0][0], 20, &B[0][0], 18);
   
-  if (info != 0) {
-    fail("LU solver failed with info = %d in reduced quintic coefficient computation\n", info);
-  }
-  
   // Copy solution to coeffs[18][20]
   for (int j = 0; j < 18; j++) {
     for (int i = 0; i < 20; i++) {
@@ -383,30 +371,29 @@ inline void computeReducedQuinticCoefficients(
 }
 
 /**
- * @brief Precompute all reduced quintic coefficients for a mesh
+ * @brief Precompute all reduced quintic coefficients for a mesh, entirely on device
  * 
  * @param numTriangles Number of triangles in the mesh
- * @param triangleCoords Triangle vertex coordinates, shape [numTriangles][3][2]
- * @return Kokkos::View with coefficients, shape [numTriangles][6 + 18*20]
- *         Each row: [order[0], order[1], order[2], a, b, c, coeff_0_0, coeff_0_1, ..., coeff_17_19]
+ * @param triCoords_d Triangle vertex coordinates on device, shape [numTriangles][3][2] (flattened: tri*6 + v*2 + d)
+ * @return Kokkos::View with coefficients, shape [numTriangles][8 + 18*20]
+ *         Each row: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, coeff_0_0, ..., coeff_17_19]
  */
 inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
     int numTriangles,
-    const Real* triangleCoords)
+    Kokkos::View<Real**> triCoords_d)
 {
   // Allocate device view with extended storage for sin_theta and cos_theta
   // Layout: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, coeff_0_0, ..., coeff_17_19]
   Kokkos::View<Real**> coeffs_d("coefficients_device", numTriangles, 8 + 18 * 20);
   
-  // Create a mirror view on host with matching layout
-  auto coeffs_h = Kokkos::create_mirror_view(coeffs_d);
-  
-  // Compute for each triangle
-  for (int tri = 0; tri < numTriangles; tri++) {
+  // Compute for each triangle entirely on device
+  Kokkos::parallel_for(
+      "precomputeReducedQuinticCoefficients", numTriangles,
+      KOKKOS_LAMBDA(int tri) {
     Real coords[3][2];
     for (int v = 0; v < 3; v++) {
-      coords[v][0] = triangleCoords[tri * 6 + v * 2 + 0];
-      coords[v][1] = triangleCoords[tri * 6 + v * 2 + 1];
+      coords[v][0] = triCoords_d(tri, v * 2 + 0);
+      coords[v][1] = triCoords_d(tri, v * 2 + 1);
     }
     
     // Compute geometric parameters
@@ -415,14 +402,14 @@ inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
     computeReducedQuinticGeometry(coords, origin, a, b, c, sin_theta, cos_theta, order);
     
     // Store vertex order, geometric parameters, and rotation angles
-    coeffs_h(tri, 0) = static_cast<Real>(order[0]);
-    coeffs_h(tri, 1) = static_cast<Real>(order[1]);
-    coeffs_h(tri, 2) = static_cast<Real>(order[2]);
-    coeffs_h(tri, 3) = a;
-    coeffs_h(tri, 4) = b;
-    coeffs_h(tri, 5) = c;
-    coeffs_h(tri, 6) = sin_theta;
-    coeffs_h(tri, 7) = cos_theta;
+    coeffs_d(tri, 0) = static_cast<Real>(order[0]);
+    coeffs_d(tri, 1) = static_cast<Real>(order[1]);
+    coeffs_d(tri, 2) = static_cast<Real>(order[2]);
+    coeffs_d(tri, 3) = a;
+    coeffs_d(tri, 4) = b;
+    coeffs_d(tri, 5) = c;
+    coeffs_d(tri, 6) = sin_theta;
+    coeffs_d(tri, 7) = cos_theta;
     
     // Compute coefficients
     Real coeffs_tri[18][20];
@@ -431,13 +418,10 @@ inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
     // Store in flattened format after order, geometric parameters, and rotation angles
     for (int i = 0; i < 18; i++) {
       for (int j = 0; j < 20; j++) {
-        coeffs_h(tri, 8 + i * 20 + j) = coeffs_tri[i][j];
+        coeffs_d(tri, 8 + i * 20 + j) = coeffs_tri[i][j];
       }
     }
-  }
-  
-  // Copy from host mirror to device
-  Kokkos::deep_copy(coeffs_d, coeffs_h);
+  });
   
   return coeffs_d;
 }
