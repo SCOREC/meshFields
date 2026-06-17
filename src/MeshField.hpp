@@ -483,7 +483,12 @@ public:
     return eval;
   }
 
-  // evaluate a ReducedQuintic field at the specified local coordinates for each triangle
+  // Evaluate a ReducedQuintic field at the specified local coordinates for each triangle.
+  //
+  // NOTE: This is separate from triangleLocalPointEval because the ReducedQuintic
+  // element has a different DOF layout and shape function. triangleLocalPointEval
+  // handles standard elements, while ReducedQuintic uses
+  // a different set of degrees of freedom and shape functions.
   template <typename ViewType, typename ShapeField>
   auto triangleReducedQuinticEval(const ViewType &localCoords,
                                   Kokkos::View<LO *> offsets,
