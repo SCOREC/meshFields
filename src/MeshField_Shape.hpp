@@ -336,8 +336,14 @@ struct ReducedQuinticTriangleShape {
     const Real b = elemCoeffs(4);
     const Real c = elemCoeffs(5);
     
+    // Reorder barycentric from meshFields pipeline convention to coords-index convention
+    const Real xi0_ordered = 1.0 - xi[0] - xi[1];  // coords[0]
+    const Real xi1_ordered = xi[0];                 // coords[1]
+    const Real xi2_ordered = xi[1];                 // coords[2]
+    Vector3 xi_ordered = {xi0_ordered, xi1_ordered, xi2_ordered};
+
     // Transform barycentric to local coordinates
-    const auto local = ReducedQuinticHelpers::barycentricToLocal(xi, order, a, b, c);
+    const auto local = ReducedQuinticHelpers::barycentricToLocal(xi_ordered, order, a, b, c);
     const Real xi_local = local[0];
     const Real eta_local = local[1];
     
@@ -396,8 +402,14 @@ struct ReducedQuinticTriangleShape {
     const Real b = elemCoeffs(4);
     const Real c = elemCoeffs(5);
     
+    // Reorder barycentric from meshFields pipeline convention to coords-index convention
+    const Real xi0_ordered = 1.0 - xi[0] - xi[1];  // coords[0]
+    const Real xi1_ordered = xi[0];                 // coords[1]
+    const Real xi2_ordered = xi[1];                 // coords[2]
+    Vector3 xi_ordered = {xi0_ordered, xi1_ordered, xi2_ordered};
+
     // Transform barycentric to local coordinates
-    const auto local = ReducedQuinticHelpers::barycentricToLocal(xi, order, a, b, c);
+    const auto local = ReducedQuinticHelpers::barycentricToLocal(xi_ordered, order, a, b, c);
     const Real xi_local = local[0];
     const Real eta_local = local[1];
     

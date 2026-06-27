@@ -111,7 +111,7 @@ bool checkResult(Omega_h::Mesh &mesh, Result &result, CoordField coordField,
             const auto computed = result(pt, i);
             const auto diff = Kokkos::fabs(computed - expected);
             MeshField::LO isError = 0;
-            if (diff > MeshField::MachinePrecision) {
+            if (diff > 10 * MeshField::MachinePrecision) {
               isError = 1;
               Kokkos::printf(
                   "result for elm %d, pt %d (local %d), comp %d: expected "

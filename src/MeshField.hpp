@@ -291,10 +291,10 @@ struct ReducedQuinticTriangleToField {
         triVerts[(tri * triToVtxDegree) + canonicalVtxIdx];
 
     return {
-        vertexDof,        // node within vertex dof holder
-        triCompIdx,       // field component
-        vtx,              // vertex entity
-        MeshField::Vertex // topology
+        0,                // node within vertex dof holder
+        vertexDof,        // field component (the DOF type)
+        vtx,
+        MeshField::Vertex
     };
   }
 };

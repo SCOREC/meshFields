@@ -397,7 +397,9 @@ bool testFieldEvaluation(const char* testName, Real coords[3][2], Real dofs[18],
     Real lambda1 = ((y2 - y0)*(x - x2) + (x0 - x2)*(y - y2)) / detT;
     Real lambda2 = 1.0 - lambda0 - lambda1;
     
-    Kokkos::Array<Real, 3> bary = {lambda0, lambda1, lambda2};
+    // Reorder to meshFields pipeline convention:
+    // xi[0] → coords[1], xi[1] → coords[2], xi[2] carries coords[0] for completeness
+    Kokkos::Array<Real, 3> bary = {lambda1, lambda2, lambda0};
     
     // Evaluate on host
     ReducedQuinticTriangleShape shape;
