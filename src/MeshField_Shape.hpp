@@ -43,6 +43,7 @@ struct LinearEdgeShape {
   static const size_t meshEntDim = 1;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
   constexpr static size_t Order = 1;
+  using GeometryShape = LinearEdgeShape;
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
@@ -69,6 +70,7 @@ struct LinearTriangleShape {
   static const size_t meshEntDim = 2;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
   constexpr static size_t Order = 1;
+  using GeometryShape = LinearTriangleShape;
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
@@ -96,6 +98,7 @@ struct LinearTriangleCoordinateShape {
   static const size_t meshEntDim = 2;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
   constexpr static size_t Order = 1;
+  using GeometryShape = LinearTriangleCoordinateShape;
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
@@ -114,6 +117,7 @@ struct LinearTetrahedronShape {
   static const size_t meshEntDim = 3;
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
   constexpr static size_t Order = 1;
+  using GeometryShape = LinearTetrahedronShape;
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector4 const &xi) const {
@@ -144,6 +148,7 @@ struct QuadraticTriangleShape {
   constexpr static size_t NumDofHolders[2] = {3, 3};
   constexpr static size_t DofsPerHolder[2] = {1, 1};
   constexpr static size_t Order = 2;
+  using GeometryShape = QuadraticTriangleShape;
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
@@ -183,6 +188,7 @@ struct QuadraticTetrahedronShape {
   constexpr static size_t NumDofHolders[2] = {4, 6};
   constexpr static size_t DofsPerHolder[2] = {1, 1};
   constexpr static size_t Order = 2;
+  using GeometryShape = QuadraticTetrahedronShape;
   // ordering taken from mfem
   // see mfem/mfem fem/fe/fe_fixed_order.cpp @597cba8
   KOKKOS_INLINE_FUNCTION
@@ -320,6 +326,7 @@ struct ReducedQuinticTriangleShape {
   constexpr static size_t NumDofHolders[1] = {3};      // 3 vertices
   constexpr static size_t DofsPerHolder[1] = {6};      // 6 DOFs per vertex
   constexpr static size_t Order = 5;
+  using GeometryShape = LinearTriangleShape;
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi,
@@ -388,6 +395,12 @@ struct ReducedQuinticTriangleShape {
     return N;
   }
 
+  // Computes the local gradients of the Reduced Quintic shape functions.
+  //
+  // These gradients are not currently used in the MeshField evaluation pipeline
+  // because the Reduced Quintic element uses a linear geometric mapping. The
+  // Jacobian is therefore computed from the linear geometry rather than from the
+  // Reduced Quintic shape functions.
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi,
                                                       Kokkos::View<const Real*, Kokkos::LayoutStride> elemCoeffs) const {

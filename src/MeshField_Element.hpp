@@ -273,6 +273,28 @@ struct FieldElement {
     return c;
   }
 
+  // Geometry node array: uses GeometryShape::numNodes
+  // For isoparametric elements, this equals ShapeType::numNodes
+  // For non-isoparametric (e.g., ReducedQuintic), this equals the geometry node count
+  // This would replace the getNodeValues function for Jacobian computation
+  using GeomNodeArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    ShapeType::meshEntDim * ShapeType::GeometryShape::numNodes>;
+  KOKKOS_INLINE_FUNCTION GeomNodeArray getGeometryNodeValues(int ent) const {
+    GeomNodeArray c;
+    for (auto topo : elm2dof.getTopology()) { // element topology
+      for (size_t gni = 0; gni < ShapeType::GeometryShape::numNodes; ++gni) {
+        for (size_t d = 0; d < ShapeType::meshEntDim; ++d) {
+          auto map = elm2dof(gni, d, ent, topo);
+          const auto fval =
+              field(map.entity, map.node, map.component, map.topo);
+          c[gni * ShapeType::meshEntDim + d] = fval;
+        }
+      }
+    }
+    return c;
+  }
+
   /**
    * @brief
    * compute the Jacobian of an edge
@@ -288,10 +310,11 @@ struct FieldElement {
   KOKKOS_INLINE_FUNCTION Real getJacobian1d(int ent) const {
     assert(ent >= 0);
     assert(static_cast<size_t>(ent) < numMeshEnts);
-    const auto nodalGradients = shapeFn.getLocalGradients();
-    const auto nodeValues = getNodeValues(ent);
+    typename ShapeType::GeometryShape geomShape{};
+    const auto nodalGradients = geomShape.getLocalGradients();
+    const auto nodeValues = getGeometryNodeValues(ent);
     auto g = nodalGradients[0] * nodeValues[0];
-    for (size_t i = 1; i < shapeFn.numNodes; ++i) {
+    for (size_t i = 1; i < ShapeType::GeometryShape::numNodes; ++i) {
       g = g + nodalGradients[i] * nodeValues[i];
     }
     return g;
@@ -449,21 +472,24 @@ struct FieldElement {
       Kokkos::View<Real ***> res("result", numPts, MeshEntDim, MeshEntDim);
       Kokkos::deep_copy(res, 0.0); // initialize all entries to zero
 
-      // fill the views of node coordinates and node gradients
-      Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodeCoords(
+      // Use GeometryShape for the geometry mapping gradient (supports non-isoparametric elements)
+      typename ShapeType::GeometryShape geomShape{};
+      const auto geomGrad = geomShape.getLocalGradients();
+
+      // fill the views of geometry node coordinates and geometry node gradients
+      Kokkos::View<Real * [ShapeType::GeometryShape::numNodes][MeshEntDim]> nodeCoords(
           "nodeCoords", numPts);
-      Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients(
+      Kokkos::View<Real * [ShapeType::GeometryShape::numNodes][MeshEntDim]> nodalGradients(
           "nodalGradients", numPts);
-      const auto grad = shapeFn.getLocalGradients();
       Kokkos::parallel_for(
           numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
-            const auto vals = getNodeValues(ent);
-            assert(vals.size() == MeshEntDim * ShapeType::numNodes);
+            const auto vals = getGeometryNodeValues(ent);
+            assert(vals.size() == MeshEntDim * ShapeType::GeometryShape::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-              for (size_t node = 0; node < ShapeType::numNodes; node++) {
+              for (size_t node = 0; node < ShapeType::GeometryShape::numNodes; node++) {
                 for (size_t d = 0; d < MeshEntDim; d++) {
                   nodeCoords(pt, node, d) = vals[node * MeshEntDim + d];
-                  nodalGradients(pt, node, d) = grad[node * MeshEntDim + d];
+                  nodalGradients(pt, node, d) = geomGrad[node * MeshEntDim + d];
                 }
               }
             }
@@ -474,7 +500,7 @@ struct FieldElement {
             // TODO use nested parallel for?
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
               auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
-              for (size_t node = 0; node < ShapeType::numNodes; node++) {
+              for (size_t node = 0; node < ShapeType::GeometryShape::numNodes; node++) {
                 auto a =
                     Kokkos::subview(nodalGradients, pt, node, Kokkos::ALL());
                 auto b = Kokkos::subview(nodeCoords, pt, node, Kokkos::ALL());
