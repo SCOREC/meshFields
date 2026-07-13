@@ -350,10 +350,10 @@ struct FieldElement {
            "must be at least %zu.\n",
            numMeshEnts);
     }
-    if (localCoords.extent(1) != MeshEntDim) {
+    if (localCoords.extent(1) != MeshEntDim + 1) {
       fail("Dimension 1 of the input array of local coordinates "
            "must have size = %zu.\n",
-           MeshEntDim);
+           MeshEntDim + 1);
     }
     if (offsets.size() != numMeshEnts + 1) {
       fail("The input array of offsets must have size = %zu\n",
