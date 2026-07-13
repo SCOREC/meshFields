@@ -41,7 +41,7 @@ Omega_h::Mesh createMeshTet(Omega_h::Library &lib) {
 }
 
 struct TestCoords {
-  Kokkos::View<MeshField::Real *[4]> coords;
+  Kokkos::View<MeshField::Real *[3]> coords;
   size_t NumPtsPerElem;
   std::string name;
 };
@@ -130,18 +130,17 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
 }
 
 template <size_t NumPtsPerElem>
-Kokkos::View<MeshField::Real *[4]>
+Kokkos::View<MeshField::Real *[3]>
 createElmAreaCoords(size_t numElements,
-                    Kokkos::Array<MeshField::Real, 4 * NumPtsPerElem> coords) {
-  Kokkos::View<MeshField::Real *[4]> lc("localCoords",
+                    Kokkos::Array<MeshField::Real, 3 * NumPtsPerElem> coords) {
+  Kokkos::View<MeshField::Real *[3]> lc("localCoords",
                                         numElements * NumPtsPerElem);
   Kokkos::parallel_for(
       "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &elm) {
         for (size_t pt = 0; pt < NumPtsPerElem; pt++) {
-          lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 4 + 0];
-          lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 4 + 1];
-          lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 4 + 2];
-          lc(elm * NumPtsPerElem + pt, 3) = coords[pt * 4 + 3];
+          lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 3 + 0];
+          lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 3 + 1];
+          lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 3 + 2];
         }
       });
   return lc;
@@ -193,17 +192,16 @@ void doRun(Omega_h::Mesh &mesh,
   static const size_t OnePtPerElem = 1;
   static const size_t FourPtsPerElem = 4;
   auto centroids = createElmAreaCoords<OnePtPerElem>(
-      mesh.nregions(), {1 / 4.0, 1 / 4.0, 1 / 4.0, 1 / 4.0});
+      mesh.nregions(), {1 / 4.0, 1 / 4.0, 1 / 4.0});
   auto interior =
-      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.1, 0.4, 0.3, 0.2});
+      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.1, 0.4, 0.3});
   auto vertex =
-      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.0, 0.0, 1.0, 0.0});
+      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.0, 0.0, 1.0});
   // clang-format off
     auto allVertices = createElmAreaCoords<FourPtsPerElem>(mesh.nregions(),
-        {1.0, 0.0, 0.0, 0.0,
-         0.0, 1.0, 0.0, 0.0,
-         0.0, 0.0, 1.0, 0.0,
-         0.0, 0.0, 0.0, 1.0});
+        {1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0});
     const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
                         TestCoords{interior, OnePtPerElem, "interior"},
                         TestCoords{vertex, OnePtPerElem, "vertex"},
