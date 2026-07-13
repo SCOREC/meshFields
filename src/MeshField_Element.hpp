@@ -456,7 +456,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
               isError++;
             sum += localCoords(ent, i);
           }
-          if (Kokkos::fabs(sum - 1) > MachinePrecision)
+          if (sum > 1.0)
             isError++;
           lerrors += isError;
         },
