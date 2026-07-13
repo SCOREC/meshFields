@@ -222,7 +222,8 @@ struct FieldElement {
   KOKKOS_INLINE_FUNCTION Real getJacobian1d(int ent) const {
     assert(ent >= 0);
     assert(static_cast<size_t>(ent) < numMeshEnts);
-    const auto nodalGradients = shapeFn.getLocalGradients();
+    Vector1 ignored;
+    const auto nodalGradients = shapeFn.getLocalGradients(ignored);
     const auto nodeValues = getNodeValues(ent);
     auto g = nodalGradients[0] * nodeValues[0];
     for (size_t i = 1; i < shapeFn.numNodes; ++i) {
@@ -389,12 +390,15 @@ struct FieldElement {
           "nodeCoords", numPts);
       Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients(
           "nodalGradients", numPts);
-      const auto grad = shapeFn.getLocalGradients(); //FIXME - won't work for quadratic shape fns
       Kokkos::parallel_for(
           numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
             const auto vals = getNodeValues(ent);
             assert(vals.size() == MeshEntDim * ShapeType::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+              Kokkos::Array<Real, MeshEntDim> xi;
+              for (size_t d = 0; d < MeshEntDim; d++)
+                xi[d] = localCoords(pt, d);
+              const auto grad = shapeFn.getLocalGradients(xi);
               for (size_t node = 0; node < ShapeType::numNodes; node++) {
                 for (size_t d = 0; d < MeshEntDim; d++) {
                   nodeCoords(pt, node, d) = vals[node * MeshEntDim + d];

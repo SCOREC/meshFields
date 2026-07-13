@@ -127,10 +127,11 @@ struct LinearEdgeShape {
 
   /**
    * @brief Get gradients of shape functions in parametric coordinates
+   * @detail gradients are constant - ignoring parametric coord input
    * @return Array of constant gradients [dN0/dxi, dN1/dxi]
    */
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes> getLocalGradients() const {
+  Kokkos::Array<Real, numNodes> getLocalGradients(Vector1 const &) const {
     // clang-format off
     return {-0.5,
              0.5};
@@ -193,11 +194,12 @@ struct LinearTriangleShape {
 
   /**
    * @brief Get gradients of shape functions
+   * @detail gradients are constant - ignoring parametric coord input
    * @return Array of gradients [dN0/dxi0, dN0/dxi1, dN1/dxi0, dN1/dxi1, dN2/dxi0, dN2/dxi1]
    *         Constant gradients: [[-1,-1], [1,0], [0,1]]
    */
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients(Vector2 const &) const {
     // clang-format off
     return { -1,-1,  //first vector
               1, 0,
@@ -328,7 +330,8 @@ struct QuadraticTriangleShape {
    * @return Array of gradient vectors [dN0/dxi0, dN0/dxi1, ..., dN5/dxi0, dN5/dxi1]
    */
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi) const {
+  Kokkos::Array<Real, meshEntDim * numNodes>
+  getLocalGradients(Vector2 const &xi) const {
     assert(eachLessThanOrEqual(xi,1.0));
     assert(eachGreaterThanOrEqual(xi,0.0));
     const Real L0 = 1 - xi[0] - xi[1];
@@ -407,11 +410,12 @@ struct LinearTetrahedronShape {
 
   /**
    * @brief Get gradients of shape functions in parametric coordinates
+   * @detail gradients are constant - ignoring parametric coord input
    * @return Array of constant gradients [dN0/dxi0, dN0/dxi1, dN0/dxi2, dN1/dxi0, ...]
    *         Constant gradients: [[-1,-1,-1], [1,0,0], [0,1,0], [0,0,1]]
    */
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients() const {
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients(Vector3 const &) const {
     // clang-format off
     return {-1, -1, -1,
              1,  0,  0,
@@ -506,7 +510,8 @@ struct QuadraticTetrahedronShape {
    * @return Array of gradient vectors [dN0/dxi0, dN0/dxi1, dN0/dxi2, ..., dN9/dxi0, dN9/dxi1, dN9/dxi2]
    */
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Vector3, numNodes> getLocalGradients(Vector3 const &xi) const {
+  Kokkos::Array<Real, meshEntDim * numNodes>
+  getLocalGradients(Vector3 const &xi) const {
     assert(eachLessThanOrEqual(xi,1.0));
     assert(eachGreaterThanOrEqual(xi,0.0));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
