@@ -388,7 +388,7 @@ struct FieldElement {
           "nodeCoords", numPts);
       Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients(
           "nodalGradients", numPts);
-      const auto grad = shapeFn.getLocalGradients();
+      const auto grad = shapeFn.getLocalGradients(); //FIXME - won't work for quadratic shape fns
       Kokkos::parallel_for(
           numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
             const auto vals = getNodeValues(ent);
