@@ -169,7 +169,7 @@ struct FieldElement {
    * @return the result of evaluation
    */
   KOKKOS_INLINE_FUNCTION ValArray
-  getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
+  getValue(int ent, Kokkos::Array<Real, MeshEntDim> localCoord) const {
     assert(ent >= 0);
     assert(static_cast<size_t>(ent) < numMeshEnts);
     ValArray c;
@@ -490,7 +490,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
   Kokkos::View<Real *[numComponents]> res("result", numPts);
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-        Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
+        Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
         // TODO use nested parallel for?
         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
           for (size_t i = 0; i < localCoords.extent(1); i++) // better way?
