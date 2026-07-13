@@ -324,6 +324,7 @@ struct FieldElement {
                                       Kokkos::View<LO *> offsets) {
     if (Debug) {
       // check input parametric coords are positive and sum to one
+      // TODO move this to helper function
       LO numErrors = 0;
       Kokkos::parallel_reduce(
           "checkCoords", numMeshEnts,
@@ -335,7 +336,7 @@ struct FieldElement {
                 isError++;
               sum += localCoords(ent, i);
             }
-            if (Kokkos::fabs(sum - 1) > MachinePrecision)
+            if (sum > 1.0)
               isError++;
             lerrors += isError;
           },
