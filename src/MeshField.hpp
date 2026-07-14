@@ -220,6 +220,8 @@ struct QuadraticTetrahedronToField {
       const auto tetDim = 3;
       const auto vtxDim = 0;
       const auto ignored = -1;
+      // cyclic rotation of the omegah vertex order to map to the meshfields order
+      // defined by the shape functions in MeshField_Shape.hpp
       const auto localVtxIdx = (Omega_h::simplex_down_template(
                                     tetDim, vtxDim, dofHolderIdx, ignored) +
                                 3) %
