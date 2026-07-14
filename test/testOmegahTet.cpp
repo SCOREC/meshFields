@@ -191,6 +191,7 @@ void doRun(Omega_h::Mesh &mesh,
   // setup field with values from the analytic function
   static const size_t OnePtPerElem = 1;
   static const size_t FourPtsPerElem = 4;
+  static const size_t TenPtsPerElem = 10;
   auto centroids = createElmAreaCoords<OnePtPerElem>(
       mesh.nregions(), {1 / 4.0, 1 / 4.0, 1 / 4.0});
   auto interior =
@@ -202,11 +203,28 @@ void doRun(Omega_h::Mesh &mesh,
         {1.0, 0.0, 0.0,
          0.0, 1.0, 0.0,
          0.0, 0.0, 1.0});
-    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
-                        TestCoords{interior, OnePtPerElem, "interior"},
-                        TestCoords{vertex, OnePtPerElem, "vertex"},
-                        TestCoords{allVertices, FourPtsPerElem, "allVertices"}};
   // clang-format on
+  // one point per node (vertices + edge midpoints) of the quadratic
+  // tetrahedron, in the shape function's own canonical node ordering - this
+  // verifies field evaluation at edge dof holders against the true
+  // physical edge midpoint
+  const auto quadNodeXi =
+      MeshField::QuadraticTetrahedronShape().getNodeParametricCoords();
+  auto allNodes = createElmAreaCoords<TenPtsPerElem>(
+      mesh.nregions(),
+      {quadNodeXi[0],  quadNodeXi[1],  quadNodeXi[2],  quadNodeXi[3],
+       quadNodeXi[4],  quadNodeXi[5],  quadNodeXi[6],  quadNodeXi[7],
+       quadNodeXi[8],  quadNodeXi[9],  quadNodeXi[10], quadNodeXi[11],
+       quadNodeXi[12], quadNodeXi[13], quadNodeXi[14], quadNodeXi[15],
+       quadNodeXi[16], quadNodeXi[17], quadNodeXi[18], quadNodeXi[19],
+       quadNodeXi[20], quadNodeXi[21], quadNodeXi[22], quadNodeXi[23],
+       quadNodeXi[24], quadNodeXi[25], quadNodeXi[26], quadNodeXi[27],
+       quadNodeXi[28], quadNodeXi[29]});
+  const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
+                      TestCoords{interior, OnePtPerElem, "interior"},
+                      TestCoords{vertex, OnePtPerElem, "vertex"},
+                      TestCoords{allVertices, FourPtsPerElem, "allVertices"},
+                      TestCoords{allNodes, TenPtsPerElem, "allNodes"}};
 
   auto coords = mesh.coords();
   for (auto testCase : cases) {
