@@ -121,6 +121,12 @@ message(STATUS "MeshFields_IS_TESTING: ${MeshFields_IS_TESTING}")
 
 #check for valgrind
 find_program(VALGRIND_CMD valgrind DOC "Location of the valgrind program")
+option(MeshFields_USE_VALGRIND "Run tests under valgrind" OFF)
+message(STATUS "MeshFields_USE_VALGRIND: ${MeshFields_USE_VALGRIND}")
+if(MESHFields_USE_VALGRIND AND NOT VALGRIND_CMD)
+  message(FATAL_ERROR "MeshFields_USE_VALGRIND enabled but valgrind binary
+                       not found VALGRIND_CMD=${VALGRIND_CMD}")
+endif()
 
 #tests
 function(test_func_impl TEST_NAME)
@@ -143,7 +149,11 @@ endfunction(smoke_test_func)
 
 function(test_func TEST_NAME)
   if(MeshFields_IS_TESTING)
-    test_func_impl(${TEST_NAME} ${ARGN})
+    if(MeshFields_USE_VALGRIND AND VALGRIND_CMD)
+      test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
+    else()
+      test_func_impl(${TEST_NAME} ${ARGN})
+    endif()
   endif()
 endfunction(test_func)
 
