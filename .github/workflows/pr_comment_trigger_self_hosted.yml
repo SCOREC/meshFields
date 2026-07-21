@@ -47,7 +47,7 @@ jobs:
           echo "workDir $workDir"
 
           # kokkos
-          git clone -b develop https://github.com/kokkos/kokkos.git ${workDir}/kokkos
+          git clone --depth 1 --branch 5.1.1 https://github.com/Kokkos/kokkos.git ${workDir}/kokkos
           kkbdir=${workDir}/build-kokkos
           cmake -S ${workDir}/kokkos -B $kkbdir \
             -DCMAKE_BUILD_TYPE=Release \
