@@ -301,7 +301,7 @@ public:
 
   template <typename DataType, size_t order, size_t numComp>
   // Ordering of field indexing changed to 'entity, node, component'
-  auto CreateLagrangeField() {
+  auto CreateLagrangeField() const {
     return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
                                           order, dim, numComp>(meshInfo);
   }
@@ -309,7 +309,7 @@ public:
   auto getCoordField() { return coordField; }
 
   // FIXME support 2d and 3d and fields with order>1
-  template <typename Field> void writeVtk(Field &field) {
+  template <typename Field> void writeVtk(Field &field) const {
     using FieldDataType = typename decltype(field.vtxField)::BaseType;
     // HACK assumes there is a vertex field.. in the Field Mixin object
     auto field_view = field.vtxField.serialize();
@@ -320,7 +320,7 @@ public:
   }
 
   template <typename ViewType = Kokkos::View<MeshField::LO *>>
-  ViewType createOffsets(size_t numTri, size_t numPtsPerElem) {
+  ViewType createOffsets(size_t numTri, size_t numPtsPerElem) const {
     ViewType offsets("offsets", numTri + 1);
     Kokkos::parallel_for(
         "setOffsets", numTri,
@@ -332,8 +332,8 @@ public:
 
   // evaluate a field at the specified local coordinate for each triangle
   template <typename ViewType, typename ShapeField>
-  auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                              ShapeField field) {
+  auto triangleLocalPointEval(const ViewType &localCoords, size_t NumPtsPerElem,
+                              const ShapeField &field) const {
     auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
     auto eval = triangleLocalPointEval<ViewType, ShapeField>(localCoords,
                                                              offsets, field);
@@ -342,8 +342,9 @@ public:
 
   // evaluate a field at the specified local coordinates for each triangle
   template <typename ViewType, typename ShapeField>
-  auto triangleLocalPointEval(ViewType localCoords, Kokkos::View<LO *> offsets,
-                              ShapeField field) {
+  auto triangleLocalPointEval(const ViewType &localCoords,
+                              Kokkos::View<LO *> offsets,
+                              const ShapeField &field) const {
     const auto MeshDim = 2;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");
@@ -362,16 +363,18 @@ public:
   }
 
   template <typename ViewType, typename ShapeField>
-  auto tetrahedronLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                                 ShapeField field) {
+  auto tetrahedronLocalPointEval(const ViewType &localCoords,
+                                 size_t NumPtsPerElem,
+                                 const ShapeField &field) const {
     auto offsets = createOffsets(meshInfo.numTet, NumPtsPerElem);
     auto eval = tetrahedronLocalPointEval(localCoords, offsets, field);
     return eval;
   }
 
   template <typename ViewType, typename ShapeField>
-  auto tetrahedronLocalPointEval(ViewType localCoords,
-                                 Kokkos::View<LO *> offsets, ShapeField field) {
+  auto tetrahedronLocalPointEval(const ViewType &localCoords,
+                                 Kokkos::View<LO *> offsets,
+                                 const ShapeField &field) const {
     const auto MeshDim = 3;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 3d\n");

@@ -17,5 +17,6 @@ enum Mesh_Topology {
 };
 static bool Debug = false;
 const Real MachinePrecision = 1e-15;
+const Real Epsilon = 1e-12;
 } // namespace MeshField
 #endif
