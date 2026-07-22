@@ -55,17 +55,14 @@ struct MeshInfo {
  * @param meshInfoIn defines on-process mesh metadata
  * @param mixins object(s) needed to construct the Accessor
  */
-template <size_t numCompIn, typename MeshFieldType, typename Shape,
-          typename... Mixins>
+template <size_t numCompIn, typename Shape, typename... Mixins>
 struct ShapeField : public Mixins... {
-  MeshFieldType meshField;
   Shape shape;
   static const size_t numComp = numCompIn;
   const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
-  ShapeField(MeshFieldType &meshFieldIn, const MeshInfo &meshInfoIn,
-             Mixins... mixins)
-      : meshField(meshFieldIn), meshInfo(meshInfoIn), Mixins(mixins)... {};
+  ShapeField(const MeshInfo &meshInfoIn, Mixins... mixins)
+      : meshInfo(meshInfoIn), Mixins(mixins)... {};
 };
 
 /**
@@ -200,11 +197,11 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     using LA = LinearAccessor<decltype(vtxField)>;
     // clang-format off
     using LinearLagrangeShapeField = std::conditional_t<
-        dim == 3, 
-        ShapeField<numComp, Ctrlr, LinearTetrahedronShape, LA>,
-        ShapeField<numComp, Ctrlr, LinearTriangleShape, LA>>;
+        dim == 3,
+        ShapeField<numComp, LinearTetrahedronShape, LA>,
+        ShapeField<numComp, LinearTriangleShape, LA>>;
     // clang-format on
-    LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
+    LinearLagrangeShapeField llsf(meshInfo, {vtxField});
     return llsf;
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
     if (meshInfo.numVtx <= 0) {
@@ -245,11 +242,11 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
     // clang-format off
     using QuadraticLagrangeShapeField = std::conditional_t<
-        dim == 3, 
-        ShapeField<numComp, Ctrlr, QuadraticTetrahedronShape, QA>,
-        ShapeField<numComp, Ctrlr, QuadraticTriangleShape, QA>>;
+        dim == 3,
+        ShapeField<numComp, QuadraticTetrahedronShape, QA>,
+        ShapeField<numComp, QuadraticTriangleShape, QA>>;
     // clang-format on
-    QuadraticLagrangeShapeField qlsf(kk_ctrl, meshInfo, {vtxField, edgeField});
+    QuadraticLagrangeShapeField qlsf(meshInfo, {vtxField, edgeField});
     return qlsf;
   } else {
     fail("CreateLagrangeField does not support the specified "
@@ -312,8 +309,8 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   using LA = LinearAccessor<decltype(vtxField)>;
   using LinearLagrangeShapeField =
-      ShapeField<dim, Ctrlr, LinearTriangleShape, LA>;
-  LinearLagrangeShapeField llsf(kk_ctrl, meshInfo, {vtxField});
+      ShapeField<dim, LinearTriangleShape, LA>;
+  LinearLagrangeShapeField llsf(meshInfo, {vtxField});
   return llsf;
 };
 

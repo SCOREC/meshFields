@@ -58,9 +58,6 @@ target_include_directories(meshfields
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshfields INTERFACE Kokkos::kokkos)
 target_link_libraries(meshfields INTERFACE Omega_h::omega_h)
-if(Kokkos_ENABLE_CUDA)
-  target_compile_options(meshfields INTERFACE "--expt-relaxed-constexpr")
-endif()
 
 #enable/disable exceptions
 option(MeshFields_USE_EXCEPTIONS "Enable throwing exceptions" ON)
