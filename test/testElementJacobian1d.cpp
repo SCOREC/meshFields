@@ -56,7 +56,7 @@ void edgeJacobian() {
                             MeshField::LinearEdgeShape(),
                             LinearEdgeToVertexField());
 
-  Kokkos::View<MeshField::Real *[2]> lc("localCoords", 1);
+  Kokkos::View<MeshField::Real *[1]> lc("localCoords", 1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
   const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);

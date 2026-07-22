@@ -470,6 +470,9 @@ countNodesOn - return the number of nodes associated with the given entity type
 getOrder - get polynomial order of shape function scheme
 
 getNodeXi - get the parametric coordinates of a given node for a given entity type
+          - note, that all entities, except the edge, use a range between 0 and
+            1 (inclusive).  Edge uses -1 to 1 (inclusive).  See
+            https://github.com/SCOREC/core/blob/83dfbb2175bc9434f20959fc11b72a785e046c3d/apf/apfShape.cc#L1106-L1129
 
 getNodeTangent - get the tangent vector of a node for a given entity type
 
