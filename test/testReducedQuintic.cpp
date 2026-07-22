@@ -35,7 +35,7 @@ bool testSolveLU() {
   // A = [2  1  0]    b = [3]    Expected solution: x = [1]
   //     [0  2  1]        [3]                            [1]
   //     [0  0  2]        [2]                            [1]
-  // Verification: Row 1: 2(1)+1(1)+0(1)=3 ✓, Row 2: 0(1)+2(1)+1(1)=3 ✓, Row 3: 0(1)+0(1)+2(1)=2 ✓
+  // Verification: Row 1: 2(1)+1(1)+0(1)=3 OK, Row 2: 0(1)+2(1)+1(1)=3 OK, Row 3: 0(1)+0(1)+2(1)=2 OK
   
   const int n = 3;
   Real A[9] = {2, 1, 0,
@@ -48,7 +48,7 @@ bool testSolveLU() {
   int info = solveLU_internal(n, 1, A, n, b, 1);
   
   if (info != 0) {
-    std::cout << "  ❌ FAILED: LU solver returned error code " << info << "\n\n";
+    std::cout << "  [FAIL] FAILED: LU solver returned error code " << info << "\n\n";
     return false;
   }
   
@@ -67,9 +67,9 @@ bool testSolveLU() {
   }
   
   if (passed) {
-    std::cout << "  ✓ PASSED\n\n";
+    std::cout << "  [PASS] PASSED\n\n";
   } else {
-    std::cout << "  ❌ FAILED: Solution exceeds tolerance\n\n";
+    std::cout << "  [FAIL] FAILED: Solution exceeds tolerance\n\n";
   }
   
   return passed;
@@ -113,26 +113,26 @@ bool testGeometryComputation() {
   // Check that longest edge is preserved
   Real longest_edge = 5.0;  // sqrt((4-0)^2 + (0-3)^2) = 5
   if (std::abs(a + b - longest_edge) > tol) {
-    std::cout << "  ❌ a + b != longest edge length (expected " << longest_edge << ", got " << (a+b) << ")\n";
+    std::cout << "  [FAIL] a + b != longest edge length (expected " << longest_edge << ", got " << (a+b) << ")\n";
     passed = false;
   }
   
   // Just verify basic properties rather than exact values
   // since the exact values depend on the reordering logic
   if (a < 0 || b < 0 || c < 0) {
-    std::cout << "  ❌ Negative geometric parameters\n";
+    std::cout << "  [FAIL] Negative geometric parameters\n";
     passed = false;
   }
   
   if (std::abs(sin_theta*sin_theta + cos_theta*cos_theta - 1.0) > tol) {
-    std::cout << "  ❌ sin²θ + cos²θ != 1\n";
+    std::cout << "  [FAIL] sin^2θ + cos^2θ != 1\n";
     passed = false;
   }
   
   if (passed) {
-    std::cout << "  ✓ PASSED\n\n";
+    std::cout << "  [PASS] PASSED\n\n";
   } else {
-    std::cout << "  ❌ FAILED\n\n";
+    std::cout << "  [FAIL] FAILED\n\n";
   }
   
   return passed;
@@ -183,7 +183,7 @@ bool testCoordinateTransformation()
               << msg
               << " actual=" << actual
               << " expected=" << expected
-              << (ok ? " ✓" : " ❌")
+              << (ok ? " [PASS]" : " [FAIL]")
               << "\n";
 
     return ok;
@@ -325,9 +325,9 @@ bool testCoordinateTransformation()
   std::cout << "\n";
 
   if (passed)
-    std::cout << "✓ Coordinate transform tests PASSED\n";
+    std::cout << "[PASS] Coordinate transform tests PASSED\n";
   else
-    std::cout << "❌ Coordinate transform tests FAILED\n";
+    std::cout << "[FAIL] Coordinate transform tests FAILED\n";
 
   std::cout << "\n";
 
@@ -453,21 +453,21 @@ bool testFieldEvaluation(const char* testName, Real coords[3][2], Real dofs[18],
     Real err_dy = std::abs(dfdy - evalPoints[p].expected_dy);
     
     if (err_val > tol || err_dx > tol || err_dy > tol) {
-      std::cout << "  ❌ Point (" << physCoord[0] << ", " << physCoord[1] << "):\n";
+      std::cout << "  [FAIL] Point (" << physCoord[0] << ", " << physCoord[1] << "):\n";
       std::cout << "    f:     " << f_val << " (expected: " << evalPoints[p].expected_value 
                 << ", error: " << err_val << ")\n";
-      std::cout << "    ∂f/∂x: " << dfdx << " (expected: " << evalPoints[p].expected_dx 
+      std::cout << "    \\partial f/\\partial x: " << dfdx << " (expected: " << evalPoints[p].expected_dx 
                 << ", error: " << err_dx << ")\n";
-      std::cout << "    ∂f/∂y: " << dfdy << " (expected: " << evalPoints[p].expected_dy 
+      std::cout << "    \\partial f/\\partial y: " << dfdy << " (expected: " << evalPoints[p].expected_dy 
                 << ", error: " << err_dy << ")\n";
       passed = false;
     }
   }
   
   if (passed) {
-    std::cout << "  ✓ PASSED\n\n";
+    std::cout << "  [PASS] PASSED\n\n";
   } else {
-    std::cout << "  ❌ FAILED\n\n";
+    std::cout << "  [FAIL] FAILED\n\n";
     fail("testFieldEvaluation: \"%s\" FAILED", testName);
   }
   
@@ -559,18 +559,18 @@ int main(int argc, char** argv) {
                                        coords, dofs, evalPoints, 3, lib);
     }
     
-    // Test 7: Quadratic field f=x²
-    std::cout << "Test 7: Quadratic field (f=x²)\n";
+    // Test 7: Quadratic field f=x^2
+    std::cout << "Test 7: Quadratic field (f=x^2)\n";
     std::cout << "===============================\n";
     {
       Real coords[3][2] = {{0, 0}, {4, 0}, {0, 3}};
       Real dofs[18];
       for (int i = 0; i < 3; i++) {
         Real x = coords[i][0];
-        dofs[i*6 + 0] = x * x;   // f = x²
+        dofs[i*6 + 0] = x * x;   // f = x^2
         dofs[i*6 + 1] = 2.0 * x; // df/dx = 2x
         dofs[i*6 + 2] = 0.0;     // df/dy = 0
-        dofs[i*6 + 3] = 2.0;     // d²f/dx² = 2
+        dofs[i*6 + 3] = 2.0;     // d^2f/dx^2 = 2
         dofs[i*6 + 4] = 0.0;
         dofs[i*6 + 5] = 0.0;
       }
@@ -578,12 +578,12 @@ int main(int argc, char** argv) {
         {{4.0/3.0, 1.0}, (4.0/3.0)*(4.0/3.0), 2.0*(4.0/3.0), 0.0},
         {{2.0, 0.0}, 4.0, 4.0, 0.0}
       };
-      allPassed &= testFieldEvaluation("Quadratic field f=x²", 
+      allPassed &= testFieldEvaluation("Quadratic field f=x^2", 
                                        coords, dofs, evalPoints, 2, lib);
     }
     
-    // Test 8: Quadratic field f=x²+y² on general triangle
-    std::cout << "Test 8: Quadratic field on general triangle (f=x²+y²)\n";
+    // Test 8: Quadratic field f=x^2+y^2 on general triangle
+    std::cout << "Test 8: Quadratic field on general triangle (f=x^2+y^2)\n";
     std::cout << "======================================================\n";
     {
       Real coords[3][2] = {{1, 1}, {5, 1}, {2, 4}};
@@ -591,18 +591,18 @@ int main(int argc, char** argv) {
       for (int i = 0; i < 3; i++) {
         Real x = coords[i][0];
         Real y = coords[i][1];
-        dofs[i*6 + 0] = x*x + y*y;  // f = x² + y²
+        dofs[i*6 + 0] = x*x + y*y;  // f = x^2 + y^2
         dofs[i*6 + 1] = 2.0*x;      // df/dx = 2x
         dofs[i*6 + 2] = 2.0*y;      // df/dy = 2y
-        dofs[i*6 + 3] = 2.0;        // d²f/dx² = 2
-        dofs[i*6 + 4] = 0.0;        // d²f/dxdy = 0
-        dofs[i*6 + 5] = 2.0;        // d²f/dy² = 2
+        dofs[i*6 + 3] = 2.0;        // d^2f/dx^2 = 2
+        dofs[i*6 + 4] = 0.0;        // d^2f/dxdy = 0
+        dofs[i*6 + 5] = 2.0;        // d^2f/dy^2 = 2
       }
       EvalPoint evalPoints[] = {
         {{8.0/3.0, 2.0}, (8.0/3.0)*(8.0/3.0) + 4.0, 2.0*(8.0/3.0), 4.0},
         {{3.0, 1.0}, 10.0, 6.0, 2.0}
       };
-      allPassed &= testFieldEvaluation("Quadratic field f=x²+y²", 
+      allPassed &= testFieldEvaluation("Quadratic field f=x^2+y^2", 
                                        coords, dofs, evalPoints, 2, lib);
     }
 
@@ -619,9 +619,9 @@ int main(int argc, char** argv) {
         dofs[i*6 + 0] = x * y;   // f
         dofs[i*6 + 1] = y;       // df/dx
         dofs[i*6 + 2] = x;       // df/dy
-        dofs[i*6 + 3] = 0.0;     // d²f/dx²
-        dofs[i*6 + 4] = 1.0;     // d²f/dxdy
-        dofs[i*6 + 5] = 0.0;     // d²f/dy²
+        dofs[i*6 + 3] = 0.0;     // d^2f/dx^2
+        dofs[i*6 + 4] = 1.0;     // d^2f/dxdy
+        dofs[i*6 + 5] = 0.0;     // d^2f/dy^2
       }
 
       EvalPoint evalPoints[] = {
@@ -656,9 +656,9 @@ int main(int argc, char** argv) {
     
     std::cout << "\n====================================\n";
     if (allPassed) {
-      std::cout << "✓ All tests PASSED\n";
+      std::cout << "[PASS] All tests PASSED\n";
     } else {
-      std::cout << "❌ Some tests FAILED\n";
+      std::cout << "[FAIL] Some tests FAILED\n";
     }
     std::cout << "====================================\n";
   }

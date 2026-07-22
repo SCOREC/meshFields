@@ -144,7 +144,7 @@ void rotateDof(Real dofs_p[6], Real sin_theta_p, Real cos_theta_p)
  * using a rotation. This is necessary because ReducedQuintic shape functions are
  * defined in a local coordinate system aligned with the triangle's geometry.
  * 
- * @param dof_idx DOF component index (0-5: value, ∂x, ∂y, ∂²x², ∂²xy, ∂²y²)
+ * @param dof_idx DOF component index (0-5: value, dx, dy, d^2x^2, d^2xy, d^2y^2)
  * @param sin_theta Sine of rotation angle (from elemCoeffs)
  * @param cos_theta Cosine of rotation angle (from elemCoeffs)
  * @param allDofs Array of all 6 DOFs for this vertex in physical coordinates
@@ -168,15 +168,15 @@ Real transformDofPhysicalToLocal(
   switch (dof_idx) {
     case 0: // value - unchanged
       return allDofs[0];
-    case 1: // ∂/∂x → ∂/∂ξ
+    case 1: // d/dx -> d/dxi
       return c * allDofs[1] + s * allDofs[2];
-    case 2: // ∂/∂y → ∂/∂η
+    case 2: // d/dy -> d/deta
       return c * allDofs[2] - s * allDofs[1];
-    case 3: // ∂²/∂x²
+    case 3: // d^2/dx^2
       return cc * allDofs[3] + 2*sc * allDofs[4] + ss * allDofs[5];
-    case 4: // ∂²/∂x∂y
+    case 4: // d^2/dxdy
       return -sc * allDofs[3] + (cc - ss) * allDofs[4] + sc * allDofs[5];
-    case 5: // ∂²/∂y²
+    case 5: // d^2/dy^2
       return ss * allDofs[3] - 2*sc * allDofs[4] + cc * allDofs[5];
     default:
       return allDofs[dof_idx];

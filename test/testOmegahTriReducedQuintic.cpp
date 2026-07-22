@@ -19,8 +19,8 @@ struct LinearFunction {
   MeshField::Real operator()(MeshField::Real x, MeshField::Real y) const {
     return 2.0 * x + y;
   }
-  // ∂f/∂x = 2.0, ∂f/∂y = 1.0
-  // ∂²f/∂x² = 0.0, ∂²f/∂xy = 0.0, ∂²f/∂y² = 0.0
+  // \partial f/\partial x = 2.0, \partial f/\partial y = 1.0
+  // \partial^2 f/\partial x^2 = 0.0, \partial^2 f/\partial xy = 0.0, \partial^2 f/\partial y^2 = 0.0
   static constexpr MeshField::Real dfdx = 2.0;
   static constexpr MeshField::Real dfdy = 1.0;
   static constexpr MeshField::Real d2fdx2 = 0.0;
@@ -33,8 +33,8 @@ struct QuadraticFunction {
   MeshField::Real operator()(MeshField::Real x, MeshField::Real y) const {
     return (x * x) + (2.0 * y);
   }
-  // ∂f/∂x = 2x, ∂f/∂y = 2.0
-  // ∂²f/∂x² = 2.0, ∂²f/∂xy = 0.0, ∂²f/∂y² = 0.0
+  // \partial f/\partial x = 2x, \partial f/\partial y = 2.0
+  // \partial^2 f/\partial x^2 = 2.0, \partial^2 f/\partial xy = 0.0, \partial^2 f/\partial y^2 = 0.0
 };
 
 Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
@@ -147,8 +147,8 @@ void setReducedQuinticDOFs(Omega_h::Mesh &mesh, AnalyticFunction func,
       field(vtx, 0, 5, MeshField::Vertex) = AnalyticFunction::d2fdy2;
     } else {
       // QuadraticFunction: f(x,y) = x^2 + 2y
-      // ∂f/∂x = 2x, ∂f/∂y = 2
-      // ∂²f/∂x² = 2, ∂²f/∂xy = 0, ∂²f/∂y² = 0
+      // \partial f/\partial x = 2x, \partial f/\partial y = 2
+      // \partial^2 f/\partial x^2 = 2, \partial^2 f/\partial xy = 0, \partial^2 f/\partial y^2 = 0
       field(vtx, 0, 1, MeshField::Vertex) = 2.0 * x;
       field(vtx, 0, 2, MeshField::Vertex) = 2.0;
       field(vtx, 0, 3, MeshField::Vertex) = 2.0;

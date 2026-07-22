@@ -293,7 +293,7 @@ namespace ReducedQuinticHelpers {
  * @brief Reduced quintic triangle element
  * 
  * This element uses 18 nodes (3 vertices × 6 DOFs per vertex):
- * - DOFs per vertex: [value, ∂/∂x, ∂/∂y, ∂²/∂x², ∂²/∂x∂y, ∂²/∂y²]
+ * - DOFs per vertex: [value, d/dx, d/dy, d^2/dx^2, d^2/dxdy, d^2/dy^2]
  * - Polynomial order: 5 (20-term basis: xi^i * eta^j for i+j ≤ 5)
  * 
  * COORDINATE TRANSFORMATION:
