@@ -292,13 +292,23 @@ namespace ReducedQuinticHelpers {
 /**
  * @brief Reduced quintic triangle element
  * 
+ * Implements the method described in:
+ *   S.C. Jardin, "A triangular finite element with first-derivative continuity
+ *   applied to fusion MHD applications," Journal of Computational Physics,
+ *   Volume 200, Issue 1, 2004, Pages 133-152,
+ *   https://doi.org/10.1016/j.jcp.2004.04.004.
+ * 
+ * This implementation follows the M3DC1 codebase and uses a per-element local
+ * coordinate system. Unlike standard reference-element shapes (LinearTriangle,
+ * QuadraticTriangle, etc.), each ReducedQuintic element has geometry-dependent
+ * shape functions.
+ * 
  * This element uses 18 nodes (3 vertices × 6 DOFs per vertex):
  * - DOFs per vertex: [value, d/dx, d/dy, d^2/dx^2, d^2/dxdy, d^2/dy^2]
  * - Polynomial order: 5 (20-term basis: xi^i * eta^j for i+j ≤ 5)
  * 
  * COORDINATE TRANSFORMATION:
- * This element uses element-specific local coordinates based on triangle geometry.
- * 
+ * The longest triangle edge is reordered to lie along the local xi-axis.
  * The origin is placed at the foot of perpendicular from v2 onto the v0-v1 edge.
  *   - v0 is at (-b, 0) in local coords, where b = distance from origin to v0
  *   - v1 is at (a, 0) in local coords, where a = distance from origin to v1
