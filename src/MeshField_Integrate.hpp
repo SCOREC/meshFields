@@ -132,24 +132,19 @@ Kokkos::View<MeshField::Real **> getIntegrationPointLocalCoords(
     FieldElement &fes,
     std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
   const auto numPtsPerElm = ip.size();
-  const auto numMeshEnts = fes.numMeshEnts;
   const auto meshEntDim = fes.MeshEntDim;
   const auto numParametricCoords = meshEntDim + 1;
-  Kokkos::View<MeshField::Real **> localCoords(
-      "localCoords", numMeshEnts * numPtsPerElm, numParametricCoords);
-  // broadcast the points into the view - FIXME this is an inefficient use of
-  // memory
+  Kokkos::View<MeshField::Real **> localCoords("localCoords", numPtsPerElm,
+                                               numParametricCoords);
+  auto hostLocalCoords = Kokkos::create_mirror_view(localCoords);
   for (size_t pt = 0; pt < numPtsPerElm; pt++) {
     const auto point = ip.at(pt);
     const auto param = point.param;
-    assert(numParametricCoords == param.size());
-    Kokkos::parallel_for(
-        numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-          for (size_t d = 0; d < numParametricCoords; d++) {
-            localCoords(ent * numPtsPerElm + pt, d) = param[d];
-          }
-        });
+    for (size_t d = 0; d < numParametricCoords; ++d) {
+      hostLocalCoords(pt, d) = param[d];
+    }
   }
+  Kokkos::deep_copy(localCoords, hostLocalCoords);
   return localCoords;
 }
 
@@ -158,26 +153,22 @@ Kokkos::View<Real *> getIntegrationPointWeights(
     FieldElement &fes,
     std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
   const auto numPtsPerElm = ip.size();
-  const auto numMeshEnts = fes.numMeshEnts;
   const auto meshEntDim = fes.MeshEntDim;
-  Kokkos::View<Real *> weights("weights", numMeshEnts * numPtsPerElm);
-  // broadcast the points into the view - FIXME this is an inefficient use of
-  // memory
+  Kokkos::View<Real *> weights("weights", numPtsPerElm);
+  auto hostWeights = Kokkos::create_mirror_view(weights);
   for (size_t pt = 0; pt < numPtsPerElm; pt++) {
     const auto point = ip.at(pt);
     const auto w = point.weight;
-    Kokkos::parallel_for(
-        numMeshEnts,
-        KOKKOS_LAMBDA(const int ent) { weights(ent * numPtsPerElm + pt) = w; });
+    hostWeights(pt) = w;
   }
+  Kokkos::deep_copy(weights, hostWeights);
   return weights;
 }
 
 template <typename FieldElement>
 auto getJacobianDeterminants(FieldElement &fes,
-                             Kokkos::View<Real **> localCoords,
-                             size_t numIntegrationPoints) {
-  auto J = getJacobians(fes, localCoords, numIntegrationPoints);
+                             Kokkos::View<Real **> localCoords) {
+  auto J = fes.getJacobiansFixed(localCoords);
   auto dV = getJacobianDeterminants(fes, J);
   return dV;
 }
@@ -238,7 +229,7 @@ public:
     auto ip = getIntegrationPoints<topo[0]>(order);
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
-    auto dV = getJacobianDeterminants(fes, localCoords, ip.size());
+    auto dV = getJacobianDeterminants(fes, localCoords);
     atPoints(localCoords, weights, dV);
     post();
     // TODO support distributed meshes by running a parallel reduction with user

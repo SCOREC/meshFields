@@ -4,7 +4,9 @@
 #include <Kokkos_Core.hpp>
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
+#include <MeshField_For.hpp>
 #include <MeshField_Shape.hpp>
+#include <MeshField_SimdFor.hpp>
 #include <MeshField_Utility.hpp> // getLastValue
 #include <iostream>
 #include <type_traits> // has_static_size helper
@@ -21,6 +23,14 @@ Kokkos::View<MeshField::LO *> getOffsets(MeshField::LO numItems,
       });
   return offsets;
 }
+template <typename T, template <typename...> class Y> struct checkController {
+  static constexpr bool value = false;
+};
+
+template <template <typename...> class T, typename... innerArgs>
+struct checkController<T<innerArgs...>, T> {
+  static constexpr bool value = true;
+};
 
 // chatgpt prompt 2/20/2025:
 //  c++ static assert that checks that a type
@@ -48,9 +58,9 @@ public:
 template <typename T> class has_extent_method {
 private:
   template <typename U>
-  static auto test(int)
-      -> decltype(std::declval<U>().extent(std::declval<std::size_t>()),
-                  std::true_type());
+  static auto
+  test(int) -> decltype(std::declval<U>().extent(std::declval<std::size_t>()),
+                        std::true_type());
   template <typename> static std::false_type test(...);
 
 public:
@@ -316,14 +326,92 @@ struct FieldElement {
       return shapeFn.getLocalGradients(coord);
     }
   }
-
-  KOKKOS_INLINE_FUNCTION auto setNodalGradients(
-      Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients,
-      auto grad, size_t pt, size_t node, size_t d) const {
+  KOKKOS_INLINE_FUNCTION auto getNodalGradients(auto grad, size_t node,
+                                                size_t d) const {
     if constexpr (ShapeType::Order == 1) {
-      nodalGradients(pt, node, d) = grad[node * MeshEntDim + d];
+      return grad[node * MeshEntDim + d];
     } else {
-      nodalGradients(pt, node, d) = grad[node][d];
+      return grad[node][d];
+    }
+  }
+  Kokkos::View<Real ***> getJacobiansFixed(Kokkos::View<Real **> localCoords) {
+    if (Debug) {
+      LO numErrors = 0;
+      Kokkos::parallel_reduce(
+          "checkCoords", localCoords.extent(0),
+          KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
+            Real sum = 0;
+            LO isError = 0;
+            for (int i = 0; i < localCoords.extent(1); i++) {
+              if (localCoords(ent, i) < 0)
+                isError++;
+              sum += localCoords(ent, i);
+            }
+            if (Kokkos::fabs(sum - 1) > MachinePrecision)
+              isError++;
+            lerrors += isError;
+          },
+          numErrors);
+      if (numErrors) {
+        fail("One or more of the parametric coordinates passed "
+             "to evaluate(...) were invalid\n");
+      }
+    }
+    if (MeshEntDim != 1 && MeshEntDim != 2 && MeshEntDim != 3) {
+      fail("getJacobians only currently supports 1d, 2d, and 3d meshes.  Input "
+           "mesh "
+           "has %zu dimensions.\n",
+           numMeshEnts);
+    }
+
+    if constexpr (MeshEntDim == 1) {
+      const auto numPts = localCoords.extent(0);
+      Kokkos::View<Real ***> res("result", numPts * numMeshEnts, 1, 1);
+      auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int ent, const int pt) {
+        const auto val = getJacobian1d(ent);
+        res(pt, 0, 0) = val;
+      };
+      if constexpr (checkController<decltype(FieldAccessor::meshField),
+                                    KokkosController>::value) {
+        MeshField::parallel_for(
+            typename decltype(FieldAccessor::meshField)::exe(), {0, 0},
+            {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
+      } else {
+        MeshField::simd_parallel_for(field.meshField, {0, 0},
+                                     {numMeshEnts, numPts}, jacobianFunc,
+                                     "1dJacobian");
+      }
+      return res;
+    } else if constexpr (MeshEntDim == 2 || MeshEntDim == 3) {
+      const auto numPts = localCoords.extent(0);
+      Kokkos::View<Real ***> res("result", numPts * numMeshEnts, MeshEntDim,
+                                 MeshEntDim);
+      Kokkos::deep_copy(res, 0.0);
+      auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int ent, const int pt) {
+        const auto vals = getNodeValues(ent);
+        const auto grad = getGradients<MeshEntDim>(localCoords, pt);
+        auto A = Kokkos::subview(res, ent * numPts + pt, Kokkos::ALL(),
+                                 Kokkos::ALL());
+        for (size_t node = 0; node < ShapeType::numNodes; node++) {
+          for (size_t i = 0; i < MeshEntDim; ++i) {
+            for (size_t j = 0; j < MeshEntDim; ++j) {
+              A(j, i) += vals[node * MeshEntDim + i] *
+                         getNodalGradients(grad, node, j);
+            }
+          }
+        }
+      };
+      if constexpr (checkController<decltype(FieldAccessor::meshField),
+                                    KokkosController>::value) {
+        MeshField::parallel_for(
+            typename decltype(FieldAccessor::meshField)::exe(), {0, 0},
+            {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
+      } else {
+        MeshField::simd_parallel_for(field.meshField, {0, 0},
+                                     {numMeshEnts, numPts}, jacobianFunc,
+                                     "2d3dJacobian");
+      }
+      return res;
     }
   }
 
@@ -404,44 +492,78 @@ struct FieldElement {
       // one matrix per point
       Kokkos::View<Real ***> res("result", numPts, MeshEntDim, MeshEntDim);
       Kokkos::deep_copy(res, 0.0); // initialize all entries to zero
-      // fill the views of node coordinates and node gradients
-      Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodeCoords(
-          "nodeCoords", numPts);
-      Kokkos::View<Real * [ShapeType::numNodes][MeshEntDim]> nodalGradients(
-          "nodalGradients", numPts);
       Kokkos::parallel_for(
           numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
             const auto vals = getNodeValues(ent);
             assert(vals.size() == MeshEntDim * ShapeType::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-              auto ptCoords = Kokkos::subview(localCoords, pt, Kokkos::ALL());
               const auto grad = getGradients<MeshEntDim>(localCoords, pt);
+              auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
               for (size_t node = 0; node < ShapeType::numNodes; node++) {
-                for (size_t d = 0; d < MeshEntDim; d++) {
-                  nodeCoords(pt, node, d) = vals[node * MeshEntDim + d];
-                  setNodalGradients(nodalGradients, grad, pt, node, d);
+                for (size_t i = 0; i < MeshEntDim; ++i) {
+                  for (size_t j = 0; j < MeshEntDim; ++j) {
+                    A(j, i) += vals[node * MeshEntDim + i] *
+                               getNodalGradients(grad, node, j);
+                  }
                 }
               }
             }
           });
 
-      Kokkos::parallel_for(
-          numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-            // TODO use nested parallel for?
-            for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-              auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
-              for (size_t node = 0; node < ShapeType::numNodes; node++) {
-                auto a =
-                    Kokkos::subview(nodalGradients, pt, node, Kokkos::ALL());
-                auto b = Kokkos::subview(nodeCoords, pt, node, Kokkos::ALL());
-                addTensorProduct(a, b, A);
-              }
-            }
-          });
       return res;
     }
   }
 };
+
+template <typename FieldElement>
+Kokkos::View<Real *[FieldElement::NumComponents]>
+evaluateFixed(FieldElement &fes, Kokkos::View<Real **> localCoords) {
+  if (Debug) {
+    LO numErrors = 0;
+    Kokkos::parallel_reduce(
+        "checkCoords", localCoords.extent(0),
+        KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
+          Real sum = 0;
+          LO isError = 0;
+          for (int i = 0; i < localCoords.extent(1); i++) {
+            if (localCoords(ent, i) < 0)
+              isError++;
+            sum += localCoords(ent, i);
+          }
+          if (Kokkos::fabs(sum - 1) > MachinePrecision)
+            isError++;
+          lerrors += isError;
+        },
+        numErrors);
+    if (numErrors) {
+      fail("One or more of the parametric coordinates passed "
+           "to evaluate(...) were invalid\n");
+    }
+  }
+  constexpr const auto numComponents = FieldElement::ValArray::size();
+  const auto numPts = localCoords.extent(0);
+  Kokkos::View<Real *[numComponents]> res("result", numPts * fes.numMeshEnts);
+  auto evaluateFunc = KOKKOS_LAMBDA(const int ent, const int pt) {
+    Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
+    for (int i = 0; i < localCoords.extent(1); ++i)
+      lc[i] = localCoords(pt, i);
+    const auto val = fes.getValue(ent, lc);
+    for (int i = 0; i < numComponents; ++i) {
+      res(ent * numPts + pt, i) = val[i];
+    }
+  };
+  if constexpr (checkController<decltype(fes.field.meshField),
+                                KokkosController>::value) {
+    MeshField::parallel_for(typename decltype(fes.field.meshField)::exe(),
+                            {0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
+                            "evaluate");
+  } else {
+    MeshField::simd_parallel_for(fes.field.meshField, {0, 0},
+                                 {fes.numMeshEnts, numPts}, evaluateFunc,
+                                 "evaluate");
+  }
+  return res;
+}
 
 /**
  * @brief
@@ -462,9 +584,9 @@ struct FieldElement {
  * @return Kokkos::View of evaluation results for all the mesh elements
  */
 template <typename FieldElement>
-Kokkos::View<Real *[FieldElement::NumComponents]>
-evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
-         Kokkos::View<LO *> offsets) {
+Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
+    FieldElement &fes, Kokkos::View<Real **> localCoords,
+    Kokkos::View<LO *> offsets) {
   if (Debug) {
     // check input parametric coords are positive and sum to one
     LO numErrors = 0;
