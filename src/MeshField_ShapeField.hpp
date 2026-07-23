@@ -29,6 +29,21 @@ struct MeshInfo {
 
 /**
  * @brief
+ * Return type of CreateLagrangeField/CreateCoordinateField.
+ * @details
+ * Some Controllers (e.g. CabanaController) hand out slices that only stay
+ * valid while the Controller that created them is alive. field is safe to
+ * copy into device code (KOKKOS_INLINE_FUNCTION contexts), but ctrlr must
+ * only ever be used/copied in host code, and must be kept alive by the
+ * caller for as long as field is used.
+ */
+template <typename Ctrlr, typename Field> struct FieldWithController {
+  Ctrlr ctrlr;
+  Field field;
+};
+
+/**
+ * @brief
  * Enable definition of field classes with multiple inheritance.
  * @details
  * The field definition (e.g., linear triangle, quadratic tet, etc.) dictates
@@ -202,7 +217,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
         ShapeField<numComp, LinearTriangleShape, LA>>;
     // clang-format on
     LinearLagrangeShapeField llsf(meshInfo, {vtxField});
-    return llsf;
+    return FieldWithController<Ctrlr, LinearLagrangeShapeField>{kk_ctrl, llsf};
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
@@ -247,12 +262,13 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
         ShapeField<numComp, QuadraticTriangleShape, QA>>;
     // clang-format on
     QuadraticLagrangeShapeField qlsf(meshInfo, {vtxField, edgeField});
-    return qlsf;
+    return FieldWithController<Ctrlr, QuadraticLagrangeShapeField>{kk_ctrl,
+                                                                    qlsf};
   } else {
     fail("CreateLagrangeField does not support the specified "
          "combination of order %d and dimension %d.\n",
          order, dim);
-    return nullptr; // silence compiler warning
+    return FieldWithController<int, std::nullptr_t>{}; // silence compiler warning
   }
 };
 
@@ -311,7 +327,7 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   using LinearLagrangeShapeField =
       ShapeField<dim, LinearTriangleShape, LA>;
   LinearLagrangeShapeField llsf(meshInfo, {vtxField});
-  return llsf;
+  return FieldWithController<Ctrlr, LinearLagrangeShapeField>{kk_ctrl, llsf};
 };
 
 } // namespace MeshField

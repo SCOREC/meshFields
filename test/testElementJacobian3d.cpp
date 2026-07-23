@@ -64,7 +64,7 @@ void tetJacobian() {
   const MeshField::MeshInfo meshInfo{
       .numVtx = 4, .numEdge = 6, .numTet = 1, .dim = 3};
   auto coordField = MeshField::CreateCoordinateField<
-      ExecutionSpace, MeshField::KokkosController, 3>(meshInfo);
+      ExecutionSpace, MeshField::KokkosController, 3>(meshInfo).field;
   TetrahedronTestCase identityTet({0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
                                   {1, 0, 0, 0, 1, 0, 0, 0, 1}, 1);
   TetrahedronTestCase skewedTet({0, 0, 0, 5, 1, 2, 3, 4, 6, 10, 8, 9},

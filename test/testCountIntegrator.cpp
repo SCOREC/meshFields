@@ -61,7 +61,7 @@ template <template <typename...> typename Controller, size_t dim>
 void doRun(Omega_h::Mesh &mesh,
            MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
   const auto ShapeOrder = 1;
-  auto field = omf.getCoordField();
+  auto field = omf.getCoordField().field;
   auto shapeSet = [&]() {
     if constexpr (dim == 3) {
       return MeshField::Omegah::getTetrahedronElement<ShapeOrder>(mesh);
