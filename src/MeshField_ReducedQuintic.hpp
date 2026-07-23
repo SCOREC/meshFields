@@ -4,6 +4,7 @@
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
 #include <Kokkos_Core.hpp>
+#include <Omega_h_matrix.hpp>
 #include <cmath>
 
 namespace MeshField {
@@ -185,14 +186,13 @@ Real transformDofPhysicalToLocal(
 
 /**
  * @brief Device-compatible function to reorder triangle vertices to put longest edge along local xi-axis
- * 
- * @param coords Triangle vertex coordinates [3][2]
+ *
+ * @param coords Triangle vertex coordinates as Omega_h::Matrix<2,3>
  * @param order Output vertex order [3] - order[i] gives original index of reordered vertex i
  */
-template<typename Real>
 KOKKOS_INLINE_FUNCTION
 void reorderTriangleVertices(
-    const Real coords[3][2],
+    Omega_h::Matrix<2,3> const& coords,
     int order[3])
 {
   // Compute edge vectors
@@ -252,8 +252,8 @@ void reorderTriangleVertices(
 
 /**
  * @brief Device-compatible function to compute geometric parameters for reduced quintic triangle element
- * 
- * @param coords Original triangle vertex coordinates [3][2]
+ *
+ * @param coords Original triangle vertex coordinates as Omega_h::Matrix<2,3>
  * @param origin Output: origin of local coordinate system
  * @param a Output: distance from origin to first vertex in local system
  * @param b Output: distance from origin to second vertex in local system
@@ -262,10 +262,9 @@ void reorderTriangleVertices(
  * @param cos_theta Output: cosine of rotation angle
  * @param order Output: vertex reordering [3] - order[i] gives original index
  */
-template<typename Real>
 KOKKOS_INLINE_FUNCTION
 void computeReducedQuinticGeometry(
-    const Real coords[3][2],
+    Omega_h::Matrix<2,3> const& coords,
     Real origin[2],
     Real& a, Real& b, Real& c,
     Real& sin_theta, Real& cos_theta,
@@ -371,37 +370,29 @@ void computeReducedQuinticCoefficients(
 }
 
 /**
- * @brief Precompute all reduced quintic coefficients for a mesh, entirely on device
+ * @brief Precompute all reduced quintic coefficients for a mesh from Omega_h::Matrix views.
+ *
+ * Accepts per-triangle coordinates as Matrix<2,3> populated by gather_vectors.
  * 
  * @param numTriangles Number of triangles in the mesh
- * @param triCoords_d Triangle vertex coordinates on device, shape [numTriangles][3][2] (flattened: tri*6 + v*2 + d)
+ * @param triCoords_d Per-triangle vertex coordinates as Kokkos::View<Omega_h::Matrix<2,3>*>
  * @return Kokkos::View with coefficients, shape [numTriangles][8 + 18*20]
- *         Each row: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, coeff_0_0, ..., coeff_17_19]
  */
 inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
     int numTriangles,
-    Kokkos::View<Real**> triCoords_d)
+    Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d)
 {
-  // Allocate device view with extended storage for sin_theta and cos_theta
-  // Layout: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, coeff_0_0, ..., coeff_17_19]
   Kokkos::View<Real**> coeffs_d("coefficients_device", numTriangles, 8 + 18 * 20);
   
-  // Compute for each triangle entirely on device
   Kokkos::parallel_for(
       "precomputeReducedQuinticCoefficients", numTriangles,
       KOKKOS_LAMBDA(int tri) {
-    Real coords[3][2];
-    for (int v = 0; v < 3; v++) {
-      coords[v][0] = triCoords_d(tri, v * 2 + 0);
-      coords[v][1] = triCoords_d(tri, v * 2 + 1);
-    }
+    auto const& coords = triCoords_d(tri);
     
-    // Compute geometric parameters
     Real origin[2], a, b, c, sin_theta, cos_theta;
     int order[3];
     computeReducedQuinticGeometry(coords, origin, a, b, c, sin_theta, cos_theta, order);
     
-    // Store vertex order, geometric parameters, and rotation angles
     coeffs_d(tri, 0) = static_cast<Real>(order[0]);
     coeffs_d(tri, 1) = static_cast<Real>(order[1]);
     coeffs_d(tri, 2) = static_cast<Real>(order[2]);
@@ -411,11 +402,9 @@ inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
     coeffs_d(tri, 6) = sin_theta;
     coeffs_d(tri, 7) = cos_theta;
     
-    // Compute coefficients
     Real coeffs_tri[18][20];
     computeReducedQuinticCoefficients(a, b, c, coeffs_tri);
     
-    // Store in flattened format after order, geometric parameters, and rotation angles
     for (int i = 0; i < 18; i++) {
       for (int j = 0; j < 20; j++) {
         coeffs_d(tri, 8 + i * 20 + j) = coeffs_tri[i][j];
@@ -425,6 +414,7 @@ inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
   
   return coeffs_d;
 }
+
 } // namespace MeshField
 
 #endif // MESHFIELD_REDUCEDQUINTIC_HPP

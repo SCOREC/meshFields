@@ -85,7 +85,10 @@ bool testGeometryComputation() {
   
   // Simple right triangle:
   // v0 = (0, 0), v1 = (4, 0), v2 = (0, 3)
-  Real coords[3][2] = {{0, 0}, {4, 0}, {0, 3}};
+  Omega_h::Matrix<2,3> coords;
+  coords[0][0] = 0; coords[0][1] = 0;  // v0
+  coords[1][0] = 4; coords[1][1] = 0;  // v1
+  coords[2][0] = 0; coords[2][1] = 3;  // v2
   
   Real origin[2], a, b, c, sin_theta, cos_theta;
   int order[3];
@@ -346,7 +349,7 @@ struct EvalPoint {
  * @brief Test field evaluation with expected values
  * Tests that field values and gradients match expected analytical results
  */
-bool testFieldEvaluation(const char* testName, Real coords[3][2], Real dofs[18],
+bool testFieldEvaluation(const char* testName, Omega_h::Matrix<2,3> const& coords, Real dofs[18],
                          EvalPoint* evalPoints, int numPoints, Omega_h::Library& lib) {
   std::cout << "Test: " << testName << "\n";
   std::cout << "  numPoints=" << numPoints << "\n";
@@ -368,12 +371,12 @@ bool testFieldEvaluation(const char* testName, Real coords[3][2], Real dofs[18],
     rotateDof(dofs+i*6, sin_theta, cos_theta);
   }
   
-  // Precompute coefficients on device using Kokkos view
-  Kokkos::View<Real**> triCoords_d("triCoords_device", 1, 6);
+  // Precompute coefficients on device using Matrix<2,3> view
+  Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d("triCoords_device", 1);
   auto triCoords_h = Kokkos::create_mirror_view(triCoords_d);
   for (int i = 0; i < 3; i++) {
-    triCoords_h(0, i*2 + 0) = coords[i][0];
-    triCoords_h(0, i*2 + 1) = coords[i][1];
+    triCoords_h(0)[i][0] = coords[i][0];
+    triCoords_h(0)[i][1] = coords[i][1];
   }
   Kokkos::deep_copy(triCoords_d, triCoords_h);
   
@@ -488,11 +491,20 @@ int main(int argc, char** argv) {
     allPassed &= testGeometryComputation();
     allPassed &= testCoordinateTransformation();
     
+    // Helper to create a Matrix<2,3> from triplets
+    auto m23 = [](Real x0,Real y0, Real x1,Real y1, Real x2,Real y2) {
+      Omega_h::Matrix<2,3> m;
+      m[0][0]=x0; m[0][1]=y0;
+      m[1][0]=x1; m[1][1]=y1;
+      m[2][0]=x2; m[2][1]=y2;
+      return m;
+    };
+
     // Test 4: Constant field f=1
     std::cout << "Test 4: Constant field (f=1)\n";
     std::cout << "============================\n";
     {
-      Real coords[3][2] = {{0, 0}, {4, 0}, {0, 3}};
+      auto coords = m23(0,0, 4,0, 0,3);
       Real dofs[18];
       for (int i = 0; i < 3; i++) {
         dofs[i*6 + 0] = 1.0;  // value
@@ -517,7 +529,7 @@ int main(int argc, char** argv) {
     std::cout << "Test 5: Linear field (f=x)\n";
     std::cout << "==========================\n";
     {
-      Real coords[3][2] = {{0, 0}, {4, 0}, {0, 3}};
+      auto coords = m23(0,0, 4,0, 0,3);
       Real dofs[18];
       for (int i = 0; i < 3; i++) {
         dofs[i*6 + 0] = coords[i][0];  // f = x
@@ -540,7 +552,7 @@ int main(int argc, char** argv) {
     std::cout << "Test 6: Linear field (f=y)\n";
     std::cout << "==========================\n";
     {
-      Real coords[3][2] = {{0, 0}, {4, 0}, {0, 3}};
+      auto coords = m23(0,0, 4,0, 0,3);
       Real dofs[18];
       for (int i = 0; i < 3; i++) {
         dofs[i*6 + 0] = coords[i][1];  // f = y
@@ -563,7 +575,7 @@ int main(int argc, char** argv) {
     std::cout << "Test 7: Quadratic field (f=x^2)\n";
     std::cout << "===============================\n";
     {
-      Real coords[3][2] = {{0, 0}, {4, 0}, {0, 3}};
+      auto coords = m23(0,0, 4,0, 0,3);
       Real dofs[18];
       for (int i = 0; i < 3; i++) {
         Real x = coords[i][0];
@@ -586,7 +598,7 @@ int main(int argc, char** argv) {
     std::cout << "Test 8: Quadratic field on general triangle (f=x^2+y^2)\n";
     std::cout << "======================================================\n";
     {
-      Real coords[3][2] = {{1, 1}, {5, 1}, {2, 4}};
+      auto coords = m23(1,1, 5,1, 2,4);
       Real dofs[18];
       for (int i = 0; i < 3; i++) {
         Real x = coords[i][0];
@@ -609,7 +621,7 @@ int main(int argc, char** argv) {
     std::cout << "Test 9: Mixed derivative field (f=x*y)\n";
     std::cout << "=====================================\n";
     {
-      Real coords[3][2] = {{1, 1}, {5, 1}, {2, 4}};
+      auto coords = m23(1,1, 5,1, 2,4);
       Real dofs[18];
 
       for (int i = 0; i < 3; i++) {

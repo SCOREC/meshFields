@@ -323,25 +323,20 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
 struct ExtractTriCoords {
   Omega_h::LOs triVerts_d;
   Omega_h::Reals coords_d;
-  Kokkos::View<MeshField::Real**> triCoords_d;
-  
+  Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d; // one Matrix per triangle
+
   ExtractTriCoords(Omega_h::LOs triVerts_d_, Omega_h::Reals coords_d_,
-                   Kokkos::View<MeshField::Real**> triCoords_d_)
+                   Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d_)
     : triVerts_d(triVerts_d_), coords_d(coords_d_), triCoords_d(triCoords_d_) {}
-  
+
   KOKKOS_INLINE_FUNCTION
   void operator()(int tri) const {
+    Omega_h::Few<Omega_h::LO, 3> vtxIds;
     for (int vi = 0; vi < 3; vi++) {
-      const auto triDim = 2;
-      const auto vtxDim = 0;
-      const auto ignored = -1;
-      const auto localVtxIdx = (Omega_h::simplex_down_template(triDim, vtxDim, vi, ignored) + 2) % 3;
-      const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
-      const Omega_h::LO vtx = triVerts_d[tri * triToVtxDegree + localVtxIdx];
-      
-      triCoords_d(tri, vi * 2 + 0) = coords_d[vtx * 2 + 0]; // x
-      triCoords_d(tri, vi * 2 + 1) = coords_d[vtx * 2 + 1]; // y
+      const auto localVtxIdx = (vi + 2) % 3;
+      vtxIds[vi] = triVerts_d[tri * 3 + localVtxIdx];
     }
+    triCoords_d(tri) = Omega_h::gather_vectors<3, 2>(coords_d, vtxIds);
   }
 };
 
@@ -362,11 +357,11 @@ getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
   const auto coords_d = mesh.coords();
   const auto triVerts_d = mesh.ask_elem_verts();
   
-  // Allocate device view for triangle vertex coordinates [numTri][6]
-  // Layout: tri*6 + v*2 + d where v in {0,1,2} and d in {0,1} for (x,y)
-  Kokkos::View<MeshField::Real**> triCoords_d("triCoords_device", numTri, 6);
+  // Allocate device view: one Matrix<2,3> per triangle
+  // Matrix<dim, neev> = neev columns (vertices) of dim-dimensional vectors
+  Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d("triCoords_device", numTri);
   
-  // Extract triangle vertex coordinates entirely on device using functor
+  // Extract triangle vertex coordinates using Omega_h gather_vectors
   Kokkos::parallel_for(
       "extractTriCoords", numTri,
       ExtractTriCoords(triVerts_d, coords_d, triCoords_d));
