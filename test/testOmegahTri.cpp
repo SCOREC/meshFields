@@ -154,8 +154,12 @@ void runTest(Omega_h::Mesh &mesh,
              auto testCase, auto function) {
   using functionType = decltype(function);
   using ViewType = decltype(testCase.coords);
-  auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                numComponents>();
+  // fieldWithCtrlr.ctrlr must stay alive for as long as fieldWithCtrlr.field
+  // is used (some Controllers, e.g. CabanaController, hand out slices that
+  // are only valid while the Controller that created them is alive).
+  auto fieldWithCtrlr = omf.template CreateLagrangeField<
+      MeshField::Real, ShapeOrder, numComponents>();
+  auto field = fieldWithCtrlr.field;
   using FieldType = decltype(field);
   setVertices(mesh, function, field);
   if constexpr (ShapeOrder == 2) {
@@ -163,7 +167,8 @@ void runTest(Omega_h::Mesh &mesh,
   }
   auto result = omf.template triangleLocalPointEval<ViewType, FieldType>(
       testCase.coords, testCase.NumPtsPerElem, field);
-  auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+  auto coordFieldWithCtrlr = omf.getCoordField();
+  auto failed = checkResult(mesh, result, coordFieldWithCtrlr.field, testCase,
                             decltype(function){}, numComponents);
   if (failed) {
     std::string fieldErr = ShapeOrder == 1 ? "linear" : "quadratic";

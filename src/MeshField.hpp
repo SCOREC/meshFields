@@ -40,9 +40,10 @@ decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
 createCoordinateField(const MeshField::MeshInfo &mesh_info,
                       Omega_h::Reals coords) {
   const auto meshDim = mesh_info.dim;
-  auto coordField =
+  auto coordFieldWithCtrlr =
       MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
           mesh_info);
+  auto coordField = coordFieldWithCtrlr.field;
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
     coordField(i, 0, 0, MeshField::Vertex) = coords[i * meshDim];
     coordField(i, 0, 1, MeshField::Vertex) = coords[i * meshDim + 1];
@@ -52,7 +53,7 @@ createCoordinateField(const MeshField::MeshInfo &mesh_info,
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
                           setCoordField, "setCoordField");
-  return coordField;
+  return coordFieldWithCtrlr;
 }
 
 } // anonymous namespace
