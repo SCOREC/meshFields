@@ -8,6 +8,7 @@
 #include "MeshField_Field.hpp"
 #include "MeshField_Shape.hpp"
 #include <type_traits> //decltype
+#include <utility> // std::forward
 
 namespace MeshField {
 
@@ -76,8 +77,12 @@ struct ShapeField : public Mixins... {
   static const size_t numComp = numCompIn;
   const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
-  ShapeField(const MeshInfo &meshInfoIn, Mixins... mixins)
-      : meshInfo(meshInfoIn), Mixins(mixins)... {};
+  // Mixins&&... binds only to rvalues/temporaries (braced-init-list call
+  // sites like ShapeField(meshInfo, {vtxField}) are fine; passing a named
+  // lvalue requires std::move). mixins is moved-from by std::forward below
+  // - do not read mixins again after the initializer list.
+  ShapeField(const MeshInfo &meshInfoIn, Mixins &&... mixins)
+      : meshInfo(meshInfoIn), Mixins( std::forward<Mixins>(mixins) )... {};
 };
 
 /**
