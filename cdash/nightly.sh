@@ -25,19 +25,36 @@ cd $d
 [ -d build ] && rm -rf build/
 
 #install kokkos
-[ ! -d kokkos ] && git clone https://github.com/kokkos/kokkos.git
+[ ! -d kokkos ] && git clone --depth 1 --branch 5.1.1 https://github.com/Kokkos/kokkos.git kokkos
 cd kokkos && git pull && cd -
-[ -d build-kokkos ] && rm -rf build-kokkos
-cmake -S kokkos -B build-kokkos \
+kkbdir=$d/build-kokkos
+[ -d $kkbdir ] && rm -rf $kkbdir
+cmake -S kokkos -B $kkbdir \
   -DCMAKE_CXX_COMPILER=$d/kokkos/bin/nvcc_wrapper \
-  -DCMAKE_INSTALL_PREFIX=build-kokkos/install \
+  -DCMAKE_INSTALL_PREFIX=$kkbdir/install \
   -DKokkos_ARCH_TURING75=ON \
   -DKokkos_ENABLE_SERIAL=ON \
   -DKokkos_ENABLE_OPENMP=OFF \
   -DKokkos_ENABLE_CUDA=ON \
-  -DKokkos_ENABLE_DEPRECATED_CODE_4=ON \
+  -DKokkos_ENABLE_IMPL_VIEW_LEGACY=ON \
   -DKokkos_ENABLE_DEBUG=ON
-cmake --build build-kokkos -j 8 --target install
+cmake --build $kkbdir -j 8 --target install
+
+[ ! -d cabana ] && git clone git@github.com:ECP-copa/Cabana.git cabana
+cd cabana && git pull && cd -
+bdir=$d/build-cab
+[ -d $bdir ] && rm -rf $bdir 
+cmake -S cabana -B $bdir \
+  -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+  -DCMAKE_CXX_COMPILER=$d/kokkos/bin/nvcc_wrapper \
+  -DKokkos_ROOT=$kkbdir/install \
+  -DCabana_ENABLE_MPI=OFF \
+  -DCabana_ENABLE_CAJITA=OFF \
+  -DCabana_ENABLE_TESTING=OFF \
+  -DCabana_ENABLE_EXAMPLES=OFF \
+  -DCabana_ENABLE_Cuda=ON \
+  -DCMAKE_INSTALL_PREFIX=$bdir/install
+cmake --build $bdir -j 8 --target install
 
 #install omega_h
 [ ! -d omega_h ] && git clone https://github.com/SCOREC/omega_h.git
@@ -54,7 +71,7 @@ cmake -S omega_h -B build-omega_h \
   -DOmega_h_USE_MPI=OFF \
   -DBUILD_TESTING=ON \
   -DCMAKE_CXX_EXTENSIONS=OFF \
-  -DKokkos_PREFIX=$d/build-kokkos/install/lib64/cmake
+  -DKokkos_PREFIX=$kkbdir/install/lib64/cmake
 cmake --build build-omega_h -j 8 --target install
 
 touch $d/startedCoreNightly

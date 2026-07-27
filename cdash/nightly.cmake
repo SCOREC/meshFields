@@ -182,8 +182,10 @@ endif()
 SET(CONFIGURE_OPTIONS
   "-DCMAKE_CXX_COMPILER=g++"
   "-DCMAKE_CXX_EXTENSIONS=OFF"
+  "-DMeshFields_IS_TESTING=ON"
   "-DKokkos_ROOT=${CTEST_DASHBOARD_ROOT}/build-kokkos/install/"
   "-DOmega_h_ROOT=${CTEST_DASHBOARD_ROOT}/build-omega_h/install/"
+  "-DCabana_ROOT=${CTEST_DASHBOARD_ROOT}/build-cab/install"
 )
 
 setup_repo()
