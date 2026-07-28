@@ -1,2 +1,2 @@
 #cmakedefine MeshFields_USE_EXCEPTIONS
-#define MESHFIELDS_VERSION @MeshFields_VERSION@
+#cmakedefine MeshFields_VERSION @MeshFields_VERSION@
