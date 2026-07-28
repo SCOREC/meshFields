@@ -63,6 +63,12 @@ target_link_libraries(meshfields INTERFACE Omega_h::omega_h)
 option(MeshFields_USE_EXCEPTIONS "Enable throwing exceptions" ON)
 message(STATUS "Exceptions: ${MeshFields_USE_EXCEPTIONS}")
 
+# Compute a single integer version for C++ preprocessor use
+# MESHFIELDS_VERSION = MAJOR*10000 + MINOR*100 + PATCH
+# e.g. 1.0.0 -> 10000
+math(EXPR MeshFields_VERSION
+     "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
+
 #pass cmake options to the source
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/src/MeshField_Config.hpp.in"
