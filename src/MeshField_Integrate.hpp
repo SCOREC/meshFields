@@ -9,6 +9,7 @@
 #include <type_traits> // has_static_size helper
 
 namespace MeshField {
+
 // directly copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.[h|cc]
 template <size_t pointSize> struct IntegrationPoint {
   // template parameter pointSize specifies the length of the integration point
@@ -47,78 +48,75 @@ public:
   virtual Integration<pointSize> const *getIntegration(int i) const = 0;
 };
 
-class TriangleIntegration : public EntityIntegration<3> {
+// points are given in the reduced parametric coordinates (xi0=L1, xi1=L2,
+// ...); the redundant barycentric coordinate L0 = 1-sum(xi) is omitted
+class TriangleIntegration : public EntityIntegration<2> {
+public:
+  class N1 : public Integration<2> {
+  public:
+    virtual int countPoints() const { return 1; }
+    virtual std::vector<IntegrationPoint<2>> getPoints() const {
+      return {IntegrationPoint(Vector2{1. / 3., 1. / 3.}, 1.0 / 2.0, 2, 0)};
+    }
+    virtual int getAccuracy() const { return 1; }
+  }; // end N1
+  class N2 : public Integration<2> {
+  public:
+    virtual int countPoints() const { return 3; }
+    virtual std::vector<IntegrationPoint<2>> getPoints() const {
+      return {IntegrationPoint(
+                  Vector2{0.166666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.666666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.166666666666667, 0.666666666666667}, 1. / 3. / 2.0, 2, 0)};
+    }
+    virtual int getAccuracy() const { return 2; }
+  }; // end N2
+  virtual int countIntegrations() const { return 2; }
+  virtual Integration<2> const *getIntegration(int i) const {
+    static N1 i1;
+    static N2 i2;
+    static Integration<2> *integrations[2] = {&i1, &i2};
+    return integrations[i];
+  }
+};
+
+class TetrahedronIntegration : public EntityIntegration<3> {
 public:
   class N1 : public Integration<3> {
   public:
     virtual int countPoints() const { return 1; }
     virtual std::vector<IntegrationPoint<3>> getPoints() const {
-      return {IntegrationPoint(Vector3{1. / 3., 1. / 3., 1. / 3.}, 1.0 / 2.0, 2,
-                               0)};
-    }
-    virtual int getAccuracy() const { return 1; }
-  }; // end N1
-  class N2 : public Integration<3> {
-  public:
-    virtual int countPoints() const { return 3; }
-    virtual std::vector<IntegrationPoint<3>> getPoints() const {
-      return {IntegrationPoint(Vector3{0.666666666666667, 0.166666666666667,
-                                       0.166666666666667},
-                               1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(Vector3{0.166666666666667, 0.666666666666667,
-                                       0.166666666666667},
-                               1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(Vector3{0.166666666666667, 0.166666666666667,
-                                       0.666666666666667},
-                               1. / 3. / 2.0, 2, 0)};
-    }
-    virtual int getAccuracy() const { return 2; }
-  }; // end N2
-  virtual int countIntegrations() const { return 2; }
-  virtual Integration<3> const *getIntegration(int i) const {
-    static N1 i1;
-    static N2 i2;
-    static Integration<3> *integrations[2] = {&i1, &i2};
-    return integrations[i];
-  }
-};
-
-class TetrahedronIntegration : public EntityIntegration<4> {
-public:
-  class N1 : public Integration<4> {
-  public:
-    virtual int countPoints() const { return 1; }
-    virtual std::vector<IntegrationPoint<4>> getPoints() const {
-      return {
-          IntegrationPoint(Vector4{0.25, 0.25, 0.25, 0.25}, 1.0 / 6.0, 3, 0)};
+      return {IntegrationPoint(Vector3{0.25, 0.25, 0.25}, 1.0 / 6.0, 3, 0)};
     }
     virtual int getAccuracy() const { return 1; }
   };
-  class N2 : public Integration<4> {
+  class N2 : public Integration<3> {
   public:
     virtual int countPoints() const { return 4; }
-    virtual std::vector<IntegrationPoint<4>> getPoints() const {
+    virtual std::vector<IntegrationPoint<3>> getPoints() const {
 
-      return {IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
-                                       0.138196601125011, 0.585410196624969},
+      return {IntegrationPoint(Vector3{0.138196601125011, 0.138196601125011,
+                                       0.585410196624969},
                                0.25 / 6.0, 3, 0),
-              IntegrationPoint(Vector4{0.585410196624969, 0.138196601125011,
-                                       0.138196601125011, 0.138196601125011},
+              IntegrationPoint(Vector3{0.138196601125011, 0.138196601125011,
+                                       0.138196601125011},
                                0.25 / 6.0, 3, 0),
-              IntegrationPoint(Vector4{0.138196601125011, 0.585410196624969,
-                                       0.138196601125011, 0.138196601125011},
+              IntegrationPoint(Vector3{0.585410196624969, 0.138196601125011,
+                                       0.138196601125011},
                                0.25 / 6.0, 3, 0),
-              IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
-                                       0.585410196624969, 0.138196601125011},
+              IntegrationPoint(Vector3{0.138196601125011, 0.585410196624969,
+                                       0.138196601125011},
                                0.25 / 6.0, 3, 0)};
     }
     virtual int getAccuracy() const { return 2; }
   };
   virtual int countIntegrations() const { return 2; }
-  virtual Integration<4> const *getIntegration(int i) const {
+  virtual Integration<3> const *getIntegration(int i) const {
     static N1 i1;
     static N2 i2;
-    static Integration<4> *integrations[2] = {&i1, &i2};
+    static Integration<3> *integrations[2] = {&i1, &i2};
     return integrations[i];
   }
 };
@@ -138,11 +136,10 @@ template <Mesh_Topology topo> auto getIntegrationPoints(int order) {
 template <typename FieldElement>
 Kokkos::View<MeshField::Real **> getIntegrationPointLocalCoords(
     FieldElement &fes,
-    std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
+    std::vector<IntegrationPoint<FieldElement::MeshEntDim>> ip) {
   const auto numPtsPerElm = ip.size();
   const auto numMeshEnts = fes.numMeshEnts;
-  const auto meshEntDim = fes.MeshEntDim;
-  const auto numParametricCoords = meshEntDim + 1;
+  const auto numParametricCoords = fes.MeshEntDim;
   Kokkos::View<MeshField::Real **> localCoords(
       "localCoords", numMeshEnts * numPtsPerElm, numParametricCoords);
   // broadcast the points into the view - FIXME this is an inefficient use of
@@ -164,7 +161,7 @@ Kokkos::View<MeshField::Real **> getIntegrationPointLocalCoords(
 template <typename FieldElement>
 Kokkos::View<Real *> getIntegrationPointWeights(
     FieldElement &fes,
-    std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
+    std::vector<IntegrationPoint<FieldElement::MeshEntDim>> ip) {
   const auto numPtsPerElm = ip.size();
   const auto numMeshEnts = fes.numMeshEnts;
   Kokkos::View<Real *> weights("weights", numMeshEnts * numPtsPerElm);

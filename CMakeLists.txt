@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.0)
 
-project(meshfields VERSION 0.1.0 LANGUAGES CXX)
+project(meshfields VERSION 1.0.0 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
@@ -59,13 +59,16 @@ target_include_directories(meshfields
   "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 target_link_libraries(meshfields INTERFACE Kokkos::kokkos)
 target_link_libraries(meshfields INTERFACE Omega_h::omega_h)
-if(Kokkos_ENABLE_CUDA)
-  target_compile_options(meshfields INTERFACE "--expt-relaxed-constexpr")
-endif()
 
 #enable/disable exceptions
 option(MeshFields_USE_EXCEPTIONS "Enable throwing exceptions" ON)
 message(STATUS "Exceptions: ${MeshFields_USE_EXCEPTIONS}")
+
+# Compute a single integer version for C++ preprocessor use
+# MESHFIELDS_VERSION = MAJOR*10000 + MINOR*100 + PATCH
+# e.g. 1.0.0 -> 10000
+math(EXPR MeshFields_VERSION
+     "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
 
 #pass cmake options to the source
 configure_file(
@@ -122,6 +125,12 @@ message(STATUS "MeshFields_IS_TESTING: ${MeshFields_IS_TESTING}")
 
 #check for valgrind
 find_program(VALGRIND_CMD valgrind DOC "Location of the valgrind program")
+option(MeshFields_USE_VALGRIND "Run tests under valgrind" OFF)
+message(STATUS "MeshFields_USE_VALGRIND: ${MeshFields_USE_VALGRIND}")
+if(MESHFields_USE_VALGRIND AND NOT VALGRIND_CMD)
+  message(FATAL_ERROR "MeshFields_USE_VALGRIND enabled but valgrind binary
+                       not found VALGRIND_CMD=${VALGRIND_CMD}")
+endif()
 
 #tests
 function(test_func_impl TEST_NAME)
@@ -144,7 +153,11 @@ endfunction(smoke_test_func)
 
 function(test_func TEST_NAME)
   if(MeshFields_IS_TESTING)
-    test_func_impl(${TEST_NAME} ${ARGN})
+    if(MeshFields_USE_VALGRIND AND VALGRIND_CMD)
+      test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
+    else()
+      test_func_impl(${TEST_NAME} ${ARGN})
+    endif()
   endif()
 endfunction(test_func)
 
@@ -190,13 +203,13 @@ endfunction()
 meshfields_add_smoke_exe(KokkosTests test/testKokkos.cpp)
 meshfields_add_exe(SerializationTests test/testSerialize.cpp)
 meshfields_add_exe(ElementTests test/testElement.cpp)
+meshfields_add_exe(ControllerLifetimeTest test/testControllerLifetime.cpp)
 meshfields_add_exe(ElementJacobian1d test/testElementJacobian1d.cpp)
 meshfields_add_exe(ElementJacobian2d test/testElementJacobian2d.cpp)
 meshfields_add_exe(ElementJacobian3d test/testElementJacobian3d.cpp)
 meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
 meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
-meshfields_add_exe(PointMapping test/testPointMapping.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 meshfields_add_exe(ReducedQuinticTest test/testReducedQuintic.cpp)
@@ -205,19 +218,21 @@ meshfields_add_exe(OmegahReducedQuinticTest test/testOmegahTriReducedQuintic.cpp
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
   meshfields_add_smoke_exe(CabanaTests test/testCabana.cpp)
+  meshfields_add_exe(CabanaControllerLifetimeTest test/testCabanaControllerLifetime.cpp)
   smoke_test_func(CabanaTests ./CabanaTests)
   test_func(ControllerPerformance ./ControllerPerformance)
+  test_func(CabanaControllerLifetimeTest ./CabanaControllerLifetimeTest)
 endif()
 
 smoke_test_func(KokkosTests ./KokkosTests)
 test_func(SerializationTests ./SerializationTests)
 test_func(ElementTests ./ElementTests)
+test_func(ControllerLifetimeTest ./ControllerLifetimeTest)
 test_func(ElementJacobian1d ./ElementJacobian1d)
 test_func(ElementJacobian2d ./ElementJacobian2d)
 test_func(ElementJacobian3d ./ElementJacobian3d)
 test_func(CountIntegrator ./CountIntegrator)
 smoke_test_func(OmegahTriTests ./OmegahTriTests)
-test_func(PointMapping ./PointMapping)
 test_func(OmegahTetTest ./OmegahTetTest)
 test_func(ReducedQuinticTest ./ReducedQuinticTest)
 test_func(OmegahReducedQuinticTest ./OmegahReducedQuinticTest)

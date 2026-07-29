@@ -40,6 +40,7 @@ jobs:
       with:
         repository: kokkos/kokkos
         path: kokkos
+        ref: 5.1.1
 
     - name: Kokkos Configure CMake
       shell: bash

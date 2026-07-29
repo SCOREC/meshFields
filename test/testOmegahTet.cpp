@@ -41,7 +41,7 @@ Omega_h::Mesh createMeshTet(Omega_h::Library &lib) {
 }
 
 struct TestCoords {
-  Kokkos::View<MeshField::Real *[4]> coords;
+  Kokkos::View<MeshField::Real *[3]> coords;
   size_t NumPtsPerElem;
   std::string name;
 };
@@ -130,18 +130,17 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
 }
 
 template <size_t NumPtsPerElem>
-Kokkos::View<MeshField::Real *[4]>
+Kokkos::View<MeshField::Real *[3]>
 createElmAreaCoords(size_t numElements,
-                    Kokkos::Array<MeshField::Real, 4 * NumPtsPerElem> coords) {
-  Kokkos::View<MeshField::Real *[4]> lc("localCoords",
+                    Kokkos::Array<MeshField::Real, 3 * NumPtsPerElem> coords) {
+  Kokkos::View<MeshField::Real *[3]> lc("localCoords",
                                         numElements * NumPtsPerElem);
   Kokkos::parallel_for(
       "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &elm) {
         for (size_t pt = 0; pt < NumPtsPerElem; pt++) {
-          lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 4 + 0];
-          lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 4 + 1];
-          lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 4 + 2];
-          lc(elm * NumPtsPerElem + pt, 3) = coords[pt * 4 + 3];
+          lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 3 + 0];
+          lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 3 + 1];
+          lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 3 + 2];
         }
       });
   return lc;
@@ -162,8 +161,12 @@ void runTest(Omega_h::Mesh &mesh,
              auto testCase, auto function) {
   using functionType = decltype(function);
   using ViewType = decltype(testCase.coords);
-  auto field = omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                                numComponents>();
+  // fieldWithCtrlr.ctrlr must stay alive for as long as fieldWithCtrlr.field
+  // is used (some Controllers, e.g. CabanaController, hand out slices that
+  // are only valid while the Controller that created them is alive).
+  auto fieldWithCtrlr = omf.template CreateLagrangeField<
+      MeshField::Real, ShapeOrder, numComponents>();
+  auto field = fieldWithCtrlr.field;
   using FieldType = decltype(field);
   setVertices(mesh, function, field);
   if constexpr (ShapeOrder == 2) {
@@ -171,7 +174,8 @@ void runTest(Omega_h::Mesh &mesh,
   }
   auto result = omf.template tetrahedronLocalPointEval<ViewType, FieldType>(
       testCase.coords, testCase.NumPtsPerElem, field);
-  auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+  auto coordFieldWithCtrlr = omf.getCoordField();
+  auto failed = checkResult(mesh, result, coordFieldWithCtrlr.field, testCase,
                             decltype(function){}, numComponents);
   if (failed) {
     std::string fieldErr = ShapeOrder == 1 ? "linear" : "quadratic";
@@ -192,23 +196,40 @@ void doRun(Omega_h::Mesh &mesh,
   // setup field with values from the analytic function
   static const size_t OnePtPerElem = 1;
   static const size_t FourPtsPerElem = 4;
+  static const size_t TenPtsPerElem = 10;
   auto centroids = createElmAreaCoords<OnePtPerElem>(
-      mesh.nregions(), {1 / 4.0, 1 / 4.0, 1 / 4.0, 1 / 4.0});
+      mesh.nregions(), {1 / 4.0, 1 / 4.0, 1 / 4.0});
   auto interior =
-      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.1, 0.4, 0.3, 0.2});
+      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.1, 0.4, 0.3});
   auto vertex =
-      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.0, 0.0, 1.0, 0.0});
+      createElmAreaCoords<OnePtPerElem>(mesh.nregions(), {0.0, 0.0, 1.0});
   // clang-format off
     auto allVertices = createElmAreaCoords<FourPtsPerElem>(mesh.nregions(),
-        {1.0, 0.0, 0.0, 0.0,
-         0.0, 1.0, 0.0, 0.0,
-         0.0, 0.0, 1.0, 0.0,
-         0.0, 0.0, 0.0, 1.0});
-    const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
-                        TestCoords{interior, OnePtPerElem, "interior"},
-                        TestCoords{vertex, OnePtPerElem, "vertex"},
-                        TestCoords{allVertices, FourPtsPerElem, "allVertices"}};
+        {1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0});
   // clang-format on
+  // one point per node (vertices + edge midpoints) of the quadratic
+  // tetrahedron, in the shape function's own canonical node ordering - this
+  // verifies field evaluation at edge dof holders against the true
+  // physical edge midpoint
+  const auto quadNodeXi =
+      MeshField::QuadraticTetrahedronShape().getNodeParametricCoords();
+  auto allNodes = createElmAreaCoords<TenPtsPerElem>(
+      mesh.nregions(),
+      {quadNodeXi[0],  quadNodeXi[1],  quadNodeXi[2],  quadNodeXi[3],
+       quadNodeXi[4],  quadNodeXi[5],  quadNodeXi[6],  quadNodeXi[7],
+       quadNodeXi[8],  quadNodeXi[9],  quadNodeXi[10], quadNodeXi[11],
+       quadNodeXi[12], quadNodeXi[13], quadNodeXi[14], quadNodeXi[15],
+       quadNodeXi[16], quadNodeXi[17], quadNodeXi[18], quadNodeXi[19],
+       quadNodeXi[20], quadNodeXi[21], quadNodeXi[22], quadNodeXi[23],
+       quadNodeXi[24], quadNodeXi[25], quadNodeXi[26], quadNodeXi[27],
+       quadNodeXi[28], quadNodeXi[29]});
+  const auto cases = {TestCoords{centroids, OnePtPerElem, "centroids"},
+                      TestCoords{interior, OnePtPerElem, "interior"},
+                      TestCoords{vertex, OnePtPerElem, "vertex"},
+                      TestCoords{allVertices, FourPtsPerElem, "allVertices"},
+                      TestCoords{allNodes, TenPtsPerElem, "allNodes"}};
 
   auto coords = mesh.coords();
   for (auto testCase : cases) {

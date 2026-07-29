@@ -64,7 +64,7 @@ void tetJacobian() {
   const MeshField::MeshInfo meshInfo{
       .numVtx = 4, .numEdge = 6, .numTet = 1, .dim = 3};
   auto coordField = MeshField::CreateCoordinateField<
-      ExecutionSpace, MeshField::KokkosController, 3>(meshInfo);
+      ExecutionSpace, MeshField::KokkosController, 3>(meshInfo).field;
   TetrahedronTestCase identityTet({0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
                                   {1, 0, 0, 0, 1, 0, 0, 0, 1}, 1);
   TetrahedronTestCase skewedTet({0, 0, 0, 5, 1, 2, 3, 4, 6, 10, 8, 9},
@@ -76,7 +76,7 @@ void tetJacobian() {
                               MeshField::LinearTetrahedronShape(),
                               LinearTetrahedronToVertexField());
 
-    Kokkos::View<MeshField::Real *[4]> lc("localCoords", 1);
+    Kokkos::View<MeshField::Real *[3]> lc("localCoords", 1);
     Kokkos::deep_copy(lc, 1.0 / 4);
     const auto numPtsPerElement = 1;
     const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);

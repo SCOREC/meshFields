@@ -193,10 +193,10 @@ int main(int argc, char **argv) {
                              MeshField::KokkosController>
       omf(mesh);
   auto recoveredStrainField =
-      omf.CreateLagrangeField<Real, ShapeOrder, MeshDim>();
+      omf.CreateLagrangeField<Real, ShapeOrder, MeshDim>().field;
   setFieldAtVertices(mesh, recoveredStrain, recoveredStrainField);
 
-  auto coordField = omf.getCoordField();
+  auto coordField = omf.getCoordField().field;
   const auto [shp, map] =
       MeshField::Omegah::getTriangleElement<ShapeOrder>(mesh);
   MeshField::FieldElement coordFe(mesh.nelems(), coordField, shp, map);

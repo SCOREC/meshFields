@@ -45,7 +45,7 @@ void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real *> coords,
 void edgeJacobian() {
   const MeshField::MeshInfo meshInfo{.numVtx = 2, .numEdge = 1, .dim = 1};
   auto coordField = MeshField::CreateCoordinateField<
-      ExecutionSpace, MeshField::KokkosController, 1>(meshInfo);
+      ExecutionSpace, MeshField::KokkosController, 1>(meshInfo).field;
   Kokkos::View<MeshField::Real *, Kokkos::HostSpace> coords_h("coords_h", 2);
   coords_h[0] = -1;
   coords_h[1] = 1;
@@ -56,7 +56,7 @@ void edgeJacobian() {
                             MeshField::LinearEdgeShape(),
                             LinearEdgeToVertexField());
 
-  Kokkos::View<MeshField::Real *[2]> lc("localCoords", 1);
+  Kokkos::View<MeshField::Real *[1]> lc("localCoords", 1);
   Kokkos::deep_copy(lc, 1.0 / 2);
   const auto numPtsPerElement = 1;
   const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);

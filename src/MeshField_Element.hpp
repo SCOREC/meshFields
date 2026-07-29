@@ -181,7 +181,7 @@ struct FieldElement {
    * @return the result of evaluation
    */
   KOKKOS_INLINE_FUNCTION ValArray
-  getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
+  getValue(int ent, Kokkos::Array<Real, MeshEntDim> localCoord) const {
     assert(ent >= 0);
     assert(static_cast<size_t>(ent) < numMeshEnts);
     ValArray c;
@@ -310,8 +310,9 @@ struct FieldElement {
   KOKKOS_INLINE_FUNCTION Real getJacobian1d(int ent) const {
     assert(ent >= 0);
     assert(static_cast<size_t>(ent) < numMeshEnts);
+    Vector1 ignored;
     typename ShapeType::GeometryShape geomShape{};
-    const auto nodalGradients = geomShape.getLocalGradients();
+    const auto nodalGradients = geomShape.getLocalGradients(ignored);
     const auto nodeValues = getGeometryNodeValues(ent);
     auto g = nodalGradients[0] * nodeValues[0];
     for (size_t i = 1; i < ShapeType::GeometryShape::numNodes; ++i) {
@@ -413,6 +414,7 @@ struct FieldElement {
                                       Kokkos::View<LO *> offsets) const {
     if (Debug) {
       // check input parametric coords are positive and sum to one
+      // TODO move this to helper function
       LO numErrors = 0;
       Kokkos::parallel_reduce(
           "checkCoords", numMeshEnts,
@@ -424,7 +426,7 @@ struct FieldElement {
                 isError++;
               sum += localCoords(ent, i);
             }
-            if (Kokkos::fabs(sum - 1) > MachinePrecision)
+            if (sum > 1.0)
               isError++;
             lerrors += isError;
           },
@@ -439,10 +441,10 @@ struct FieldElement {
            "must be at least %zu.\n",
            numMeshEnts);
     }
-    if (localCoords.extent(1) != MeshEntDim + 1) {
+    if (localCoords.extent(1) != MeshEntDim) {
       fail("Dimension 1 of the input array of local coordinates "
            "must have size = %zu.\n",
-           MeshEntDim + 1);
+           MeshEntDim);
     }
     if (offsets.size() != numMeshEnts + 1) {
       fail("The input array of offsets must have size = %zu\n",
@@ -474,7 +476,6 @@ struct FieldElement {
 
       // Use GeometryShape for the geometry mapping gradient (supports non-isoparametric elements)
       typename ShapeType::GeometryShape geomShape{};
-      const auto geomGrad = geomShape.getLocalGradients();
 
       // fill the views of geometry node coordinates and geometry node gradients
       Kokkos::View<Real * [ShapeType::GeometryShape::numNodes][MeshEntDim]> nodeCoords(
@@ -486,6 +487,10 @@ struct FieldElement {
             const auto vals = getGeometryNodeValues(ent);
             assert(vals.size() == MeshEntDim * ShapeType::GeometryShape::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+              Kokkos::Array<Real, MeshEntDim> xi;
+              for (size_t d = 0; d < MeshEntDim; d++)
+                xi[d] = localCoords(pt, d);
+              const auto geomGrad = geomShape.getLocalGradients(xi);
               for (size_t node = 0; node < ShapeType::GeometryShape::numNodes; node++) {
                 for (size_t d = 0; d < MeshEntDim; d++) {
                   nodeCoords(pt, node, d) = vals[node * MeshEntDim + d];
@@ -548,7 +553,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
               isError++;
             sum += localCoords(ent, i);
           }
-          if (Kokkos::fabs(sum - 1) > MachinePrecision)
+          if (sum > 1.0)
             isError++;
           lerrors += isError;
         },
@@ -559,10 +564,10 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
     }
   }
 
-  if (localCoords.extent(1) != fes.MeshEntDim + 1) {
+  if (localCoords.extent(1) != fes.MeshEntDim) {
     fail("Dimension 1 of the input array of local coordinates "
          "must have size = %zu.\n",
-         fes.MeshEntDim + 1);
+         fes.MeshEntDim);
   }
   if (offsets.size() != fes.numMeshEnts + 1) {
     fail("The input array of offsets must have size = %zu\n",
@@ -582,7 +587,7 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
   Kokkos::View<Real *[numComponents]> res("result", numPts);
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-        Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
+        Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
         // TODO use nested parallel for?
         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
           for (size_t i = 0; i < localCoords.extent(1); i++) // better way?

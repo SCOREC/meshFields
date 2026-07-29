@@ -73,7 +73,7 @@ void triJacobian() {
   const MeshField::MeshInfo meshInfo{
       .numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
   auto coordField = MeshField::CreateCoordinateField<
-      ExecutionSpace, MeshField::KokkosController, 2>(meshInfo);
+      ExecutionSpace, MeshField::KokkosController, 2>(meshInfo).field;
   TriangleTestCase rightTriangle({0, 0, 1, 0, 0, 1}, {1, 0, 0, 1}, 1);
   TriangleTestCase skewedTriangle({0, 0, 5, 1, 3, 4}, {5, 1, 3, 4}, 17);
   for (auto testCase : {rightTriangle, skewedTriangle}) {
@@ -83,7 +83,7 @@ void triJacobian() {
                               MeshField::LinearTriangleShape(),
                               LinearTriangleToVertexField());
 
-    Kokkos::View<MeshField::Real *[3]> lc("localCoords", 1);
+    Kokkos::View<MeshField::Real *[2]> lc("localCoords", 1);
     Kokkos::deep_copy(lc, 1.0 / 3);
     const auto numPtsPerElement = 1;
     const auto J = MeshField::getJacobians(f, lc, numPtsPerElement);
