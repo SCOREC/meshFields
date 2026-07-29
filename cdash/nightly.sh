@@ -26,15 +26,15 @@ cd $d
 
 #install kokkos
 [ ! -d kokkos ] && git clone --depth 1 --branch 5.1.1 https://github.com/Kokkos/kokkos.git kokkos
-cd kokkos && git pull && cd -
 kkbdir=$d/build-kokkos
 [ -d $kkbdir ] && rm -rf $kkbdir
 cmake -S kokkos -B $kkbdir \
   -DCMAKE_CXX_COMPILER=$d/kokkos/bin/nvcc_wrapper \
   -DCMAKE_INSTALL_PREFIX=$kkbdir/install \
-  -DKokkos_ARCH_TURING75=ON \
+  -DKokkos_ARCH_AMPER80=ON \
   -DKokkos_ENABLE_SERIAL=ON \
   -DKokkos_ENABLE_OPENMP=OFF \
+  -DKokkos_ENABLE_CUDA_LAMBDA=ON \
   -DKokkos_ENABLE_CUDA=ON \
   -DKokkos_ENABLE_IMPL_VIEW_LEGACY=ON \
   -DKokkos_ENABLE_DEBUG=ON
@@ -67,7 +67,6 @@ cmake -S omega_h -B build-omega_h \
   -DBUILD_SHARED_LIBS=OFF \
   -DOmega_h_USE_Kokkos=ON \
   -DOmega_h_USE_CUDA=ON \
-  -DOmega_h_CUDA_ARCH=75 \
   -DOmega_h_USE_MPI=OFF \
   -DBUILD_TESTING=ON \
   -DCMAKE_CXX_EXTENSIONS=OFF \
