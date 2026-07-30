@@ -551,31 +551,44 @@ struct QuadraticTetrahedronShape {
  */
 namespace ReducedQuinticHelpers {
   /**
-   * @brief Transform barycentric coordinates to reduced quintic local coordinates
+   * @brief Transform parametric coordinates to reduced quintic local coordinates
    * 
    * local coordinate system (origin at foot of perpendicular):
    *   - v0 is at (-b, 0)
    *   - v1 is at (a, 0)
    *   - v2 is at (0, c)
    * 
-   * @param xi Barycentric coordinates [λ0, λ1, λ2]
+   * @param xi Parametric coordinates (xi0, xi1) where L0=1-xi0-xi1, L1=xi0, L2=xi1
+   * @param order Vertex reordering [3] - order[i] gives original index
    * @param a Distance from origin to v1
    * @param b Distance from origin to v0
    * @param c Perpendicular distance from origin to v2
    * @return Vector2 containing [xi_local, eta_local]
    */
   KOKKOS_INLINE_FUNCTION
-  Vector2 barycentricToLocal(
-      Vector3 const& xi,
+  Vector2 parametricToLocal(
+      Vector2 const& xi,
       int const order[3],
       Real a,
       Real b,
       Real c)
   {
-    // Reorder barycentric coordinates into vertex ordering
-    const Real lambda0 = xi[order[0]];
-    const Real lambda1 = xi[order[1]];
-    const Real lambda2 = xi[order[2]];
+    assert(eachLessThanOrEqual(xi,1.0));
+    assert(eachGreaterThanOrEqual(xi,0.0));
+    // First compute barycentric coordinates: L0 = 1-xi[0]-xi[1], L1 = xi[0], L2 = xi[1]
+    const Real L0 = 1 - xi[0] - xi[1];
+    assert(greaterThanOrEqual(L0,0.0));
+    assert(lessThanOrEqual(L0,1.0));
+    const Real L1 = xi[0];
+    const Real L2 = xi[1];
+    
+    // Create array of barycentric coordinates
+    Real bary[3] = {L0, L1, L2};
+    
+    // Reorder barycentric coordinates according to vertex ordering
+    const Real lambda0 = bary[order[0]];
+    const Real lambda1 = bary[order[1]];
+    const Real lambda2 = bary[order[2]];
 
     const Real xi_local  = a * lambda1 - b * lambda0;
     const Real eta_local = c * lambda2;
@@ -629,15 +642,14 @@ namespace ReducedQuinticHelpers {
  *   - v1 is at (a, 0) in local coords, where a = distance from origin to v1
  *   - v2 is at (0, c) in local coords, where c = perpendicular distance to v2
  * 
- * meshFields API uses barycentric coordinates: (λ0, λ1, λ2) where λ0+λ1+λ2=1
- * Passed as xi[0]=λ0, xi[1]=λ1, xi[2]=λ2.
+ * meshFields API uses parametric coordinates: (xi0, xi1) where barycentric coordinates
+ * are computed as L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1.
  * 
- * Transformation:
+ * Transformation to local coordinates:
  *   xi_local = a*λ1 - b*λ0
  *   eta_local = c*λ2
  * 
- * Applied automatically via helper functions:
- *   barycentricToLocal() and localToBarycentricGradient()
+ * Applied automatically via helper function parametricToLocal()
  * 
  * The geometric parameters (a, b, c) are stored with the coefficients and
  * retrieved during evaluation. Shape function coefficients are computed by
@@ -654,10 +666,8 @@ struct ReducedQuinticTriangleShape {
   using GeometryShape = LinearTriangleShape;
 
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi,
+  Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi,
                                           Kokkos::View<const Real*, Kokkos::LayoutStride> elemCoeffs) const {
-    assert(greaterThanOrEqualZero(xi));
-    assert(sumsToOne(xi));
 
     // Extract geometric parameters from coefficient array
     // elemCoeffs layout: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, coeff_0_0, ..., coeff_17_19]
@@ -667,15 +677,9 @@ struct ReducedQuinticTriangleShape {
     const Real a = elemCoeffs(3);
     const Real b = elemCoeffs(4);
     const Real c = elemCoeffs(5);
-    
-    // Reorder barycentric from meshFields pipeline convention to coords-index convention
-    const Real xi0_ordered = 1.0 - xi[0] - xi[1];  // coords[0]
-    const Real xi1_ordered = xi[0];                 // coords[1]
-    const Real xi2_ordered = xi[1];                 // coords[2]
-    Vector3 xi_ordered = {xi0_ordered, xi1_ordered, xi2_ordered};
 
-    // Transform barycentric to local coordinates
-    const auto local = ReducedQuinticHelpers::barycentricToLocal(xi_ordered, order, a, b, c);
+    // Transform parametric to local coordinates
+    const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
     const Real xi_local = local[0];
     const Real eta_local = local[1];
     
@@ -727,10 +731,8 @@ struct ReducedQuinticTriangleShape {
   // Jacobian is therefore computed from the linear geometry rather than from the
   // Reduced Quintic shape functions.
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector3 const &xi,
+  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector2 const &xi,
                                                       Kokkos::View<const Real*, Kokkos::LayoutStride> elemCoeffs) const {
-    assert(greaterThanOrEqualZero(xi));
-    assert(sumsToOne(xi));
     
     // Extract geometric parameters
     const int order[3] = {static_cast<int>(elemCoeffs(0)), 
@@ -739,15 +741,9 @@ struct ReducedQuinticTriangleShape {
     const Real a = elemCoeffs(3);
     const Real b = elemCoeffs(4);
     const Real c = elemCoeffs(5);
-    
-    // Reorder barycentric from meshFields pipeline convention to coords-index convention
-    const Real xi0_ordered = 1.0 - xi[0] - xi[1];  // coords[0]
-    const Real xi1_ordered = xi[0];                 // coords[1]
-    const Real xi2_ordered = xi[1];                 // coords[2]
-    Vector3 xi_ordered = {xi0_ordered, xi1_ordered, xi2_ordered};
 
-    // Transform barycentric to local coordinates
-    const auto local = ReducedQuinticHelpers::barycentricToLocal(xi_ordered, order, a, b, c);
+    // Transform parametric to local coordinates
+    const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
     const Real xi_local = local[0];
     const Real eta_local = local[1];
     

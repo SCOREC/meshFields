@@ -45,7 +45,7 @@ Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
 }
 
 struct TestCoords {
-  Kokkos::View<MeshField::Real *[3]> coords;
+  Kokkos::View<MeshField::Real *[2]> coords;
   size_t NumPtsPerElem;
   std::string name;
 };
@@ -161,17 +161,20 @@ void setReducedQuinticDOFs(Omega_h::Mesh &mesh, AnalyticFunction func,
 }
 
 template <size_t NumPtsPerElem>
-Kokkos::View<MeshField::Real *[3]>
+Kokkos::View<MeshField::Real *[2]>
 createElmAreaCoords(size_t numElements,
-                    Kokkos::Array<MeshField::Real, 3 * NumPtsPerElem> coords) {
-  Kokkos::View<MeshField::Real *[3]> lc("localCoords",
+                    Kokkos::Array<MeshField::Real, 3 * NumPtsPerElem> baryCoords) {
+  // Convert from barycentric (L0, L1, L2) to parametric (xi0, xi1)
+  // where xi0 = L1, xi1 = L2, and L0 = 1 - xi0 - xi1
+  Kokkos::View<MeshField::Real *[2]> lc("localCoords",
                                         numElements * NumPtsPerElem);
   Kokkos::parallel_for(
       "setLocalCoords", numElements, KOKKOS_LAMBDA(const int &elm) {
         for (size_t pt = 0; pt < NumPtsPerElem; pt++) {
-          lc(elm * NumPtsPerElem + pt, 0) = coords[pt * 3 + 0];
-          lc(elm * NumPtsPerElem + pt, 1) = coords[pt * 3 + 1];
-          lc(elm * NumPtsPerElem + pt, 2) = coords[pt * 3 + 2];
+          // Input: baryCoords[pt*3+0] = L0, baryCoords[pt*3+1] = L1, baryCoords[pt*3+2] = L2
+          // Output: xi[0] = L1, xi[1] = L2
+          lc(elm * NumPtsPerElem + pt, 0) = baryCoords[pt * 3 + 1];  // xi0 = L1
+          lc(elm * NumPtsPerElem + pt, 1) = baryCoords[pt * 3 + 2];  // xi1 = L2
         }
       });
   return lc;
@@ -193,7 +196,8 @@ void runTest(Omega_h::Mesh &mesh,
              TestCaseType testCase, FunctionType function) {
   using functionType = decltype(function);
   using ViewType = decltype(testCase.coords);
-  auto field = omf.template CreateLagrangeField<MeshField::Real, 1, 6>();
+  auto fieldWithCtrlr = omf.template CreateLagrangeField<MeshField::Real, 1, 6>();
+  auto field = fieldWithCtrlr.field;
   using FieldType = decltype(field);
   setReducedQuinticDOFs(mesh, function, field);
   // verify field
@@ -211,7 +215,8 @@ void runTest(Omega_h::Mesh &mesh,
       });
   auto result = omf.template triangleReducedQuinticEval<ViewType, FieldType>(
       testCase.coords, testCase.NumPtsPerElem, field);
-  auto failed = checkResult(mesh, result, omf.getCoordField(), testCase,
+  auto coordFieldWithCtrlr = omf.getCoordField();
+  auto failed = checkResult(mesh, result, coordFieldWithCtrlr.field, testCase,
                             decltype(function){}, numComponents);
   if (failed) {
     std::string functionErr;

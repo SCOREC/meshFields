@@ -143,7 +143,7 @@ bool testGeometryComputation() {
 
 /**
  * @brief Test 3: Coordinate transformation
- * Tests barycentricToLocal helper function
+ * Tests parametricToLocal helper function
  */
 KOKKOS_INLINE_FUNCTION
 Vector3 localToBarycentric(Vector2 const& local,
@@ -205,15 +205,16 @@ bool testCoordinateTransformation()
     const Real b = 0.0;
     const Real c = 3.0;
 
-    Vector3 v0 = {1.0, 0.0, 0.0};
-    Vector3 v1 = {0.0, 1.0, 0.0};
-    Vector3 v2 = {0.0, 0.0, 1.0};
+    // Parametric coordinates: xi[0]=L1, xi[1]=L2
+    Vector2 v0 = {0.0, 0.0};
+    Vector2 v1 = {1.0, 0.0};
+    Vector2 v2 = {0.0, 1.0};
 
     int order[3] = {0, 1, 2};  // No reordering for this simple case
 
-    auto p0 = ReducedQuinticHelpers::barycentricToLocal(v0, order, a,b,c);
-    auto p1 = ReducedQuinticHelpers::barycentricToLocal(v1, order, a,b,c);
-    auto p2 = ReducedQuinticHelpers::barycentricToLocal(v2, order, a,b,c);
+    auto p0 = ReducedQuinticHelpers::parametricToLocal(v0, order, a,b,c);
+    auto p1 = ReducedQuinticHelpers::parametricToLocal(v1, order, a,b,c);
+    auto p2 = ReducedQuinticHelpers::parametricToLocal(v2, order, a,b,c);
 
     passed &= checkNear(p0[0], 0.0, "vertex0 xi");
     passed &= checkNear(p0[1], 0.0, "vertex0 eta");
@@ -224,10 +225,10 @@ bool testCoordinateTransformation()
     passed &= checkNear(p2[0], 0.0, "vertex2 xi");
     passed &= checkNear(p2[1], 3.0, "vertex2 eta");
 
-    Vector3 centroid = {1.0/3.0,1.0/3.0,1.0/3.0};
+    Vector2 centroid = {1.0/3.0, 1.0/3.0};
 
     auto center =
-        ReducedQuinticHelpers::barycentricToLocal(
+        ReducedQuinticHelpers::parametricToLocal(
             centroid, order, a,b,c);
 
     passed &= checkNear(center[0], 4.0/3.0,
@@ -248,15 +249,16 @@ bool testCoordinateTransformation()
     const Real b = 3.2;
     const Real c = 2.4;
 
-    Vector3 v0 = {1.0,0.0,0.0};
-    Vector3 v1 = {0.0,1.0,0.0};
-    Vector3 v2 = {0.0,0.0,1.0};
+    // Parametric coordinates: xi[0]=L1, xi[1]=L2
+    Vector2 v0 = {0.0, 0.0};
+    Vector2 v1 = {1.0, 0.0};
+    Vector2 v2 = {0.0, 1.0};
 
     int order[3] = {0, 1, 2}; 
 
-    auto p0 = ReducedQuinticHelpers::barycentricToLocal(v0, order, a,b,c);
-    auto p1 = ReducedQuinticHelpers::barycentricToLocal(v1, order, a,b,c);
-    auto p2 = ReducedQuinticHelpers::barycentricToLocal(v2, order, a,b,c);
+    auto p0 = ReducedQuinticHelpers::parametricToLocal(v0, order, a,b,c);
+    auto p1 = ReducedQuinticHelpers::parametricToLocal(v1, order, a,b,c);
+    auto p2 = ReducedQuinticHelpers::parametricToLocal(v2, order, a,b,c);
 
     passed &= checkNear(p0[0], -3.2,
                         "vertex0 xi");
@@ -273,10 +275,10 @@ bool testCoordinateTransformation()
     passed &= checkNear(p2[1], 2.4,
                         "vertex2 eta");
 
-    Vector3 centroid = {1.0/3.0,1.0/3.0,1.0/3.0};
+    Vector2 centroid = {1.0/3.0, 1.0/3.0};
 
     auto center =
-        ReducedQuinticHelpers::barycentricToLocal(
+        ReducedQuinticHelpers::parametricToLocal(
             centroid, order, a,b,c);
 
     passed &= checkNear(center[0],
@@ -306,9 +308,12 @@ bool testCoordinateTransformation()
 
     int order[3] = {0, 1, 2}; 
 
+    // Convert barycentric to parametric: xi[0]=L1, xi[1]=L2
+    Vector2 param = {bary[1], bary[2]};
+
     auto recovered =
-        ReducedQuinticHelpers::barycentricToLocal(
-            bary, order, a,b,c);
+        ReducedQuinticHelpers::parametricToLocal(
+            param, order, a,b,c);
 
     std::cout
       << "  bary = ("
@@ -400,9 +405,9 @@ bool testFieldEvaluation(const char* testName, Omega_h::Matrix<2,3> const& coord
     Real lambda1 = ((y2 - y0)*(x - x2) + (x0 - x2)*(y - y2)) / detT;
     Real lambda2 = 1.0 - lambda0 - lambda1;
     
-    // Reorder to meshFields pipeline convention:
-    // xi[0] → coords[1], xi[1] → coords[2], xi[2] carries coords[0] for completeness
-    Kokkos::Array<Real, 3> bary = {lambda1, lambda2, lambda0};
+    // Convert barycentric to parametric coordinates
+    // Parametric coords: xi[0] = L1, xi[1] = L2, where L0 = 1 - xi[0] - xi[1]
+    Kokkos::Array<Real, 2> xiParam = {lambda1, lambda2};
     
     // Evaluate on host
     ReducedQuinticTriangleShape shape;
@@ -412,8 +417,8 @@ bool testFieldEvaluation(const char* testName, Omega_h::Matrix<2,3> const& coord
 
     Kokkos::parallel_for("EvaluateField", 1, KOKKOS_LAMBDA(int) {
       auto coeffSlice = Kokkos::subview(elemCoeffs, 0, Kokkos::ALL());
-      auto shapeValues_array = shape.getValues(bary, coeffSlice);
-      auto shapeGrads_array = shape.getLocalGradients(bary, coeffSlice);
+      auto shapeValues_array = shape.getValues(xiParam, coeffSlice);
+      auto shapeGrads_array = shape.getLocalGradients(xiParam, coeffSlice);
       for (int i = 0; i < 18; i++) {
         shapeValues_d(i) = shapeValues_array[i];
         shapeGrads_d(i, 0) = shapeGrads_array[i][0];
