@@ -6,9 +6,11 @@
 #include "MeshField_Fail.hpp"
 #include "MeshField_For.hpp"
 #include "MeshField_ShapeField.hpp"
+#include "MeshField_ReducedQuintic.hpp"
 #include "Omega_h_file.hpp"    //move
 #include "Omega_h_mesh.hpp"    //move
 #include "Omega_h_simplex.hpp" //move
+#include <vector>
 
 namespace {
 
@@ -241,6 +243,65 @@ struct QuadraticTetrahedronToField {
   }
 };
 
+struct ReducedQuinticTriangleToField {
+  Omega_h::LOs triVerts;
+
+  ReducedQuinticTriangleToField(Omega_h::Mesh& mesh)
+      : triVerts(mesh.ask_elem_verts()) {
+
+    if (mesh.dim() != 2 || mesh.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
+  }
+
+  static constexpr KOKKOS_FUNCTION
+  Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
+    return {MeshField::Triangle};
+  }
+
+  KOKKOS_FUNCTION
+  MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx,
+             MeshField::LO triCompIdx,
+             MeshField::LO tri,
+             MeshField::Mesh_Topology topo) const {
+
+    assert(topo == MeshField::Triangle);
+
+    // shape function index -> vertex
+    const MeshField::LO localVtxIdx = triNodeIdx / 6;
+
+    // dof component within vertex
+    const MeshField::LO vertexDof = triNodeIdx % 6;
+
+    const auto triDim = 2;
+    const auto vtxDim = 0;
+    const auto ignored = -1;
+
+    const auto canonicalVtxIdx =
+        (Omega_h::simplex_down_template(
+             triDim, vtxDim, localVtxIdx, ignored) +
+         2) %
+        3;
+
+    const auto triToVtxDegree =
+        Omega_h::simplex_degree(triDim, vtxDim);
+
+    const MeshField::LO vtx =
+        triVerts[(tri * triToVtxDegree) + canonicalVtxIdx];
+
+    return {
+        0,                // node within vertex dof holder
+        vertexDof,        // field component (the DOF type)
+        vtx,
+        MeshField::Vertex
+    };
+  }
+};
+
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
@@ -258,6 +319,63 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
     return result{MeshField::QuadraticTriangleShape(),
                   QuadraticTriangleToField(mesh)};
   }
+}
+
+// ReducedQuintic triangle element with precomputed coefficients
+// Functor for extracting triangle vertex coordinates on device
+struct ExtractTriCoords {
+  Omega_h::LOs triVerts_d;
+  Omega_h::Reals coords_d;
+  Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d; // one Matrix per triangle
+
+  ExtractTriCoords(Omega_h::LOs triVerts_d_, Omega_h::Reals coords_d_,
+                   Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d_)
+    : triVerts_d(triVerts_d_), coords_d(coords_d_), triCoords_d(triCoords_d_) {}
+
+  KOKKOS_INLINE_FUNCTION
+  void operator()(int tri) const {
+    Omega_h::Few<Omega_h::LO, 3> vtxIds;
+    for (int vi = 0; vi < 3; vi++) {
+      const auto localVtxIdx = (vi + 2) % 3;
+      vtxIds[vi] = triVerts_d[tri * 3 + localVtxIdx];
+    }
+    triCoords_d(tri) = Omega_h::gather_vectors<3, 2>(coords_d, vtxIds);
+  }
+};
+
+// Result type for getReducedQuinticTriangleElement
+struct ReducedQuinticTriangleElementResult {
+  MeshField::ReducedQuinticTriangleShape shp;
+  Omegah::ReducedQuinticTriangleToField map;
+  Kokkos::View<MeshField::Real**> coeffs;
+};
+
+inline ReducedQuinticTriangleElementResult
+getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
+  if (mesh.dim() != 2 || mesh.family() != OMEGA_H_SIMPLEX) {
+    MeshField::fail("getReducedQuinticTriangleElement requires 2D simplex mesh\n");
+  }
+  
+  const auto numTri = mesh.nfaces();
+  const auto coords_d = mesh.coords();
+  const auto triVerts_d = mesh.ask_elem_verts();
+  
+  // Allocate device view: one Matrix<2,3> per triangle
+  // Matrix<dim, neev> = neev columns (vertices) of dim-dimensional vectors
+  Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d("triCoords_device", numTri);
+  
+  // Extract triangle vertex coordinates using Omega_h gather_vectors
+  Kokkos::parallel_for(
+      "extractTriCoords", numTri,
+      ExtractTriCoords(triVerts_d, coords_d, triCoords_d));
+  
+  // Precompute coefficients for all triangles entirely on device
+  auto elemCoeffs = MeshField::precomputeReducedQuinticCoefficients(numTri, triCoords_d);
+
+  return ReducedQuinticTriangleElementResult{
+    MeshField::ReducedQuinticTriangleShape(),
+    Omegah::ReducedQuinticTriangleToField(mesh),
+    elemCoeffs};
 }
 template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
@@ -361,6 +479,38 @@ public:
         meshInfo.numTri, field, shp, map);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
     return eval;
+  }
+
+  // Evaluate a ReducedQuintic field at the specified local coordinates for each triangle.
+  //
+  // NOTE: This is separate from triangleLocalPointEval because the ReducedQuintic
+  // element has a different DOF layout and shape function. triangleLocalPointEval
+  // handles standard elements, while ReducedQuintic uses
+  // a different set of degrees of freedom and shape functions.
+  template <typename ViewType, typename ShapeField>
+  auto triangleReducedQuinticEval(const ViewType &localCoords,
+                                  Kokkos::View<LO *> offsets,
+                                  const ShapeField &field) const {
+    const auto MeshDim = 2;
+    if (mesh.dim() != MeshDim) {
+      MeshField::fail("input mesh must be 2d\n");
+    }
+
+    const auto [shp, map, coeffs] = Omegah::getReducedQuinticTriangleElement(mesh);
+
+    MeshField::FieldElement<ShapeField, decltype(shp), decltype(map)> f(
+        meshInfo.numTri, field, shp, map, coeffs);
+    auto eval = MeshField::evaluate(f, localCoords, offsets);
+    return eval;
+  }
+
+  // evaluate a ReducedQuintic field at the specified local coordinate for each triangle
+  template <typename ViewType, typename ShapeField>
+  auto triangleReducedQuinticEval(const ViewType &localCoords,
+                                  size_t NumPtsPerElem,
+                                  const ShapeField &field) const {
+    auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
+    return triangleReducedQuinticEval<ViewType, ShapeField>(localCoords, offsets, field);
   }
 
   template <typename ViewType, typename ShapeField>
