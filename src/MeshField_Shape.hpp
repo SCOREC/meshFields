@@ -23,9 +23,9 @@ namespace {
  * @param val Reference value
  * @return true if xi >= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshField::Real val) {
+KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshField::Real val, const double tol) {
   if ( xi > val ) return true;
-  return (Kokkos::fabs(xi - val) <= MeshField::MachinePrecision);
+  return (Kokkos::fabs(xi - val) <= tol);
 }
 
 /**
@@ -36,10 +36,10 @@ KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshFie
  * @return true if all xi[i] >= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::Real val) {
+KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::Real val, const double tol) {
   auto gt = true;
   for (size_t i = 0; i < xi.size(); i++) {
-    gt = gt && greaterThanOrEqual(xi[i],val);
+    gt = gt && greaterThanOrEqual(xi[i],val,tol);
   }
   return gt;
 }
@@ -50,9 +50,9 @@ KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::R
  * @param val Reference value
  * @return true if xi <= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField::Real val) {
+KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField::Real val, const double tol) {
   if ( xi < val ) return true;
-  return (Kokkos::fabs(xi - val) <= MeshField::MachinePrecision);
+  return (Kokkos::fabs(xi - val) <= tol);
 }
 
 /**
@@ -63,10 +63,10 @@ KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField:
  * @return true if all xi[i] <= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi, const MeshField::Real val) {
+KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi, const MeshField::Real val, const double tol) {
   auto lt = true;
   for (size_t i = 0; i < xi.size(); i++) {
-    lt = lt && lessThanOrEqual(xi[i],val);
+    lt = lt && lessThanOrEqual(xi[i],val,tol);
   }
   return lt;
 }
@@ -117,8 +117,8 @@ struct LinearEdgeShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector1 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,-1.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,-1.0,ParametricCoordTol));
     // clang-format off
     return {(1.0 - xi[0]) / 2.0,
             (1.0 + xi[0]) / 2.0};
@@ -180,11 +180,11 @@ struct LinearTriangleShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,0.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0,0.0));
-    assert(lessThanOrEqual(L0,1.0));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     // clang-format off
     return {L0,
             xi[0],  //L1
@@ -241,11 +241,11 @@ struct LinearTriangleCoordinateShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,0.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0,0.0));
-    assert(lessThanOrEqual(L0,1.0));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     // clang-format off
     return {L0,
             xi[0],
@@ -307,11 +307,11 @@ struct QuadraticTriangleShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,0.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0,0.0));
-    assert(lessThanOrEqual(L0,1.0));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     // clang-format off
@@ -332,11 +332,11 @@ struct QuadraticTriangleShape {
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, meshEntDim * numNodes>
   getLocalGradients(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,0.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0,0.0));
-    assert(lessThanOrEqual(L0,1.0));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     // clang-format off
@@ -395,11 +395,11 @@ struct LinearTetrahedronShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,0.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
-    assert(greaterThanOrEqual(L0,0.0));
-    assert(lessThanOrEqual(L0,1.0));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     // clang-format off
     return {L0,
             xi[0],  //L1
@@ -482,11 +482,11 @@ struct QuadraticTetrahedronShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,0.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
-    assert(greaterThanOrEqual(L0,0.0));
-    assert(lessThanOrEqual(L0,1.0));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     const Real L3 = xi[2];
@@ -512,11 +512,11 @@ struct QuadraticTetrahedronShape {
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, meshEntDim * numNodes>
   getLocalGradients(Vector3 const &xi) const {
-    assert(eachLessThanOrEqual(xi,1.0));
-    assert(eachGreaterThanOrEqual(xi,0.0));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
-    assert(greaterThanOrEqual(L0,0.0));
-    assert(lessThanOrEqual(L0,1.0));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     const Real L3 = xi[2];
