@@ -41,7 +41,7 @@ KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::R
   for (size_t i = 0; i < xi.size(); i++) {
     gt = gt && greaterThanOrEqual(xi[i],val);
   }
-  return true;
+  return gt;
 }
 
 /**
