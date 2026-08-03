@@ -23,7 +23,7 @@ namespace {
  * @param val Reference value
  * @return true if xi >= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshField::Real val, const double tol) {
+KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshField::Real val, const MeshField::Real tol) {
   if ( xi > val ) return true;
   return (Kokkos::fabs(xi - val) <= tol);
 }
@@ -36,7 +36,7 @@ KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshFie
  * @return true if all xi[i] >= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::Real val, const double tol) {
+KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::Real val, const MeshField::Real tol) {
   auto gt = true;
   for (size_t i = 0; i < xi.size(); i++) {
     gt = gt && greaterThanOrEqual(xi[i],val,tol);
@@ -50,7 +50,7 @@ KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::R
  * @param val Reference value
  * @return true if xi <= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField::Real val, const double tol) {
+KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField::Real val, const MeshField::Real tol) {
   if ( xi < val ) return true;
   return (Kokkos::fabs(xi - val) <= tol);
 }
@@ -63,7 +63,7 @@ KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField:
  * @return true if all xi[i] <= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi, const MeshField::Real val, const double tol) {
+KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi, const MeshField::Real val, const MeshField::Real tol) {
   auto lt = true;
   for (size_t i = 0; i < xi.size(); i++) {
     lt = lt && lessThanOrEqual(xi[i],val,tol);
