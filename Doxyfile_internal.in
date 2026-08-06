@@ -919,6 +919,7 @@ WARN_LOGFILE           =
 
 INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/docs/MeshFields.dox \
+@CMAKE_CURRENT_SOURCE_DIR@/docs/addingShapeFunctionsForOmegah.md \
 @CMAKE_CURRENT_SOURCE_DIR@/src/CabanaController.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/KokkosController.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Defines.hpp \
