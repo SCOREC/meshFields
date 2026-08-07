@@ -269,6 +269,7 @@ struct LinearTriangleCoordinateShape {
  * Zienkiewicz, Taylor, and Zhu
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
+//! [QuadraticTriangleShape]
 struct QuadraticTriangleShape {
   static const size_t numNodes = 6;                              ///< Number of nodes (6 for quadratic triangle)
   static const size_t meshEntDim = 2;                            ///< Mesh entity dimension (2D)
@@ -351,6 +352,7 @@ struct QuadraticTriangleShape {
     // clang-format on
   }
 };
+//! [QuadraticTriangleShape]
 
 /**
  * @brief Linear (P1) shape functions for 3D tetrahedral elements

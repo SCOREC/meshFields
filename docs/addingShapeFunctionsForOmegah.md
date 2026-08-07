@@ -83,51 +83,9 @@ const Real L0 = 1 - xi[0] - xi[1];
 assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
 ```
 
-### Example Skeleton (Linear Quadrilateral)
+### Example: `QuadraticTriangleShape` (from `src/MeshField_Shape.hpp`)
 
-```cpp
-struct LinearQuadShape {
-  static const size_t numNodes = 4;
-  static const size_t meshEntDim = 2;
-  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
-  constexpr static size_t Order = 1;
-
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
-    // clang-format off
-    return {-1,-1,  // node 0
-             1,-1,  // node 1
-             1, 1,  // node 2
-            -1, 1}; // node 3
-    // clang-format on
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
-    // standard bilinear shape functions
-    const Real xim = 1.0 - xi[0], xip = 1.0 + xi[0];
-    const Real etam = 1.0 - xi[1], etap = 1.0 + xi[1];
-    // clang-format off
-    return {0.25*xim*etam,
-            0.25*xip*etam,
-            0.25*xip*etap,
-            0.25*xim*etap};
-    // clang-format on
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients(Vector2 const &xi) const {
-    const Real xim = 1.0 - xi[0], xip = 1.0 + xi[0];
-    const Real etam = 1.0 - xi[1], etap = 1.0 + xi[1];
-    // clang-format off
-    return {-0.25*etam,  -0.25*xim,  // dN0/dxi0, dN0/dxi1
-             0.25*etam,  -0.25*xip,  // dN1/dxi0, dN1/dxi1
-             0.25*etap,   0.25*xip,  // dN2/dxi0, dN2/dxi1
-            -0.25*etap,   0.25*xim}; // dN3/dxi0, dN3/dxi1
-    // clang-format on
-  }
-};
-```
+\snippet src/MeshField_Shape.hpp QuadraticTriangleShape
 
 ---
 
