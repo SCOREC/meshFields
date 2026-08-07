@@ -140,44 +140,9 @@ struct.  Validate with a unit test that evaluates the shape functions at
 the parametric coordinates of each node and checks that the value for
 that node is 1.0 and all others are 0.0.
 
-### Example Skeleton (Linear Quad, vertices only)
+### Example: `QuadraticTriangleToField` (from `src/MeshField.hpp`)
 
-```cpp
-struct LinearQuadToVertexField {
-  Omega_h::LOs quadVerts;
-
-  LinearQuadToVertexField(Omega_h::Mesh &mesh)
-      : quadVerts(mesh.ask_elem_verts()) {
-    if (mesh.dim() != 2 || mesh.family() != OMEGA_H_HYPERCUBE)
-      MeshField::fail("Mesh must be 2D hypercube (quads)\n");
-  }
-
-  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
-  getTopology() {
-    return {MeshField::Quad};
-  }
-
-  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
-  operator()(MeshField::LO nodeIdx, MeshField::LO compIdx,
-             MeshField::LO elem,   MeshField::Mesh_Topology topo) const {
-    assert(topo == MeshField::Quad);
-    const auto quadDim = 2, vtxDim = 0;
-    // Determine the rotation offset by comparing Omega_h vertex ordering
-    // with your shape function's getNodeParametricCoords() ordering.
-    const auto localVtxIdx =
-        (Omega_h::simplex_down_template(quadDim, vtxDim, nodeIdx, -1) + OFFSET) % 4;
-    const auto stride = Omega_h::simplex_degree(quadDim, vtxDim);
-    const MeshField::LO vtx = quadVerts[elem * stride + localVtxIdx];
-    return {0, compIdx, vtx, MeshField::Vertex};
-  }
-};
-```
-
-Replace `OFFSET` with the value (0–3) that maps Omega\_h's vertex order
-to the meshFields canonical order for your element.  See the existing
-`LinearTriangleToVertexField` (offset 2) and
-`LinearTetrahedronToVertexField` (offset 3) in `src/MeshField.hpp` for
-reference.
+\snippet src/MeshField.hpp QuadraticTriangleToField
 
 ---
 
@@ -185,26 +150,14 @@ reference.
 
 Add a new factory function (or extend an existing one) in
 `src/MeshField.hpp` inside `namespace MeshField::Omegah`.
-The existing helpers follow the pattern below:
+The existing `getTriangleElement` factory (from `src/MeshField.hpp`) shows the full pattern:
 
-```cpp
-template <int ShapeOrder> auto getQuadElement(Omega_h::Mesh &mesh) {
-  static_assert(ShapeOrder == 1); // extend as higher orders are added
-  if constexpr (ShapeOrder == 1) {
-    struct result {
-      MeshField::LinearQuadShape       shp;
-      LinearQuadToVertexField          map;
-    };
-    return result{MeshField::LinearQuadShape(),
-                  LinearQuadToVertexField(mesh)};
-  }
-}
-```
+\snippet src/MeshField.hpp getTriangleElement
 
 Callers obtain the shape and mapping via structured bindings:
 
 ```cpp
-const auto [shp, map] = MeshField::Omegah::getQuadElement<1>(mesh);
+const auto [shp, map] = MeshField::Omegah::getTriangleElement<2>(mesh);
 MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 ```
 
@@ -234,43 +187,15 @@ For the triangle, quadrature weights include the reference area factor
 convention used by `TriangleIntegration` and `TetrahedronIntegration`
 already in the file.
 
-```cpp
-class QuadIntegration : public EntityIntegration<2> {
-public:
-  class N1 : public Integration<2> {
-  public:
-    int countPoints() const override { return 1; }
-    std::vector<IntegrationPoint<2>> getPoints() const override {
-      // 1-point Gauss rule for the reference quad [-1,1]^2, weight=4*(1/4)=1
-      return {IntegrationPoint(Vector2{0.0, 0.0}, 1.0, 2, 0)};
-    }
-    int getAccuracy() const override { return 1; }
-  };
-  int countIntegrations() const override { return 1; }
-  Integration<2> const *getIntegration(int i) const override {
-    static N1 i1;
-    static Integration<2> *integrations[1] = {&i1};
-    return integrations[i];
-  }
-};
-```
+The existing `TriangleIntegration` (from `src/MeshField_Integrate.hpp`) shows the full pattern including multiple quadrature orders:
+
+\snippet src/MeshField_Integrate.hpp TriangleIntegration
 
 ### 4b – Extend `getIntegration<topo>()`
 
-Add a branch to the existing `getIntegration` function:
+Add a branch to the existing `getIntegration` function (current state in `src/MeshField_Integrate.hpp`):
 
-```cpp
-template <Mesh_Topology topo> auto const getIntegration() {
-  if constexpr (topo == Triangle) {
-    return std::make_shared<TriangleIntegration>();
-  } else if constexpr (topo == Tetrahedron) {
-    return std::make_shared<TetrahedronIntegration>();
-  } else if constexpr (topo == Quad) {          // <-- add this
-    return std::make_shared<QuadIntegration>();
-  }
-  fail("getIntegration does not support given topology\n");
-}
-```
+\snippet src/MeshField_Integrate.hpp getIntegration
 
 ---
 
@@ -286,40 +211,13 @@ quadrature point setup and calls `atPoints` with:
 | `w` | `Kokkos::View<Real*>` | Quadrature weights, length `numElems * numPts` |
 | `dV` | `Kokkos::View<Real*>` | Jacobian determinants, length `numElems * numPts` |
 
-```cpp
-template <typename FieldElement>
-class MyIntegrator : public MeshField::Integrator {
-  FieldElement &fes;
-  MeshField::Real result = 0.0;
-public:
-  MyIntegrator(FieldElement &fe) : Integrator(/*order=*/1), fes(fe) {}
+`test/testCountIntegrator.cpp` provides a working example. The integrator class:
 
-  void atPoints(Kokkos::View<MeshField::Real **> p,
-                Kokkos::View<MeshField::Real  *> w,
-                Kokkos::View<MeshField::Real  *> dV) override {
-    MeshField::Real local = 0.0;
-    Kokkos::parallel_reduce(
-        p.extent(0),
-        KOKKOS_LAMBDA(int i, MeshField::Real &sum) { sum += w(i) * dV(i); },
-        local);
-    result += local;
-  }
+\snippet test/testCountIntegrator.cpp CountIntegrator
 
-  MeshField::Real getResult() const { return result; }
-};
-```
+And the function that wires together the element factory, `FieldElement`, integrator, and `process` call:
 
-Invoke it:
-
-```cpp
-const auto [shp, map] = MeshField::Omegah::getQuadElement<1>(mesh);
-MeshField::FieldElement fes(mesh.nelems(), coordField, shp, map);
-MyIntegrator<decltype(fes)> integrator(fes);
-integrator.process(fes);
-```
-
-See `test/testCountIntegrator.cpp` for a working end-to-end example using
-the existing triangle and tetrahedron shapes.
+\snippet test/testCountIntegrator.cpp doRun
 
 ---
 

@@ -50,6 +50,7 @@ public:
 
 // points are given in the reduced parametric coordinates (xi0=L1, xi1=L2,
 // ...); the redundant barycentric coordinate L0 = 1-sum(xi) is omitted
+//! [TriangleIntegration]
 class TriangleIntegration : public EntityIntegration<2> {
 public:
   class N1 : public Integration<2> {
@@ -81,6 +82,7 @@ public:
     return integrations[i];
   }
 };
+//! [TriangleIntegration]
 
 class TetrahedronIntegration : public EntityIntegration<3> {
 public:
@@ -120,6 +122,7 @@ public:
     return integrations[i];
   }
 };
+//! [getIntegration]
 template <Mesh_Topology topo> auto const getIntegration() {
   if constexpr (topo == Triangle) {
     return std::make_shared<TriangleIntegration>();
@@ -128,6 +131,7 @@ template <Mesh_Topology topo> auto const getIntegration() {
   }
   fail("getIntegration does not support given topology\n");
 }
+//! [getIntegration]
 template <Mesh_Topology topo> auto getIntegrationPoints(int order) {
   auto ip = getIntegration<topo>()->getAccurate(order)->getPoints();
   return ip;
