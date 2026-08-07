@@ -335,6 +335,66 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   return FieldWithController<Ctrlr, LinearLagrangeShapeField>{kk_ctrl, llsf};
 };
 
+/**
+ * @brief
+ * Create a reduced quintic field for triangle meshes.
+ * @details
+ * The reduced quintic element has 6 DOFs per vertex: value, \partial/\partial x,
+ * \partial/\partial y, \partial^2/\partial x^2, \partial^2/\partial x\partial y,
+ * \partial^2/\partial y^2. DOFs are stored at mesh vertices using a LinearAccessor.
+ * This function mirrors CreateLagrangeField and CreateCoordinateField, but is
+ * specialized for the reduced quintic case (always 6 components, 2D triangle
+ * mesh, vertex-based DOFs).
+ *
+ * @tparam ExecutionSpace a Kokkos ExecutionSpace (i.e., Cuda, Serial, etc.)
+ * @tparam Controller the Controller backend (KokkosController or CabanaController)
+ *
+ * @param meshInfo defines on-process mesh metadata
+ * @return a FieldWithController containing the controller and ShapeField
+ */
+template <typename ExecutionSpace,
+          template <typename...>
+          typename Controller = MeshField::KokkosController>
+auto CreateReducedQuinticField(const MeshInfo &meshInfo) {
+  if (meshInfo.numVtx <= 0) {
+    fail("mesh has no vertices\n");
+  }
+  static constexpr size_t reducedQuinticNumComp =
+      6; // value, dx, dy, dxx, dxy, dyy
+  using DataType = Real;
+  using MemorySpace = typename ExecutionSpace::memory_space;
+#ifdef MESHFIELDS_ENABLE_CABANA
+  using Ctrlr = std::conditional_t<
+      std::is_same_v<
+          Controller<ExecutionSpace, MemorySpace, DataType>,
+          MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
+      Controller<ExecutionSpace, MemorySpace,
+                 DataType[1][reducedQuinticNumComp]>,
+      Controller<MemorySpace, ExecutionSpace, DataType ***>>;
+  auto createController = [](auto numVtx) {
+    if constexpr (std::is_same_v<
+                      Controller<ExecutionSpace, MemorySpace, DataType>,
+                      MeshField::CabanaController<ExecutionSpace, MemorySpace,
+                                                  DataType>>) {
+      return Ctrlr({numVtx});
+    } else {
+      return Ctrlr(
+          {/*field 0*/ numVtx, 1, reducedQuinticNumComp});
+    }
+  };
+  Ctrlr ctrl = createController(meshInfo.numVtx);
+#else
+  using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
+  Ctrlr ctrl({/*field 0*/ meshInfo.numVtx, 1, reducedQuinticNumComp});
+#endif
+  auto vtxField = MeshField::makeField<Ctrlr, 0>(ctrl);
+  using LA = LinearAccessor<decltype(vtxField)>;
+  using RQShapeField =
+      ShapeField<reducedQuinticNumComp, ReducedQuinticTriangleShape, LA>;
+  RQShapeField rqsf(meshInfo, {vtxField});
+  return FieldWithController<Ctrlr, RQShapeField>{ctrl, rqsf};
+};
+
 } // namespace MeshField
 
 #endif

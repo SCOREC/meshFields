@@ -4,6 +4,7 @@
 #include <Kokkos_Core.hpp>
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
+#include <MeshField_ReducedQuintic.hpp>
 #include <MeshField_Shape.hpp>
 #include <MeshField_Utility.hpp> // getLastValue
 #include <iostream>
@@ -578,6 +579,299 @@ template <typename FieldElement, typename Matrices>
 Kokkos::View<Real *> getJacobianDeterminants(FieldElement &fes, Matrices J) {
   return fes.getJacobianDeterminants(J);
 }
+
+/**
+ * @brief
+ * Isoparametric (and non-isoparametric) field element that supports
+ * a separate geometry mapping (GeometryType) from the field shape
+ * functions (ShapeType).
+ *
+ * Inherits all common functionality from FieldElement, including
+ * numMeshEnts, field, shapeFn, elm2dof, MeshEntDim, ValArray,
+ * NumComponents, NodeArray, getNodeValues(), and
+ * getJacobianDeterminants().
+ *
+ * Adds a separate geometry shape function (geometryFn) and per-element
+ * coefficients (elemCoeffs) for elements like ReducedQuintic whose
+ * shape functions depend on per-element geometry.
+ *
+ * Overrides getValue(), getJacobian1d(), and getJacobians() to use
+ * the geometry shape function for Jacobian computation and the
+ * per-element coefficients for field evaluation.
+ *
+ * @tparam FieldAccessor provides parenthesis operator to access the field
+ * @tparam ShapeType Defines the shape function order and mesh topology
+ * @tparam GeometryType Defines the geometry mapping shape function
+ * @tparam ElementDofHolderAccessor provides the mapping from
+ *         the element indices to the underlying field storage
+ */
+template <typename FieldAccessor, typename ShapeType, typename GeometryType,
+          typename ElementDofHolderAccessor>
+struct NonIsoparametricFieldElement
+    : FieldElement<FieldAccessor, ShapeType, ElementDofHolderAccessor> {
+  using Base = FieldElement<FieldAccessor, ShapeType, ElementDofHolderAccessor>;
+  using ValArray = typename Base::ValArray;
+  using Base::MeshEntDim;
+  using Base::NumComponents;
+
+  GeometryType geometryFn;
+  Kokkos::View<Real**> elemCoeffs;
+
+  NonIsoparametricFieldElement(size_t numMeshEntsIn, const FieldAccessor &fieldIn,
+                            const ShapeType shapeFnIn,
+                            const GeometryType geometryFnIn,
+                            const ElementDofHolderAccessor elm2dofIn,
+                            Kokkos::View<Real**> elemCoeffsIn)
+      : Base(numMeshEntsIn, fieldIn, shapeFnIn, elm2dofIn),
+        geometryFn(geometryFnIn), elemCoeffs(elemCoeffsIn) {}
+
+  /* general template for baseType which simply sets type
+   */
+  template <typename T> struct baseType {
+    using type = T;
+  };
+  /* template specialization to recursively strip type to get base type
+   * Example: int[5][6] => int[6] => int
+   */
+  template <typename T, size_t N> struct baseType<T[N]> {
+    using type = typename baseType<T>::type;
+  };
+
+  // Geometry node array: uses GeometryType::numNodes
+  // For isoparametric elements, this equals ShapeType::numNodes
+  // For non-isoparametric (e.g., ReducedQuintic), this equals the geometry
+  // node count
+  using GeomNodeArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    ShapeType::meshEntDim * GeometryType::numNodes>;
+  KOKKOS_INLINE_FUNCTION GeomNodeArray getGeometryNodeValues(int ent) const {
+    GeomNodeArray c;
+    for (auto topo : this->elm2dof.getTopology()) { // element topology
+      for (size_t gni = 0; gni < GeometryType::numNodes; ++gni) {
+        for (size_t d = 0; d < ShapeType::meshEntDim; ++d) {
+          auto map = this->elm2dof(gni, d, ent, topo);
+          const auto fval =
+              this->field(map.entity, map.node, map.component, map.topo);
+          c[gni * ShapeType::meshEntDim + d] = fval;
+        }
+      }
+    }
+    return c;
+  }
+
+  /**
+   * @brief
+   * evaluate the field in the specified element at the specified
+   * parametric/local/area coordinate
+   *
+   * @details
+   * Uses per-element coefficients (elemCoeffs) for shape function evaluation
+   * and transforms DOFs from physical to local coordinates.
+   *
+   * @param ent the mesh entity index
+   * @param localCoord the parametric coordinate
+   * @return the result of evaluation
+   */
+  KOKKOS_INLINE_FUNCTION ValArray
+  getValue(int ent, Kokkos::Array<Real, MeshEntDim> localCoord) const {
+    assert(ent >= 0);
+    assert(static_cast<size_t>(ent) < this->numMeshEnts);
+    ValArray c;
+    auto shapeValues = [&]() {
+      assert(elemCoeffs.data() != nullptr);
+      auto coeffSlice = Kokkos::subview(elemCoeffs, ent, Kokkos::ALL());
+      return this->shapeFn.getValues(localCoord, coeffSlice);
+    }();
+
+    for (size_t ci = 0; ci < NumComponents; ++ci)
+      c[ci] = 0;
+
+    assert(elemCoeffs.data() != nullptr);
+    auto coeffSlice = Kokkos::subview(elemCoeffs, ent, Kokkos::ALL());
+
+    // Extract rotation parameters from coefficients
+    // elemCoeffs layout: [order[0], order[1], order[2], a, b, c, sin_theta,
+    // cos_theta, ...]
+    const Real sin_theta = coeffSlice(6);
+    const Real cos_theta = coeffSlice(7);
+
+    for (auto topo : this->elm2dof.getTopology()) {
+      // ReducedQuintic has 18 nodes: 3 vertices × 6 DOFs per vertex
+      const size_t numVertices = 3;
+      const size_t dofsPerVertex = 6;
+
+      for (size_t vi = 0; vi < numVertices; ++vi) {
+        // Gather all 6 DOFs for this vertex in physical coordinates
+        Real physicalDofs[6];
+        for (size_t di = 0; di < dofsPerVertex; ++di) {
+          const size_t ni = vi * dofsPerVertex + di;
+          auto map = this->elm2dof(ni, 0, ent, topo); // ci=0 since ReducedQuintic is
+                                                // scalar
+          physicalDofs[di] =
+              this->field(map.entity, map.node, map.component, map.topo);
+        }
+
+        // Transform DOFs to local coordinates and accumulate
+        for (size_t di = 0; di < dofsPerVertex; ++di) {
+          const size_t ni = vi * dofsPerVertex + di;
+          const Real localDof = transformDofPhysicalToLocal(
+              di, sin_theta, cos_theta, physicalDofs);
+
+          for (size_t ci = 0; ci < NumComponents; ++ci) {
+            c[ci] += localDof * shapeValues[ni];
+          }
+        }
+      }
+    }
+    return c;
+  }
+
+  /**
+   * @brief
+   * compute the Jacobian of an edge using the geometry shape function
+   *
+   * @details
+   * Uses geometryFn (instead of shapeFn) for gradient computation
+   * and getGeometryNodeValues() (instead of getNodeValues()) for
+   * node value gathering.
+   *
+   * @param ent the mesh entity index
+   * @return the result of evaluation
+   */
+  KOKKOS_INLINE_FUNCTION Real getJacobian1d(int ent) const {
+    assert(ent >= 0);
+    assert(static_cast<size_t>(ent) < this->numMeshEnts);
+    Vector1 ignored;
+    const auto nodalGradients = geometryFn.getLocalGradients(ignored);
+    const auto nodeValues = getGeometryNodeValues(ent);
+    auto g = nodalGradients[0] * nodeValues[0];
+    for (size_t i = 1; i < GeometryType::numNodes; ++i) {
+      g = g + nodalGradients[i] * nodeValues[i];
+    }
+    return g;
+  }
+
+  /**
+   * @brief
+   * Given an array of parametric coordinates 'localCoords', one per mesh
+   * element, compute the jacobian within each element.
+   *
+   * Uses the geometry shape function (geometryFn) and geometry node
+   * count (GeometryType::numNodes) instead of the field shape function
+   * (shapeFn) and field node count (ShapeType::numNodes).
+   *
+   * @param localCoords 2D Kokkos::View containing the local/parametric/area
+   * coordinates for each element
+   * @param offsets 1D Kokkos::View containing the offsets into localCoords,
+   *                size = localCoords.extent(0)+1
+   * @return Kokkos::View containing the jacobian for all the mesh elements
+   */
+  Kokkos::View<Real ***> getJacobians(Kokkos::View<Real **> localCoords,
+                                      Kokkos::View<LO *> offsets) const {
+    if (Debug) {
+      // check input parametric coords are positive and sum to one
+      // TODO move this to helper function
+      LO numErrors = 0;
+      Kokkos::parallel_reduce(
+          "checkCoords", this->numMeshEnts,
+          KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
+            Real sum = 0;
+            LO isError = 0;
+            for (size_t i = 0; i < localCoords.extent(1); i++) {
+              if (localCoords(ent, i) < 0)
+                isError++;
+              sum += localCoords(ent, i);
+            }
+            if (sum > 1.0)
+              isError++;
+            lerrors += isError;
+          },
+          numErrors);
+      if (numErrors) {
+        fail("One or more of the parametric coordinates passed "
+             "to evaluate(...) were invalid\n");
+      }
+    }
+    if (localCoords.extent(0) < this->numMeshEnts) {
+      fail("The size of dimension 0 of the local coordinates input array "
+           "must be at least %zu.\n",
+           this->numMeshEnts);
+    }
+    if (localCoords.extent(1) != MeshEntDim) {
+      fail("Dimension 1 of the input array of local coordinates "
+           "must have size = %zu.\n",
+           MeshEntDim);
+    }
+    if (offsets.size() != this->numMeshEnts + 1) {
+      fail("The input array of offsets must have size = %zu\n",
+           this->numMeshEnts + 1);
+    }
+    if (MeshEntDim != 1 && MeshEntDim != 2 && MeshEntDim != 3) {
+      fail("getJacobians only currently supports 1d, 2d, and 3d meshes.  Input "
+           "mesh "
+           "has %zu dimensions.\n",
+           this->numMeshEnts);
+    }
+    if constexpr (MeshEntDim == 1) {
+      const auto numPts = MeshFieldUtil::getLastValue(offsets);
+      Kokkos::View<Real ***> res("result", numPts, 1, 1);
+      Kokkos::parallel_for(
+          this->numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
+            // TODO use nested parallel for?
+            for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+              const auto val = this->getJacobian1d(ent);
+              res(pt, 0, 0) = val;
+            }
+          });
+      return res;
+    } else if constexpr (MeshEntDim == 2 || MeshEntDim == 3) {
+      const auto numPts = MeshFieldUtil::getLastValue(offsets);
+      // one matrix per point
+      Kokkos::View<Real ***> res("result", numPts, MeshEntDim, MeshEntDim);
+      Kokkos::deep_copy(res, 0.0); // initialize all entries to zero
+
+      // fill the views of geometry node coordinates and geometry node
+      // gradients
+      Kokkos::View<Real * [GeometryType::numNodes][MeshEntDim]> nodeCoords(
+          "nodeCoords", numPts);
+      Kokkos::View<Real * [GeometryType::numNodes][MeshEntDim]> nodalGradients(
+          "nodalGradients", numPts);
+      Kokkos::parallel_for(
+          this->numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
+            const auto vals = this->getGeometryNodeValues(ent);
+            assert(vals.size() == MeshEntDim * GeometryType::numNodes);
+            for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+              Kokkos::Array<Real, MeshEntDim> xi;
+              for (size_t d = 0; d < MeshEntDim; d++)
+                xi[d] = localCoords(pt, d);
+              const auto geomGrad = this->geometryFn.getLocalGradients(xi);
+              for (size_t node = 0; node < GeometryType::numNodes; node++) {
+                for (size_t d = 0; d < MeshEntDim; d++) {
+                  nodeCoords(pt, node, d) = vals[node * MeshEntDim + d];
+                  nodalGradients(pt, node, d) =
+                      geomGrad[node * MeshEntDim + d];
+                }
+              }
+            }
+          });
+
+      Kokkos::parallel_for(
+          this->numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+            // TODO use nested parallel for?
+            for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
+              auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
+              for (size_t node = 0; node < GeometryType::numNodes; node++) {
+                auto a =
+                    Kokkos::subview(nodalGradients, pt, node, Kokkos::ALL());
+                auto b = Kokkos::subview(nodeCoords, pt, node, Kokkos::ALL());
+                addTensorProduct(a, b, A);
+              }
+            }
+          });
+      return res;
+    }
+  }
+};
 
 } // namespace MeshField
 #endif

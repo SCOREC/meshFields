@@ -539,5 +539,289 @@ struct QuadraticTetrahedronShape {
   }
 };
 
+/**
+ * @brief Helper functions for reduced quintic coordinate transformations
+ */
+namespace ReducedQuinticHelpers {
+  /**
+   * @brief Transform parametric coordinates to reduced quintic local coordinates
+   * 
+   * local coordinate system (origin at foot of perpendicular):
+   *   - v0 is at (-b, 0)
+   *   - v1 is at (a, 0)
+   *   - v2 is at (0, c)
+   * 
+   * @param xi Parametric coordinates (xi0, xi1) where L0=1-xi0-xi1, L1=xi0, L2=xi1
+   * @param order Vertex reordering [3] - order[i] gives original index
+   * @param a Distance from origin to v1
+   * @param b Distance from origin to v0
+   * @param c Perpendicular distance from origin to v2
+   * @return Vector2 containing [xi_local, eta_local]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Vector2 parametricToLocal(
+      Vector2 const& xi,
+      int const order[3],
+      Real a,
+      Real b,
+      Real c)
+  {
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
+    // First compute barycentric coordinates: L0 = 1-xi[0]-xi[1], L1 = xi[0], L2 = xi[1]
+    const Real L0 = 1 - xi[0] - xi[1];
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
+    const Real L1 = xi[0];
+    const Real L2 = xi[1];
+    
+    // Create array of barycentric coordinates
+    Real bary[3] = {L0, L1, L2};
+    
+    // Reorder barycentric coordinates according to vertex ordering
+    const Real lambda0 = bary[order[0]];
+    const Real lambda1 = bary[order[1]];
+    const Real lambda2 = bary[order[2]];
+
+    const Real xi_local  = a * lambda1 - b * lambda0;
+    const Real eta_local = c * lambda2;
+
+    return {xi_local, eta_local};
+  }
+
+  /**
+  * @brief Get polynomial index for reduced quintic basis
+  * 
+  * Returns [i,j] for xi^i * eta^j terms where i+j <= 5
+  * Total of 21 possible terms, but we use 20 (the 21st is constrained)
+  * 
+  * @param idx Index from 0 to 19
+  * @return Pair of integers [xi_power, eta_power]
+  */
+  KOKKOS_INLINE_FUNCTION
+  constexpr Kokkos::Array<int, 2> getReducedQuinticPolyIdx(int idx) {
+    // Order: (0,0), (1,0), (0,1), (2,0), (1,1), (0,2), ...
+    // Pattern: for each total degree d from 0 to 5, enumerate (i,j) where i+j=d
+    constexpr Kokkos::Array<int, 2> indices[20] = {
+      {0,0}, {1,0}, {0,1}, {2,0}, {1,1}, {0,2}, {3,0}, {2,1}, {1,2}, {0,3},
+      {4,0}, {3,1}, {2,2}, {1,3}, {0,4}, {5,0}, {3,2}, {2,3}, {1,4}, {0,5}
+    };
+    return indices[idx];
+  }
+} // namespace ReducedQuinticHelpers
+
+/**
+ * @brief Reduced quintic triangle element
+ * 
+ * Implements the method described in:
+ *   S.C. Jardin, "A triangular finite element with first-derivative continuity
+ *   applied to fusion MHD applications," Journal of Computational Physics,
+ *   Volume 200, Issue 1, 2004, Pages 133-152,
+ *   https://doi.org/10.1016/j.jcp.2004.04.004.
+ * 
+ * This implementation follows the M3DC1 codebase and uses a per-element local
+ * coordinate system. Unlike standard reference-element shapes (LinearTriangle,
+ * QuadraticTriangle, etc.), each ReducedQuintic element has geometry-dependent
+ * shape functions.
+ * 
+ * This element uses 18 nodes (3 vertices × 6 DOFs per vertex):
+ * - DOFs per vertex: [value, d/dx, d/dy, d^2/dx^2, d^2/dxdy, d^2/dy^2]
+ * - Polynomial order: 5 (20-term basis: xi^i * eta^j for i+j ≤ 5)
+ * 
+ * COORDINATE TRANSFORMATION:
+ * The longest triangle edge is reordered to lie along the local xi-axis.
+ * The origin is placed at the foot of perpendicular from v2 onto the v0-v1 edge.
+ *   - v0 is at (-b, 0) in local coords, where b = distance from origin to v0
+ *   - v1 is at (a, 0) in local coords, where a = distance from origin to v1
+ *   - v2 is at (0, c) in local coords, where c = perpendicular distance to v2
+ * 
+ * meshFields API uses parametric coordinates: (xi0, xi1) where barycentric coordinates
+ * are computed as L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1.
+ * 
+ * Transformation to local coordinates:
+ *   xi_local = a*λ1 - b*λ0
+ *   eta_local = c*λ2
+ * 
+ * Applied automatically via helper function parametricToLocal()
+ * 
+ * The geometric parameters (a, b, c) are stored with the coefficients and
+ * retrieved during evaluation. Shape function coefficients are computed by
+ * solving a 20×20 linear system based on boundary conditions.
+ * 
+ */
+struct ReducedQuinticTriangleShape {
+  static const size_t numNodes = 18;  // 3 vertices × 6 DOFs per vertex
+  static const size_t meshEntDim = 2;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t NumDofHolders[1] = {3};      // 3 vertices
+  constexpr static size_t DofsPerHolder[1] = {6};      // 6 DOFs per vertex
+  constexpr static size_t Order = 5;
+
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi,
+                                          Kokkos::View<const Real*, Kokkos::LayoutStride> elemCoeffs) const {
+
+    // Extract geometric parameters from coefficient array
+    // elemCoeffs layout: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, coeff_0_0, ..., coeff_17_19]
+    const int order[3] = {static_cast<int>(elemCoeffs(0)), 
+                          static_cast<int>(elemCoeffs(1)), 
+                          static_cast<int>(elemCoeffs(2))};
+    const Real a = elemCoeffs(3);
+    const Real b = elemCoeffs(4);
+    const Real c = elemCoeffs(5);
+
+    // Transform parametric to local coordinates
+    const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
+    const Real xi_local = local[0];
+    const Real eta_local = local[1];
+    
+    // Compute polynomial basis: xi_local^i * eta_local^j
+    Real xi_pow[6], eta_pow[6];
+    xi_pow[0] = 1.0;  eta_pow[0] = 1.0;
+    for (int i = 1; i < 6; i++) {
+      xi_pow[i] = xi_pow[i-1] * xi_local;
+      eta_pow[i] = eta_pow[i-1] * eta_local;
+    }
+    
+    // Evaluate shape functions using precomputed coefficients
+    Kokkos::Array<Real, numNodes> N_reordered;
+
+    for (size_t k = 0; k < numNodes; k++) {
+      N_reordered[k] = 0.0;
+
+      for (int i = 0; i < 20; i++) {
+        const auto poly = ReducedQuinticHelpers::getReducedQuinticPolyIdx(i);
+        const int xi_idx   = poly[0];
+        const int eta_idx  = poly[1];
+
+        N_reordered[k] +=
+            elemCoeffs(8 + k * 20 + i) *
+            xi_pow[xi_idx] *
+            eta_pow[eta_idx];
+      }
+    }
+
+    // Convert back to meshFields vertex ordering
+    Kokkos::Array<Real, numNodes> N;
+
+    for (int v = 0; v < 3; ++v) {
+      const int orig_v = order[v];
+
+      for (int d = 0; d < 6; ++d) {
+        N[orig_v * 6 + d] =
+            N_reordered[v * 6 + d];
+      }
+    }
+
+    return N;
+  }
+
+  // Computes the local gradients of the Reduced Quintic shape functions.
+  //
+  // These gradients are not currently used in the MeshField evaluation pipeline
+  // because the Reduced Quintic element uses a linear geometric mapping. The
+  // Jacobian is therefore computed from the linear geometry rather than from the
+  // Reduced Quintic shape functions.
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector2 const &xi,
+                                                      Kokkos::View<const Real*, Kokkos::LayoutStride> elemCoeffs) const {
+    
+    // Extract geometric parameters
+    const int order[3] = {static_cast<int>(elemCoeffs(0)), 
+                          static_cast<int>(elemCoeffs(1)), 
+                          static_cast<int>(elemCoeffs(2))};
+    const Real a = elemCoeffs(3);
+    const Real b = elemCoeffs(4);
+    const Real c = elemCoeffs(5);
+
+    // Transform parametric to local coordinates
+    const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
+    const Real xi_local = local[0];
+    const Real eta_local = local[1];
+    
+    // Compute polynomial basis and derivatives in local coordinates
+    Real xi_pow[6], eta_pow[6];
+    Real dxi_pow[6], deta_pow[6];
+    
+    xi_pow[0] = 1.0;  eta_pow[0] = 1.0;
+    dxi_pow[0] = 0.0; deta_pow[0] = 0.0;
+    
+    for (int i = 1; i < 6; i++) {
+      xi_pow[i] = xi_pow[i-1] * xi_local;
+      eta_pow[i] = eta_pow[i-1] * eta_local;
+      dxi_pow[i] = i * xi_pow[i-1];
+      deta_pow[i] = i * eta_pow[i-1];
+    }
+
+    // Compute matrix for local to barycentric gradient chain rule
+    Real J[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
+    for (int col = 0; col < 2; col++) {
+        // d(lambda_k)/d(xi[col]) for k = 0, 1, 2
+        Real dlambda[3];
+        for (int k = 0; k < 3; k++) {
+            if      (order[k] == col) dlambda[k] =  1.0;
+            else if (order[k] == 2)   dlambda[k] = -1.0;
+            else                      dlambda[k] =  0.0;
+        }
+
+        // d(xi_local)/d(xi[col])  = a*dlambda[1] - b*dlambda[0]
+        // d(eta_local)/d(xi[col]) = c*dlambda[2]
+        J[0][col] = a * dlambda[1] - b * dlambda[0];
+        J[1][col] = c * dlambda[2];
+    }
+    
+    // Evaluate gradients
+    Kokkos::Array<Vector2, numNodes> grad_reordered;
+
+    for (size_t k = 0; k < numNodes; k++) {
+      Real dN_dxi_local  = 0.0;
+      Real dN_deta_local = 0.0;
+
+      for (int i = 0; i < 20; i++) {
+        const auto poly = ReducedQuinticHelpers::getReducedQuinticPolyIdx(i);
+        const int xi_idx  = poly[0];
+        const int eta_idx = poly[1];
+        const Real coeff  = elemCoeffs(8 + k * 20 + i);
+
+        if (xi_idx > 0)
+          dN_dxi_local +=
+              coeff *
+              dxi_pow[xi_idx] *
+              eta_pow[eta_idx];
+
+        if (eta_idx > 0)
+          dN_deta_local +=
+              coeff *
+              xi_pow[xi_idx] *
+              deta_pow[eta_idx];
+      }
+
+      // Apply chain rule to transform local gradients to barycentric gradients
+      grad_reordered[k][0] =
+          dN_dxi_local * J[0][0] +
+          dN_deta_local * J[1][0];
+
+      grad_reordered[k][1] =
+          dN_dxi_local * J[0][1] +
+          dN_deta_local * J[1][1];
+    }
+
+    // Convert back to meshFields vertex ordering
+    Kokkos::Array<Vector2, numNodes> gradN_bary;
+
+    for (int v = 0; v < 3; ++v) {
+      const int orig_v = order[v];
+
+      for (int d = 0; d < 6; ++d) {
+        gradN_bary[orig_v * 6 + d] =
+            grad_reordered[v * 6 + d];
+      }
+    }
+
+    return gradN_bary;
+  }
+};
+
+
 } // namespace MeshField
 #endif
