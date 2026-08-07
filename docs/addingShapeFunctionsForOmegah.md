@@ -22,6 +22,11 @@ ordering for element vertices and edges, which may differ from the
 meshFields canonical ordering.  The **node mapping struct** (Step 2)
 bridges the two conventions.
 
+The meshFields canonical parametric coordinates and node ordering for linear and
+quadratic triangles and tetrahedrons follows:
+Zienkiewicz, Taylor, and Zhu,
+*The Finite Element Method: Its Basis and Fundamentals*, 2013.
+
 For simplex elements the parametric coordinates are reduced barycentric
 coordinates.  The redundant coordinate \f$L_0 = 1 - \sum \xi_i\f$ is
 omitted:
