@@ -123,7 +123,15 @@ The mapping struct lives in `src/MeshField.hpp` inside
 Omega\_h numbers vertices and edges within a simplex differently from the
 meshFields canonical ordering used by the shape functions.
 The existing linear-triangle and linear-tetrahedron mappings correct for
-this with a cyclic rotation:
+this with a cyclic rotation.
+
+Omega\_h canonical orderings for the supported topologies:
+
+<a href="omegah_tri.png"><img src="omegah_tri.png" width="20%" alt="Omega_h triangle: vertices v0–v2, edges e0–e2"/></a>
+
+<a href="omegah_tetOrdering.png"><img src="omegah_tetOrdering.png" width="20%" alt="Omega_h tetrahedron: vertices V0–V3, faces F0–F3 (left), edges E0–E5 (right)"/></a>
+
+<a href="omegah_pyramid_wedge_CanonTemplate.png"><img src="omegah_pyramid_wedge_CanonTemplate.png" width="20%" alt="Omega_h pyramid and wedge vertex, face, and edge orderings"/></a>
 
 ```cpp
 // For triangles (triDim=2, vtxDim=0):
