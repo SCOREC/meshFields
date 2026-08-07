@@ -8,9 +8,7 @@ Four source locations must be modified in order:
 2. Define the **Omega\_h node mapping struct** in `src/MeshField.hpp`
 3. Register the shape + mapping in the **element factory** in `src/MeshField.hpp`
 4. Add **integration support** in `src/MeshField_Integrate.hpp`
-
-An optional fifth step covers writing an `Integrator`-derived class to
-perform numerical integration with the new shape.
+5. Optional - Write an `Integrator`-derived class to perform numerical integration with the new shape.
 
 ---
 
