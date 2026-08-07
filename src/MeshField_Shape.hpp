@@ -91,6 +91,10 @@ using Vector3 = Kokkos::Array<Real, 3>;
  * Node ordering:
  * - Node 0 at xi = -1
  * - Node 1 at xi =  1
+ *
+ * Shape functions and ordering from:
+ * Zienkiewicz, Taylor, and Zhu
+ * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearEdgeShape {
   static const size_t numNodes = 2;         ///< Number of nodes (2 for linear edge)
@@ -151,6 +155,10 @@ struct LinearEdgeShape {
  * - Node 2 at (0, 1)
  *
  * Shape functions use barycentric coordinates where L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1
+ *
+ * Shape functions and ordering from:
+ * Zienkiewicz, Taylor, and Zhu
+ * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearTriangleShape {
   static const size_t numNodes = 3;                         ///< Number of nodes (3 for linear triangle)
@@ -214,6 +222,10 @@ struct LinearTriangleShape {
  * Similar to LinearTriangleShape but specialized for coordinate field usage.
  * Defines linear basis functions for a triangular element with 3 nodes.
  * Parametric coordinate range: xi0, xi1 \f$\in\f$ [0, 1]
+ *
+ * Shape functions and ordering from:
+ * Zienkiewicz, Taylor, and Zhu
+ * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearTriangleCoordinateShape {
   static const size_t numNodes = 3;                         ///< Number of nodes
@@ -368,6 +380,10 @@ struct QuadraticTriangleShape {
  *
  * Shape functions use barycentric coordinates L0, L1, L2, L3
  * where L0 = 1-xi0-xi1-xi2, L1 = xi0, L2 = xi1, L3 = xi2
+ *
+ * Shape functions and ordering from:
+ * Zienkiewicz, Taylor, and Zhu
+ * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearTetrahedronShape {
   static const size_t numNodes = 4;                         ///< Number of nodes (4 for linear tetrahedron)
