@@ -2,13 +2,14 @@
 
 This guide walks through every step required to add a new shape function
 for an Omega\_h element topology (triangle, tetrahedron, quad, etc.).
-Four source locations must be modified in order:
+Five source locations must be modified in order:
 
 1. Define the **shape function struct** in `src/MeshField_Shape.hpp`
 2. Define the **Omega\_h node mapping struct** in `src/MeshField.hpp`
 3. Register the shape + mapping in the **element factory** in `src/MeshField.hpp`
-4. Add **integration support** in `src/MeshField_Integrate.hpp`
-5. Optional - Write an `Integrator`-derived class to perform numerical integration with the new shape.
+4. Add an **Accessor** (if needed) and extend **`CreateLagrangeField`** in `src/MeshField_ShapeField.hpp`
+5. Add **integration support** in `src/MeshField_Integrate.hpp`
+6. (Optional) Write an **`Integrator`-derived class** to perform numerical integration with the new shape.
 
 ---
 
@@ -108,7 +109,6 @@ The mapping struct lives in `src/MeshField.hpp` inside
 | `operator()(LO nodeIdx, LO compIdx, LO elem, Mesh_Topology topo)` | Return `ElementToDofHolderMap{node, comp, ent, topo}` |
 
 `ElementToDofHolderMap` packs four values: `{nodeLocalIdx, componentIdx, globalEntityIdx, entityTopology}`.
-For typical shape functions `nodeLocalIdx` is always `0`.
 
 ### Omega\_h Connectivity APIs
 
@@ -166,13 +166,48 @@ MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 
 ---
 
-## Step 4 – Add Integration Support
+## Step 4 – Add an Accessor and Extend `CreateLagrangeField`
+
+`src/MeshField_ShapeField.hpp` is the glue between the shape function and the
+field storage layer.  The key types are:
+
+**`ShapeField<numComp, Shape, Mixins...>`** — holds the `Shape`, the `MeshInfo`,
+and the number of field components.  The `Mixins` are Accessor types that
+provide `operator()(entity, node, component, topology)` for reading and writing
+DOF values.
+
+\snippet src/MeshField_ShapeField.hpp ShapeField
+
+Two built-in Accessors cover the common cases:
+
+**`LinearAccessor`** — for shapes whose DOFs live only at vertices:
+
+\snippet src/MeshField_ShapeField.hpp LinearAccessor
+
+**`QuadraticAccessor`** — for shapes whose DOFs live at vertices and edges:
+
+\snippet src/MeshField_ShapeField.hpp QuadraticAccessor
+
+If your shape introduces DOFs at a new entity type (e.g., faces), define a new
+Accessor following the same pattern and add the corresponding topology to its
+`topo` array.
+
+**`CreateLagrangeField<ExecutionSpace, Controller, DataType, order, dim, numComp>(meshInfo)`**
+(in `src/MeshField_ShapeField.hpp`) is the user-facing factory that allocates
+storage and returns a `FieldWithController<Ctrlr, ShapeField<...>>`.  Add a new
+`if constexpr` branch for your shape's order and dimension, constructing the
+controller with the right per-entity-type storage sizes and instantiating
+`ShapeField<numComp, YourShape, YourAccessor>`.
+
+---
+
+## Step 5 – Add Integration Support
 
 `src/MeshField_Integrate.hpp` provides quadrature rules through the
 `getIntegration<Mesh_Topology>()` template function.  To integrate over
 your new topology you must:
 
-### 4a – Define an `EntityIntegration` Class
+### 5a – Define an `EntityIntegration` Class
 
 Derive from `EntityIntegration<D>` where `D = meshEntDim` of your shape.
 Implement at least one `Integration<D>` inner class that returns a vector
@@ -194,7 +229,7 @@ The existing `TriangleIntegration` (from `src/MeshField_Integrate.hpp`) shows th
 
 \snippet src/MeshField_Integrate.hpp TriangleIntegration
 
-### 4b – Extend `getIntegration<topo>()`
+### 5b – Extend `getIntegration<topo>()`
 
 Add a branch to the existing `getIntegration` function (current state in `src/MeshField_Integrate.hpp`):
 
@@ -202,7 +237,7 @@ Add a branch to the existing `getIntegration` function (current state in `src/Me
 
 ---
 
-## Step 5 – Implement an Integrator (Optional)
+## Step 6 – Implement an Integrator (Optional)
 
 Derive from `MeshField::Integrator` and override `atPoints` to perform
 the actual integration.  `Integrator::process(FieldElement)` handles
@@ -231,6 +266,7 @@ And the function that wires together the element factory, `FieldElement`, integr
 - [ ] Omega\_h mapping struct added to `src/MeshField.hpp`, `namespace MeshField::Omegah`
 - [ ] Vertex/edge ordering offset determined and verified against Omega\_h simplex templates
 - [ ] Factory function `get<Topology>Element<Order>` added or extended in `src/MeshField.hpp`
+- [ ] Accessor defined (if DOFs at new entity types) and `CreateLagrangeField` extended in `src/MeshField_ShapeField.hpp`
 - [ ] `EntityIntegration` class added to `src/MeshField_Integrate.hpp`
 - [ ] `getIntegration<topo>()` extended for the new topology
 - [ ] Test added that constructs a mesh, builds a `FieldElement`, and calls `Integrator::process`
