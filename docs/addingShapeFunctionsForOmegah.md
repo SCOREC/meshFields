@@ -58,9 +58,9 @@ Add a new struct to `src/MeshField_Shape.hpp` inside `namespace MeshField`.
 | `meshEntDim` | `static const size_t` | Parametric space dimension |
 | `Order` | `constexpr static size_t` | Polynomial order |
 | `DofHolders` | `constexpr static Mesh_Topology[]` | Entity types that hold DOFs |
-| `getNodeParametricCoords()` | `KOKKOS_INLINE_FUNCTION` | Flat array of node coordinates (length `numNodes * meshEntDim`) |
-| `getValues(xi)` | `KOKKOS_INLINE_FUNCTION` | Shape function values at `xi` (length `numNodes`) |
-| `getLocalGradients(xi)` | `KOKKOS_INLINE_FUNCTION` | Gradients at `xi` (length `meshEntDim * numNodes`, row-major: \f$[\partial N_0/\partial\xi_0, \partial N_0/\partial\xi_1, \ldots]\f$) |
+| `getNodeParametricCoords()` | `KOKKOS_INLINE_FUNCTION` | Returns a flat array of node coordinates (length `numNodes * meshEntDim`) |
+| `getValues(xi)` | `KOKKOS_INLINE_FUNCTION` | Returns an array of shape function values at `xi` (length `numNodes`) |
+| `getLocalGradients(xi)` | `KOKKOS_INLINE_FUNCTION` | Returns a flat array of gradients at `xi` (length `meshEntDim * numNodes`, row-major: \f$[\partial N_0/\partial\xi_0, \partial N_0/\partial\xi_1, \ldots, \partial N_d/\partial\xi_0, \partial N_d/\partial\xi_1]\f$) |
 
 Optional (needed by quadratic and higher-order shapes):
 
@@ -69,16 +69,16 @@ Optional (needed by quadratic and higher-order shapes):
 | `NumDofHolders` | `constexpr static size_t[]` | Count of entities of each type in `DofHolders` |
 | `DofsPerHolder` | `constexpr static size_t[]` | DOFs per entity for each type in `DofHolders` |
 
-### Validating Parametric Coordinates
+### Checking Parametric Coordinates
 
 Use the helper functions declared at the top of `MeshField_Shape.hpp` to
-assert that incoming parametric coordinates are in range.  Pass
-`MeshField::ParametricCoordTol` as the tolerance.
+assert that incoming parametric coordinates are in range.
+This is only a check for outliers as `MeshField::ParametricCoordTol` is
+a loose tolerance.
 
 ```cpp
 assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
 assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-// for barycentric remainder:
 const Real L0 = 1 - xi[0] - xi[1];
 assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
 ```
