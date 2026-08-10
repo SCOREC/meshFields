@@ -52,22 +52,22 @@ Add a new struct to `src/MeshField_Shape.hpp` inside `namespace MeshField`.
 
 ### Required Members
 
-| Member | Type | Description |
-|--------|------|-------------|
-| `numNodes` | `static const size_t` | Total nodes per element |
-| `meshEntDim` | `static const size_t` | Parametric space dimension |
-| `Order` | `constexpr static size_t` | Polynomial order |
-| `DofHolders` | `constexpr static Mesh_Topology[]` | Entity types that hold DOFs |
-| `getNodeParametricCoords()` | `KOKKOS_INLINE_FUNCTION` | Returns a flat array of node coordinates (length `numNodes * meshEntDim`) |
-| `getValues(xi)` | `KOKKOS_INLINE_FUNCTION` | Returns an array of shape function values at `xi` (length `numNodes`) |
-| `getLocalGradients(xi)` | `KOKKOS_INLINE_FUNCTION` | Returns a flat array of gradients at `xi` (length `meshEntDim * numNodes`, row-major: \f$[\partial N_0/\partial\xi_0, \partial N_0/\partial\xi_1, \ldots, \partial N_d/\partial\xi_0, \partial N_d/\partial\xi_1]\f$) |
+| Member | Description |
+|--------|-------------|
+| `numNodes` | Total nodes per element |
+| `meshEntDim` | Parametric space dimension |
+| `Order` | Polynomial order |
+| `DofHolders` | Entity types that hold DOFs |
+| `getNodeParametricCoords()` | Returns a flat array of node coordinates (length `numNodes * meshEntDim`) |
+| `getValues(xi)` | Returns an array of shape function values at `xi` (length `numNodes`) |
+| `getLocalGradients(xi)` | Returns a flat array of gradients at `xi` (length `meshEntDim * numNodes`, row-major: \f$[\partial N_0/\partial\xi_0, \partial N_0/\partial\xi_1, \ldots, \partial N_d/\partial\xi_0, \partial N_d/\partial\xi_1]\f$) |
 
 Optional (needed by quadratic and higher-order shapes):
 
-| Member | Type | Description |
-|--------|------|-------------|
-| `NumDofHolders` | `constexpr static size_t[]` | Count of entities of each type in `DofHolders` |
-| `DofsPerHolder` | `constexpr static size_t[]` | DOFs per entity for each type in `DofHolders` |
+| Member | Description |
+|--------|-------------|
+| `NumDofHolders` | Count of entities of each type in `DofHolders` |
+| `DofsPerHolder` | DOFs per entity for each type in `DofHolders` |
 
 ### Checking Parametric Coordinates
 
@@ -140,10 +140,18 @@ that node is 1.0 and all others are 0.0.
 | Member | Description |
 |--------|-------------|
 | Constructor `(Omega_h::Mesh &)` | Cache connectivity arrays from Omega\_h; validate mesh family/dimension |
-| `static constexpr getTopology()` | Return a `Kokkos::Array<Mesh_Topology, N>` listing element topologies this mapping applies to |
-| `operator()(LO nodeIdx, LO compIdx, LO elem, Mesh_Topology topo)` | Return `ElementToDofHolderMap{node, comp, ent, topo}` |
+| `getTopology()` | `constexpr`, Return an array (length N) of mesh topologies (vertex, edge, triangle, etc...) this mapping applies to |
+| `operator()(LO nodeIdx, LO compIdx, LO elem, Mesh_Topology topo)` | Return mapping tuple of node, comp, ent, and topo` |
 
-`ElementToDofHolderMap` packs four values: `{nodeLocalIdx, componentIdx, globalEntityIdx, entityTopology}`.
+The mapping tuple returned by the parenthesis operator, `ElementToDofHolderMap`, contains four values: `{nodeIndex, componentIndex, entityIndex, entityTopology}`.
+`nodeIndex` refers to which node is being accessed and will be non-zero for mesh entities that contain multiple nodes.
+`component` refers to the index into the vector quantity assoicated with the node;
+for linear and quadratic interpolating Lagrange shape functions over triangles
+and tetrahedrons this is passed through as \f$d=0..meshEntityDim-1\f$.
+`entityIndex` refers to the on-process index of the Omega\_h mesh entity that
+is being mapped to from the input `nodeIdx` and `elem`.
+`topo` refers to the topological type of the entity mapped to by `entityIndex`
+(i.e., vertex, edge, triangle, etc.).
 
 ### Omega\_h Connectivity APIs
 
