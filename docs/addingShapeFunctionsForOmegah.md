@@ -140,18 +140,8 @@ that node is 1.0 and all others are 0.0.
 | Member | Description |
 |--------|-------------|
 | Constructor `(Omega_h::Mesh &)` | Cache connectivity arrays from Omega\_h; validate mesh family/dimension |
-| `getTopology()` | `constexpr`, Return an array (length N) of mesh topologies (vertex, edge, triangle, etc...) this mapping applies to |
-| `operator()(LO nodeIdx, LO compIdx, LO elem, Mesh_Topology topo)` | Return mapping tuple of node, comp, ent, and topo` |
-
-The mapping tuple returned by the parenthesis operator, `ElementToDofHolderMap`, contains four values: `{nodeIndex, componentIndex, entityIndex, entityTopology}`.
-`nodeIndex` refers to which node is being accessed and will be non-zero for mesh entities that contain multiple nodes.
-`component` refers to the index into the vector quantity assoicated with the node;
-for linear and quadratic interpolating Lagrange shape functions over triangles
-and tetrahedrons this is passed through as \f$d=0..meshEntityDim-1\f$.
-`entityIndex` refers to the on-process index of the Omega\_h mesh entity that
-is being mapped to from the input `nodeIdx` and `elem`.
-`topo` refers to the topological type of the entity mapped to by `entityIndex`
-(i.e., vertex, edge, triangle, etc.).
+| `getTopology()` | Return an array of mesh topologies (vertex, edge, triangle, etc...) this mapping applies to |
+| `operator()(LO nodeIndex_in, LO componentIndex_in, LO elementIndex_in, Mesh_Topology elementTopo_in)` | Return mapping tuple - see @ref MeshField::ElementToDofHolderMap |
 
 ### Omega\_h Connectivity APIs
 

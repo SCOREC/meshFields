@@ -88,15 +88,35 @@ KOKKOS_INLINE_FUNCTION auto addTensorProduct(VecA const &a, VecB const &b,
 
 namespace MeshField {
 
+
+//
+
 /**
- * @brief
- * Return type used by structs/classes that implement the
- * ElementDofHolderAccessor parenthesis operator
+ * @brief Supports mapping between mesh (i.e., Omega_h) ordering and MeshFields
+ * ordering
+ *
+ * Return type used by structs/classes that implement the ElementDofHolderAccessor parenthesis operator.  See @ref adding-shape-functions-omegah "Adding Shape Functions Omega_h Element Topologies" 
  */
 struct ElementToDofHolderMap {
+  /** Which node is being accessed; non-zero 
+   *  for mesh entities associated with multiple nodes
+   */
   LO node;
+
+  /** Index into the vector quantity associated with the node; for linear and
+   *  quadratic Lagrange shape functions over triangles and tetrahedra this is
+   *  passed through as \f$d=0\ldots\mathtt{meshEntDim}-1\f$
+   */
   LO component;
+
+  /** On-process index of the Omega_h mesh entity - mapped to from the input
+   *  nodeIndex and elementIndex passed to the parenthesis operator
+   */
   LO entity;
+
+  /** Topological type of the entity at entityIndex 
+   *  (e.g., Vertex, Edge, Triangle)
+   */
   Mesh_Topology topo;
 };
 
