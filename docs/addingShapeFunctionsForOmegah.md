@@ -1,7 +1,17 @@
 # Adding Shape Functions for Omega_h Element Topologies {#adding-shape-functions-omegah}
 
-This guide walks through every step required to add a new shape function
-for an Omega\_h element topology (triangle, tetrahedron, quad, etc.).
+Shape functions for an element topology are defined within a shape function struct (e.g., @ref MeshField::LinearTriangleShape).
+Mapping between the ordering used for those shape functions and those used in
+the mesh database (currently just Omega\_h) is through a mapping struct (see
+@ref step2 below).
+DOF values are stored in @ref MeshField::Field which needs to be associated with a shape function and mapping via a @ref ShapeField to provide the needed per entity/dof access operators.
+
+Note, as of MeshFields version 1.1.0 only interpolating Lagrange linear and quadratic triangles and tetrahedra are supported.
+As such, there may be deficiencies in the interface to support other types of shape functions.
+Please use https://github.com/SCOREC/meshFields/issues to report any problems or
+ask questions.
+
+This guide walks through every step required to add a new shape function for an Omega\_h element topology (triangle, tetrahedron, quad, etc.).
 The steps are:
 
 1. Define the **shape function struct** in `src/MeshField_Shape.hpp`
@@ -11,6 +21,7 @@ The steps are:
 5. Extend **`CreateLagrangeField`** in `src/MeshField_ShapeField.hpp`
 6. Add **integration support** in `src/MeshField_Integrate.hpp`
 7. (Optional) Write an **`Integrator`-derived class** to perform numerical integration with the new shape.
+
 
 [TOC]
 
