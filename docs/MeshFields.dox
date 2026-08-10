@@ -1,7 +1,7 @@
 // clang-format off
   /**
    * @mainpage
-   * ## Nomenclature
+   * ## Nomenclature {#nomenclature}
    *
    * - Mesh - conforming discretization of a domain using simplices (triangles
    *   and tetrahedrons), hypercubes (quads and hexahedrons), pyramids and prisms

@@ -19,7 +19,7 @@ The steps are:
 
 ### Terminology
 
-Refer to the Nomenclature section on the main page.
+Refer to the @ref nomenclature "Nomenclature" section on the main page.
 
 ### Parametric Coordinates and Node Ordering
 
