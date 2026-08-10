@@ -230,6 +230,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     LinearLagrangeShapeField llsf(meshInfo, {vtxField});
     return FieldWithController<Ctrlr, LinearLagrangeShapeField>{kk_ctrl, llsf};
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
+    //! [CreateFieldControllerQuadratic]
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
     }
@@ -275,6 +276,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     QuadraticLagrangeShapeField qlsf(meshInfo, {vtxField, edgeField});
     return FieldWithController<Ctrlr, QuadraticLagrangeShapeField>{kk_ctrl,
                                                                     qlsf};
+    //! [CreateFieldControllerQuadratic]
   } else {
     fail("CreateLagrangeField does not support the specified "
          "combination of order %d and dimension %d.\n",

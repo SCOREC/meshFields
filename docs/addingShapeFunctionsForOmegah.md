@@ -219,7 +219,9 @@ The steps within that branch are:
 5. **Return** `FieldWithController<Ctrlr, ShapeField<numComp, YourShape, YourAccessor>>{ctrl, ShapeField(meshInfo, accessor)}`.
 
 See the existing `order == 2 && dim == 2` branch (quadratic triangle) as a
-concrete reference for all of the above.
+concrete reference:
+
+\snippet src/MeshField_ShapeField.hpp CreateFieldControllerQuadratic
 
 ---
 
