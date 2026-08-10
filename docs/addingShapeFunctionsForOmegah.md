@@ -94,8 +94,46 @@ assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
 
 The mapping struct lives in `src/MeshField.hpp` inside
 `namespace MeshField::Omegah`.  It translates element-local node indices
-(as numbered by the shape function) into the global mesh entity indices
+(as numbered by the shape function) into the on-process mesh entity indices
 (as numbered by Omega\_h) that hold the corresponding DOFs.
+
+### Vertex-Ordering Correction
+
+As previously stated, Omega\_h numbers vertices and edges within an element 
+differently from the MeshFields canonical ordering used by the shape functions.
+The Omega\_h canonical orderings for simplices are depicted below:
+
+<a href="omegah_tri.png"><img src="omegah_tri.png" width="20%" alt="Omega_h triangle ordering"/></a>
+
+Omega_h triangle ordering.
+
+<a href="omegah_tetOrdering.png"><img src="omegah_tetOrdering.png" width="20%" alt="Omega_h tetrahedron ordering"/></a>
+
+Omega_h tetrahedron ordering.
+
+Meshes composed of hypercubes (quadrilaterals and hexahedrons), pyramids, and prisms are supported by Omega_h, but they cannot be adapted.
+Version 1.1.0 of MeshFields only supports Omega\_h simplices.
+
+The existing linear-triangle and linear-tetrahedron mappings correct for
+the difference in Omega\_h vs MeshFields ordering with a cyclic rotation.
+
+```cpp
+// For triangles (triDim=2, vtxDim=0):
+const auto localVtxIdx =
+    (Omega_h::simplex_down_template(triDim, vtxDim, nodeIdx, /*ignored=*/-1) + 2) % 3;
+
+// For tetrahedra (tetDim=3, vtxDim=0):
+const auto localVtxIdx =
+    (Omega_h::simplex_down_template(tetDim, vtxDim, nodeIdx, /*ignored=*/-1) + 3) % 4;
+```
+
+You must determine the correct rotation offset for your topology and DOF holders by
+comparing the Omega\_h canonical vertex/edge ordering (see
+figures above based on `Omega_h_simplex.hpp` and the `simplex_down_template` function)
+with the node ordering established by `getNodeParametricCoords()` in your shape
+struct.  It is a good idea to add a unit test that evaluates the shape functions at
+the parametric coordinates of each node and checks that the value for
+that node is 1.0 and all others are 0.0.
 
 ### Interface Requirements
 
@@ -114,39 +152,6 @@ The mapping struct lives in `src/MeshField.hpp` inside
 | Element→vertex connectivity | `mesh.ask_elem_verts()` → flat `LOs` array, stride = `simplex_degree(elemDim, 0)` |
 | Element→edge connectivity   | `mesh.ask_down(elemDim, 1).ab2b` → flat `LOs` array, stride = `simplex_degree(elemDim, 1)` |
 | Element→face connectivity   | `mesh.ask_down(elemDim, 2).ab2b` |
-
-### Vertex-Ordering Correction
-
-Omega\_h numbers vertices and edges within a simplex differently from the
-MeshFields canonical ordering used by the shape functions.
-The existing linear-triangle and linear-tetrahedron mappings correct for
-this with a cyclic rotation.
-
-Omega\_h canonical orderings for the supported topologies:
-
-<a href="omegah_tri.png"><img src="omegah_tri.png" width="20%" alt="Omega_h triangle: vertices v0–v2, edges e0–e2"/></a>
-
-<a href="omegah_tetOrdering.png"><img src="omegah_tetOrdering.png" width="20%" alt="Omega_h tetrahedron: vertices V0–V3, faces F0–F3 (left), edges E0–E5 (right)"/></a>
-
-<a href="omegah_pyramid_wedge_CanonTemplate.png"><img src="omegah_pyramid_wedge_CanonTemplate.png" width="20%" alt="Omega_h pyramid and wedge vertex, face, and edge orderings"/></a>
-
-```cpp
-// For triangles (triDim=2, vtxDim=0):
-const auto localVtxIdx =
-    (Omega_h::simplex_down_template(triDim, vtxDim, nodeIdx, /*ignored=*/-1) + 2) % 3;
-
-// For tetrahedra (tetDim=3, vtxDim=0):
-const auto localVtxIdx =
-    (Omega_h::simplex_down_template(tetDim, vtxDim, nodeIdx, /*ignored=*/-1) + 3) % 4;
-```
-
-You must determine the correct rotation offset for your topology by
-comparing the Omega\_h canonical vertex/edge ordering (see
-`Omega_h_simplex.hpp` and the `simplex_down_template` function) with the
-node ordering established by `getNodeParametricCoords()` in your shape
-struct.  Validate with a unit test that evaluates the shape functions at
-the parametric coordinates of each node and checks that the value for
-that node is 1.0 and all others are 0.0.
 
 ### Example: `QuadraticTriangleToField` (from `src/MeshField.hpp`)
 
