@@ -212,18 +212,11 @@ cubic shape), define a new Accessor following the same pattern:
 Add a new `if constexpr` branch for your shape's `order` and `dim`.
 The steps within that branch are:
 
-1. **Validate** `meshInfo` counts for every entity type that holds DOFs (e.g.,
-   `meshInfo.numVtx`, `meshInfo.numEdge`).  Call `fail()` if a required count
-   is zero.
-2. **Allocate storage** -- construct a `Controller` sized for each DOF-holding
-   entity type.  Each field in the controller needs entries for
-   `numEntities * dofsPerHolder * numComp`.
-3. **Create fields** -- call `MeshField::makeField<Ctrlr, N>(ctrl)` for each
-   field index `N` to obtain typed slice objects.
-4. **Construct the Accessor** -- pass the slice objects to your Accessor's
-   constructor (e.g., `QuadraticAccessor{vtxField, edgeField}`).
-5. **Return** `FieldWithController<Ctrlr, ShapeField<numComp, YourShape,
-   YourAccessor>>{ctrl, ShapeField(meshInfo, accessor)}`.
+1. **Validate** `meshInfo` counts for every entity type that holds DOFs (e.g., `meshInfo.numVtx`, `meshInfo.numEdge`).  Call `fail()` if a required count is zero.
+2. **Allocate storage** -- construct a `Controller` sized for each DOF-holding entity type.  Each field in the controller needs entries for `numEntities * dofsPerHolder * numComp`.
+3. **Create fields** -- call `MeshField::makeField<Ctrlr, N>(ctrl)` for each field index `N` to obtain typed slice objects.
+4. **Construct the Accessor** -- pass the slice objects to your Accessor's constructor (e.g., `QuadraticAccessor{vtxField, edgeField}`).
+5. **Return** `FieldWithController<Ctrlr, ShapeField<numComp, YourShape, YourAccessor>>{ctrl, ShapeField(meshInfo, accessor)}`.
 
 See the existing `order == 2 && dim == 2` branch (quadratic triangle) as a
 concrete reference for all of the above.
