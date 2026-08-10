@@ -19,8 +19,6 @@ The steps are:
 3. Register the shape + mapping in the **element factory** in `src/MeshField.hpp`
 4. Add an **Accessor** (if needed) in `src/MeshField_ShapeField.hpp`
 5. Extend **`CreateLagrangeField`** in `src/MeshField_ShapeField.hpp`
-6. Add **integration support** in `src/MeshField_Integrate.hpp`
-7. (Optional) Write an **`Integrator`-derived class** to perform numerical integration with the new shape.
 
 
 [TOC]
@@ -233,64 +231,4 @@ See the existing `order == 2 && dim == 2` branch (quadratic triangle) as a
 concrete reference:
 
 \snippet src/MeshField_ShapeField.hpp CreateFieldControllerQuadratic
-
----
-
-## Step 6 - Add Integration Support {#step6}
-@ref adding-shape-functions-omegah "Back to top"
-
-`src/MeshField_Integrate.hpp` provides quadrature rules through the
-`getIntegration<Mesh_Topology>()` template function.  To integrate over
-your new topology you must:
-
-### 6a - Define an `EntityIntegration` Class
-
-Derive from `EntityIntegration<D>` where `D = meshEntDim` of your shape.
-Implement at least one `Integration<D>` inner class that returns a vector
-of `IntegrationPoint<D>` objects.  Each point carries:
-
-| Field | Meaning |
-|-------|---------|
-| `param` | Parametric coordinates (reduced barycentric, length `D`) |
-| `weight` | Quadrature weight |
-| `dim` | Topological dimension of the entity the point is classified on |
-| `idx` | Local entity index within the element |
-
-For the triangle, quadrature weights include the reference area factor
-(\f$1/2\f$); for the tetrahedron they include \f$1/6\f$.  Match the
-convention used by `TriangleIntegration` and `TetrahedronIntegration`
-already in the file.
-
-The existing `TriangleIntegration` (from `src/MeshField_Integrate.hpp`) shows the full pattern including multiple quadrature orders:
-
-\snippet src/MeshField_Integrate.hpp TriangleIntegration
-
-### 6b - Extend `getIntegration<topo>()`
-
-Add a branch to the existing `getIntegration` function (current state in `src/MeshField_Integrate.hpp`):
-
-\snippet src/MeshField_Integrate.hpp getIntegration
-
----
-
-## Step 7 - Implement an Integrator (Optional) {#step7}
-@ref adding-shape-functions-omegah "Back to top"
-
-Derive from `MeshField::Integrator` and override `atPoints` to perform
-the actual integration.  `Integrator::process(FieldElement)` handles
-quadrature point setup and calls `atPoints` with:
-
-| Argument | Type | Description |
-|----------|------|-------------|
-| `p` | `Kokkos::View<Real**>` | Local parametric coordinates, shape `(numElems * numPts, dim)` |
-| `w` | `Kokkos::View<Real*>` | Quadrature weights, length `numElems * numPts` |
-| `dV` | `Kokkos::View<Real*>` | Jacobian determinants, length `numElems * numPts` |
-
-`test/testCountIntegrator.cpp` provides a working example. The integrator class:
-
-\snippet test/testCountIntegrator.cpp CountIntegrator
-
-And the function that wires together the element factory, `FieldElement`, integrator, and `process` call:
-
-\snippet test/testCountIntegrator.cpp doRun
 
