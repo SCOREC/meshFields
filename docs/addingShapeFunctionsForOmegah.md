@@ -11,7 +11,7 @@ As such, there may be deficiencies in the interface to support other types of sh
 Please use https://github.com/SCOREC/meshFields/issues to report any problems or
 ask questions.
 
-This guide walks through every step required to add a new shape function for an Omega\_h element topology (triangle, tetrahedron, quad, etc.).
+This guide walks through every step required to add a new shape function for an Omega\_h element topology (edge, triangle, quadrilateral, tetrahedron, etc.).
 The steps are:
 
 1. Define the **shape function struct** in `src/MeshField_Shape.hpp`
