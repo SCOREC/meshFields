@@ -2,7 +2,7 @@
 
 This guide walks through every step required to add a new shape function
 for an Omega\_h element topology (triangle, tetrahedron, quad, etc.).
-Five source locations must be modified in order:
+The steps are:
 
 1. Define the **shape function struct** in `src/MeshField_Shape.hpp`
 2. Define the **Omega\_h node mapping struct** in `src/MeshField.hpp`
@@ -11,25 +11,29 @@ Five source locations must be modified in order:
 5. Add **integration support** in `src/MeshField_Integrate.hpp`
 6. (Optional) Write an **`Integrator`-derived class** to perform numerical integration with the new shape.
 
+[TOC]
+
 ---
 
 ## Background
 
+### Terminology
+
+Refer to the Nomenclature section on the main page.
+
 ### Parametric Coordinates and Node Ordering
 
-meshFields defines shape functions in a canonical parametric coordinate
-system that is independent of Omega\_h.  Omega\_h uses its own node
-ordering for element vertices and edges, which may differ from the
-meshFields canonical ordering.  The **node mapping struct** (Step 2)
+MeshFields defines shape functions in a canonical parametric coordinate
+system that is independent of Omega\_h.  The **node mapping struct** (Step 2)
 bridges the two conventions.
 
-The meshFields canonical parametric coordinates and node ordering for linear and
-quadratic triangles and tetrahedrons follows:
-Zienkiewicz, Taylor, and Zhu,
-*The Finite Element Method: Its Basis and Fundamentals*, 2013.
+The MeshFields canonical parametric coordinates and node ordering for linear and
+quadratic triangles and tetrahedrons follows,
+"The Finite Element Method: Its Basis and Fundamentals", 2013,
+Zienkiewicz, Taylor, and Zhu.
 
-For simplex elements the parametric coordinates are reduced barycentric
-coordinates.  The redundant coordinate \f$L_0 = 1 - \sum \xi_i\f$ is
+MeshFields uses \f$d-1\f$ parametric coordinates to specify a location within an
+element of dimension \f$d\f$.  The redundant coordinate \f$L_0 = 1 - \sum \xi_i\f$ is
 omitted:
 
 | Topology      | Parametric coords | Range           |
@@ -38,19 +42,11 @@ omitted:
 | Triangle (2D) | \f$(\xi_0,\xi_1)\f$  | \f$[0,1]^2\f$, \f$\xi_0+\xi_1 \le 1\f$ |
 | Tet (3D)      | \f$(\xi_0,\xi_1,\xi_2)\f$ | \f$[0,1]^3\f$, \f$\sum \xi_i \le 1\f$ |
 
-### Terminology
-
-- **Node** – a parametric location on an element that carries a DOF.
-- **DOF holder** – the mesh entity (Vertex, Edge, …) that owns a DOF.
-  For a linear triangle the three nodes coincide with the three vertices.
-  For a quadratic triangle there are also three mid-edge nodes.
-- **Node mapping** – a callable that, given a node index local to an
-  element, returns the global mesh entity index and topology type that
-  holds the corresponding DOF.
-
 ---
 
-## Step 1 – Define the Shape Function Struct
+## Step 1 – Define the Shape Function Struct {#step1}
+
+@ref adding-shape-functions-omegah "Back to top"
 
 Add a new struct to `src/MeshField_Shape.hpp` inside `namespace MeshField`.
 
@@ -93,7 +89,8 @@ assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
 
 ---
 
-## Step 2 – Define the Omega\_h Node Mapping Struct
+## Step 2 – Define the Omega\_h Node Mapping Struct {#step2}
+@ref adding-shape-functions-omegah "Back to top"
 
 The mapping struct lives in `src/MeshField.hpp` inside
 `namespace MeshField::Omegah`.  It translates element-local node indices
@@ -121,7 +118,7 @@ The mapping struct lives in `src/MeshField.hpp` inside
 ### Vertex-Ordering Correction
 
 Omega\_h numbers vertices and edges within a simplex differently from the
-meshFields canonical ordering used by the shape functions.
+MeshFields canonical ordering used by the shape functions.
 The existing linear-triangle and linear-tetrahedron mappings correct for
 this with a cyclic rotation.
 
@@ -157,7 +154,8 @@ that node is 1.0 and all others are 0.0.
 
 ---
 
-## Step 3 – Register in the Element Factory
+## Step 3 – Register in the Element Factory {#step3}
+@ref adding-shape-functions-omegah "Back to top"
 
 Add a new factory function (or extend an existing one) in
 `src/MeshField.hpp` inside `namespace MeshField::Omegah`.
@@ -174,7 +172,8 @@ MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 
 ---
 
-## Step 4 – Add an Accessor and Extend `CreateLagrangeField`
+## Step 4 – Add an Accessor and Extend `CreateLagrangeField` {#step4}
+@ref adding-shape-functions-omegah "Back to top"
 
 `src/MeshField_ShapeField.hpp` is the glue between the shape function and the
 field storage layer.  The key types are:
@@ -209,7 +208,8 @@ controller with the right per-entity-type storage sizes and instantiating
 
 ---
 
-## Step 5 – Add Integration Support
+## Step 5 – Add Integration Support {#step5}
+@ref adding-shape-functions-omegah "Back to top"
 
 `src/MeshField_Integrate.hpp` provides quadrature rules through the
 `getIntegration<Mesh_Topology>()` template function.  To integrate over
@@ -245,7 +245,8 @@ Add a branch to the existing `getIntegration` function (current state in `src/Me
 
 ---
 
-## Step 6 – Implement an Integrator (Optional)
+## Step 6 – Implement an Integrator (Optional) {#step6}
+@ref adding-shape-functions-omegah "Back to top"
 
 Derive from `MeshField::Integrator` and override `atPoints` to perform
 the actual integration.  `Integrator::process(FieldElement)` handles
