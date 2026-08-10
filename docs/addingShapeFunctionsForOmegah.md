@@ -7,9 +7,10 @@ The steps are:
 1. Define the **shape function struct** in `src/MeshField_Shape.hpp`
 2. Define the **Omega\_h node mapping struct** in `src/MeshField.hpp`
 3. Register the shape + mapping in the **element factory** in `src/MeshField.hpp`
-4. Add an **Accessor** (if needed) and extend **`CreateLagrangeField`** in `src/MeshField_ShapeField.hpp`
-5. Add **integration support** in `src/MeshField_Integrate.hpp`
-6. (Optional) Write an **`Integrator`-derived class** to perform numerical integration with the new shape.
+4. Add an **Accessor** (if needed) in `src/MeshField_ShapeField.hpp`
+5. Extend **`CreateLagrangeField`** in `src/MeshField_ShapeField.hpp`
+6. Add **integration support** in `src/MeshField_Integrate.hpp`
+7. (Optional) Write an **`Integrator`-derived class** to perform numerical integration with the new shape.
 
 [TOC]
 
@@ -44,7 +45,7 @@ omitted:
 
 ---
 
-## Step 1 – Define the Shape Function Struct {#step1}
+## Step 1 - Define the Shape Function Struct {#step1}
 
 @ref adding-shape-functions-omegah "Back to top"
 
@@ -89,7 +90,7 @@ assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
 
 ---
 
-## Step 2 – Define the Omega\_h Node Mapping Struct {#step2}
+## Step 2 - Define the Omega\_h Node Mapping Struct {#step2}
 @ref adding-shape-functions-omegah "Back to top"
 
 The mapping struct lives in `src/MeshField.hpp` inside
@@ -147,9 +148,9 @@ that node is 1.0 and all others are 0.0.
 
 | Query | API call |
 |-------|----------|
-| Element→vertex connectivity | `mesh.ask_elem_verts()` → flat `LOs` array, stride = `simplex_degree(elemDim, 0)` |
-| Element→edge connectivity   | `mesh.ask_down(elemDim, 1).ab2b` → flat `LOs` array, stride = `simplex_degree(elemDim, 1)` |
-| Element→face connectivity   | `mesh.ask_down(elemDim, 2).ab2b` |
+| Element->vertex connectivity | `mesh.ask_elem_verts()` -> flat `LOs` array, stride = `simplex_degree(elemDim, 0)` |
+| Element->edge connectivity   | `mesh.ask_down(elemDim, 1).ab2b` -> flat `LOs` array, stride = `simplex_degree(elemDim, 1)` |
+| Element->face connectivity   | `mesh.ask_down(elemDim, 2).ab2b` |
 
 ### Example: `QuadraticTriangleToField` (from `src/MeshField.hpp`)
 
@@ -157,7 +158,7 @@ that node is 1.0 and all others are 0.0.
 
 ---
 
-## Step 3 – Register in the Element Factory {#step3}
+## Step 3 - Register in the Element Factory {#step3}
 @ref adding-shape-functions-omegah "Back to top"
 
 Add a new factory function (or extend an existing one) in
@@ -175,50 +176,68 @@ MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
 
 ---
 
-## Step 4 – Add an Accessor and Extend `CreateLagrangeField` {#step4}
+## Step 4 - Add an Accessor {#step4}
 @ref adding-shape-functions-omegah "Back to top"
 
-`src/MeshField_ShapeField.hpp` is the glue between the shape function and the
-field storage layer.  The key types are:
-
-**`ShapeField<numComp, Shape, Mixins...>`** — holds the `Shape`, the `MeshInfo`,
-and the number of field components.  The `Mixins` are Accessor types that
-provide `operator()(entity, node, component, topology)` for reading and writing
-DOF values.
-
-\snippet src/MeshField_ShapeField.hpp ShapeField
+An Accessor is a templated struct that provides `operator()(entity, node, component, topology)` for reading and writing DOF values from the underlying field storage.
+It is passed as a variadic template argument (`Mixins...`) to @ref MeshField::ShapeField "ShapeField".
 
 Two built-in Accessors cover the common cases:
 
-**`LinearAccessor`** — for shapes whose DOFs live only at vertices:
+@ref MeshField::LinearAccessor "LinearAccessor" -- for shapes whose DOFs live
+only at vertices.  All calls to `operator()` are forwarded to a single vertex
+field regardless of topology:
 
 \snippet src/MeshField_ShapeField.hpp LinearAccessor
 
-**`QuadraticAccessor`** — for shapes whose DOFs live at vertices and edges:
+@ref MeshField::QuadraticAccessor "QuadraticAccessor" -- for shapes whose DOFs
+live at both vertices and edges.  The `operator()` dispatches to the vertex
+field or edge field based on the `topology` argument:
 
 \snippet src/MeshField_ShapeField.hpp QuadraticAccessor
 
-If your shape introduces DOFs at a new entity type (e.g., faces), define a new
-Accessor following the same pattern and add the corresponding topology to its
-`topo` array.
+If your shape introduces DOFs at a new entity type (e.g., triangle faces for a
+cubic shape), define a new Accessor following the same pattern:
 
-**`CreateLagrangeField<ExecutionSpace, Controller, DataType, order, dim, numComp>(meshInfo)`**
-(in `src/MeshField_ShapeField.hpp`) is the user-facing factory that allocates
-storage and returns a `FieldWithController<Ctrlr, ShapeField<...>>`.  Add a new
-`if constexpr` branch for your shape's order and dimension, constructing the
-controller with the right per-entity-type storage sizes and instantiating
-`ShapeField<numComp, YourShape, YourAccessor>`.
+1. Add a field member (as done in `QuadraticAccessor` for `EdgeAccessor edgeField;,`) for each new entity type.
+2. Extend `operator()` with a branch for the added topology.
+3. List all supported topologies in the `topo` array.
 
 ---
 
-## Step 5 – Add Integration Support {#step5}
+## Step 5 - Extend `CreateLagrangeField` {#step5}
+@ref adding-shape-functions-omegah "Back to top"
+
+@ref MeshField::CreateLagrangeField "CreateLagrangeField<ExecutionSpace, Controller, DataType, order, dim, numComp>(meshInfo)" (in `src/MeshField_ShapeField.hpp`) is the user-facing factory that allocates field storage and assembles a @ref MeshField::ShapeField "ShapeField".
+Add a new `if constexpr` branch for your shape's `order` and `dim`.
+The steps within that branch are:
+
+1. **Validate** `meshInfo` counts for every entity type that holds DOFs (e.g.,
+   `meshInfo.numVtx`, `meshInfo.numEdge`).  Call `fail()` if a required count
+   is zero.
+2. **Allocate storage** -- construct a `Controller` sized for each DOF-holding
+   entity type.  Each field in the controller needs entries for
+   `numEntities * dofsPerHolder * numComp`.
+3. **Create fields** -- call `MeshField::makeField<Ctrlr, N>(ctrl)` for each
+   field index `N` to obtain typed slice objects.
+4. **Construct the Accessor** -- pass the slice objects to your Accessor's
+   constructor (e.g., `QuadraticAccessor{vtxField, edgeField}`).
+5. **Return** `FieldWithController<Ctrlr, ShapeField<numComp, YourShape,
+   YourAccessor>>{ctrl, ShapeField(meshInfo, accessor)}`.
+
+See the existing `order == 2 && dim == 2` branch (quadratic triangle) as a
+concrete reference for all of the above.
+
+---
+
+## Step 6 - Add Integration Support {#step6}
 @ref adding-shape-functions-omegah "Back to top"
 
 `src/MeshField_Integrate.hpp` provides quadrature rules through the
 `getIntegration<Mesh_Topology>()` template function.  To integrate over
 your new topology you must:
 
-### 5a – Define an `EntityIntegration` Class
+### 6a - Define an `EntityIntegration` Class
 
 Derive from `EntityIntegration<D>` where `D = meshEntDim` of your shape.
 Implement at least one `Integration<D>` inner class that returns a vector
@@ -240,7 +259,7 @@ The existing `TriangleIntegration` (from `src/MeshField_Integrate.hpp`) shows th
 
 \snippet src/MeshField_Integrate.hpp TriangleIntegration
 
-### 5b – Extend `getIntegration<topo>()`
+### 6b - Extend `getIntegration<topo>()`
 
 Add a branch to the existing `getIntegration` function (current state in `src/MeshField_Integrate.hpp`):
 
@@ -248,7 +267,7 @@ Add a branch to the existing `getIntegration` function (current state in `src/Me
 
 ---
 
-## Step 6 – Implement an Integrator (Optional) {#step6}
+## Step 7 - Implement an Integrator (Optional) {#step7}
 @ref adding-shape-functions-omegah "Back to top"
 
 Derive from `MeshField::Integrator` and override `atPoints` to perform
@@ -278,7 +297,8 @@ And the function that wires together the element factory, `FieldElement`, integr
 - [ ] Omega\_h mapping struct added to `src/MeshField.hpp`, `namespace MeshField::Omegah`
 - [ ] Vertex/edge ordering offset determined and verified against Omega\_h simplex templates
 - [ ] Factory function `get<Topology>Element<Order>` added or extended in `src/MeshField.hpp`
-- [ ] Accessor defined (if DOFs at new entity types) and `CreateLagrangeField` extended in `src/MeshField_ShapeField.hpp`
+- [ ] Accessor defined (if DOFs at new entity types) in `src/MeshField_ShapeField.hpp`
+- [ ] `CreateLagrangeField` extended with new `if constexpr` branch in `src/MeshField_ShapeField.hpp`
 - [ ] `EntityIntegration` class added to `src/MeshField_Integrate.hpp`
 - [ ] `getIntegration<topo>()` extended for the new topology
 - [ ] Test added that constructs a mesh, builds a `FieldElement`, and calls `Integrator::process`
