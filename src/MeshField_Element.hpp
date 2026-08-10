@@ -637,15 +637,14 @@ struct NonIsoparametricFieldElement
     using type = typename baseType<T>::type;
   };
 
-  // Geometry node array: uses GeometryType::numNodes
-  // For isoparametric elements, this equals ShapeType::numNodes
-  // For non-isoparametric (e.g., ReducedQuintic), this equals the geometry
-  // node count
-  using GeomNodeArray =
+  // Override getNodeValues to use GeometryType::numNodes instead of
+  // ShapeType::numNodes. For non-isoparametric elements (e.g., ReducedQuintic),
+  // the geometry mapping uses fewer nodes than the field shape functions.
+  using NodeArray =
       Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
                     ShapeType::meshEntDim * GeometryType::numNodes>;
-  KOKKOS_INLINE_FUNCTION GeomNodeArray getGeometryNodeValues(int ent) const {
-    GeomNodeArray c;
+  KOKKOS_INLINE_FUNCTION NodeArray getNodeValues(int ent) const {
+    NodeArray c;
     for (auto topo : this->elm2dof.getTopology()) { // element topology
       for (size_t gni = 0; gni < GeometryType::numNodes; ++gni) {
         for (size_t d = 0; d < ShapeType::meshEntDim; ++d) {
@@ -732,7 +731,7 @@ struct NonIsoparametricFieldElement
    *
    * @details
    * Uses geometryFn (instead of shapeFn) for gradient computation
-   * and getGeometryNodeValues() (instead of getNodeValues()) for
+   * and this->getNodeValues() (which uses GeometryType::numNodes) for
    * node value gathering.
    *
    * @param ent the mesh entity index
@@ -743,7 +742,7 @@ struct NonIsoparametricFieldElement
     assert(static_cast<size_t>(ent) < this->numMeshEnts);
     Vector1 ignored;
     const auto nodalGradients = geometryFn.getLocalGradients(ignored);
-    const auto nodeValues = getGeometryNodeValues(ent);
+    const auto nodeValues = getNodeValues(ent);
     auto g = nodalGradients[0] * nodeValues[0];
     for (size_t i = 1; i < GeometryType::numNodes; ++i) {
       g = g + nodalGradients[i] * nodeValues[i];
@@ -838,7 +837,7 @@ struct NonIsoparametricFieldElement
           "nodalGradients", numPts);
       Kokkos::parallel_for(
           this->numMeshEnts, KOKKOS_CLASS_LAMBDA(const int ent) {
-            const auto vals = this->getGeometryNodeValues(ent);
+            const auto vals = this->getNodeValues(ent);
             assert(vals.size() == MeshEntDim * GeometryType::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
               Kokkos::Array<Real, MeshEntDim> xi;
