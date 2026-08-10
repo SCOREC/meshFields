@@ -283,17 +283,3 @@ And the function that wires together the element factory, `FieldElement`, integr
 
 \snippet test/testCountIntegrator.cpp doRun
 
----
-
-## Checklist
-
-- [ ] Shape struct added to `src/MeshField_Shape.hpp` with all required members
-- [ ] `getValues` and `getLocalGradients` validated at each node's parametric coords (partition-of-unity and Kronecker-delta checks)
-- [ ] Omega\_h mapping struct added to `src/MeshField.hpp`, `namespace MeshField::Omegah`
-- [ ] Vertex/edge ordering offset determined and verified against Omega\_h simplex templates
-- [ ] Factory function `get<Topology>Element<Order>` added or extended in `src/MeshField.hpp`
-- [ ] Accessor defined (if DOFs at new entity types) in `src/MeshField_ShapeField.hpp`
-- [ ] `CreateLagrangeField` extended with new `if constexpr` branch in `src/MeshField_ShapeField.hpp`
-- [ ] `EntityIntegration` class added to `src/MeshField_Integrate.hpp`
-- [ ] `getIntegration<topo>()` extended for the new topology
-- [ ] Test added that constructs a mesh, builds a `FieldElement`, and calls `Integrator::process`
