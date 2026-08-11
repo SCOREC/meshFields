@@ -919,6 +919,7 @@ WARN_LOGFILE           =
 
 INPUT                  = \
 @CMAKE_CURRENT_SOURCE_DIR@/docs/MeshFields.dox \
+@CMAKE_CURRENT_SOURCE_DIR@/docs/addingShapeFunctionsForOmegah.md \
 @CMAKE_CURRENT_SOURCE_DIR@/src/CabanaController.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/KokkosController.hpp \
 @CMAKE_CURRENT_SOURCE_DIR@/src/MeshField_Defines.hpp \
@@ -1064,7 +1065,7 @@ EXCLUDE_SYMBOLS        =
 # that contain example code fragments that are included (see the \include
 # command).
 
-EXAMPLE_PATH           =
+EXAMPLE_PATH           = @CMAKE_CURRENT_SOURCE_DIR@
 
 # If the value of the EXAMPLE_PATH tag contains directories, you can use the
 # EXAMPLE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp and
@@ -1084,7 +1085,7 @@ EXAMPLE_RECURSIVE      = NO
 # that contain images that are to be included in the documentation (see the
 # \image command).
 
-IMAGE_PATH             =
+IMAGE_PATH             = @CMAKE_CURRENT_SOURCE_DIR@/docs
 
 # The INPUT_FILTER tag can be used to specify a program that doxygen should
 # invoke to filter for each input file. Doxygen will invoke the filter program

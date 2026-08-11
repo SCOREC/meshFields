@@ -71,6 +71,7 @@ template <typename Ctrlr, typename Field> struct FieldWithController {
  * @param meshInfoIn defines on-process mesh metadata
  * @param mixins object(s) needed to construct the Accessor
  */
+//! [ShapeField]
 template <size_t numCompIn, typename Shape, typename... Mixins>
 struct ShapeField : public Mixins... {
   Shape shape;
@@ -84,6 +85,7 @@ struct ShapeField : public Mixins... {
   ShapeField(const MeshInfo &meshInfoIn, Mixins &&... mixins)
       : meshInfo(meshInfoIn), Mixins( std::forward<Mixins>(mixins) )... {};
 };
+//! [ShapeField]
 
 /**
  * @brief
@@ -104,6 +106,7 @@ struct ShapeField : public Mixins... {
  * @tparam EdgeAccessor defines parenthesis operator for dofs associated with
  * mesh edges
  */
+//! [QuadraticAccessor]
 template <typename VtxAccessor, typename EdgeAccessor>
 struct QuadraticAccessor {
   constexpr static const Mesh_Topology topo[2] = {Vertex, Edge};
@@ -121,6 +124,7 @@ struct QuadraticAccessor {
                          : edgeField(entity, node, component);
   }
 };
+//! [QuadraticAccessor]
 
 /**
  * @brief
@@ -136,6 +140,7 @@ struct QuadraticAccessor {
  * @tparam VtxAccessor defines parenthesis operator for dofs associated with
  * mesh vertices
  */
+//! [LinearAccessor]
 template <typename VtxAccessor> struct LinearAccessor {
   constexpr static const Mesh_Topology topo[1] = {Vertex};
   VtxAccessor vtxField;
@@ -150,6 +155,7 @@ template <typename VtxAccessor> struct LinearAccessor {
     return vtxField(entity, node, component);
   }
 };
+//! [LinearAccessor]
 
 /**
  * @brief
@@ -224,6 +230,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     LinearLagrangeShapeField llsf(meshInfo, {vtxField});
     return FieldWithController<Ctrlr, LinearLagrangeShapeField>{kk_ctrl, llsf};
   } else if constexpr (order == 2 && (dim == 2 || dim == 3)) {
+    //! [CreateFieldControllerQuadratic]
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
     }
@@ -269,6 +276,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     QuadraticLagrangeShapeField qlsf(meshInfo, {vtxField, edgeField});
     return FieldWithController<Ctrlr, QuadraticLagrangeShapeField>{kk_ctrl,
                                                                     qlsf};
+    //! [CreateFieldControllerQuadratic]
   } else {
     fail("CreateLagrangeField does not support the specified "
          "combination of order %d and dimension %d.\n",
