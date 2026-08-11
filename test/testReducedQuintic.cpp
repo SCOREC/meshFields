@@ -90,16 +90,15 @@ bool testGeometryComputation() {
   coords[1][0] = 4; coords[1][1] = 0;  // v1
   coords[2][0] = 0; coords[2][1] = 3;  // v2
   
-  Real origin[2], a, b, c, sin_theta, cos_theta;
+  Real a, b, c, sin_theta, cos_theta;
   int order[3];
-  computeReducedQuinticGeometry(coords, origin, a, b, c, sin_theta, cos_theta, order);
+  computeReducedQuinticGeometry(coords, a, b, c, sin_theta, cos_theta, order);
   
   std::cout << "  Triangle vertices:\n";
   std::cout << "    v0 = (" << coords[0][0] << ", " << coords[0][1] << ")\n";
   std::cout << "    v1 = (" << coords[1][0] << ", " << coords[1][1] << ")\n";
   std::cout << "    v2 = (" << coords[2][0] << ", " << coords[2][1] << ")\n";
   std::cout << "  Computed parameters:\n";
-  std::cout << "    origin = (" << origin[0] << ", " << origin[1] << ")\n";
   std::cout << "    a (dist to reordered v1) = " << a << "\n";
   std::cout << "    b (dist to reordered v0) = " << b << "\n";
   std::cout << "    c (perp dist to reordered v2) = " << c << "\n";
@@ -364,9 +363,9 @@ bool testFieldEvaluation(const char* testName, Omega_h::Matrix<2,3> const& coord
             << "(" << coords[2][0] << "," << coords[2][1] << ")\n";
   
   // Get geometric parameters
-  Real origin[2], a, b, c, sin_theta, cos_theta;
+  Real a, b, c, sin_theta, cos_theta;
   int order[3];
-  computeReducedQuinticGeometry(coords, origin, a, b, c, sin_theta, cos_theta, order);
+  computeReducedQuinticGeometry(coords, a, b, c, sin_theta, cos_theta, order);
   std::cout << "  Geometric params: a=" << a << " b=" << b << " c=" << c
             << " sin_theta=" << sin_theta << " cos_theta=" << cos_theta
             << " order=[" << order[0] << "," << order[1] << "," << order[2] << "]\n";

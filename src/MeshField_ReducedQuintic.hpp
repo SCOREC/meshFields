@@ -254,7 +254,6 @@ void reorderTriangleVertices(
  * @brief Device-compatible function to compute geometric parameters for reduced quintic triangle element
  *
  * @param coords Original triangle vertex coordinates as Omega_h::Matrix<2,3>
- * @param origin Output: origin of local coordinate system
  * @param a Output: distance from origin to first vertex in local system
  * @param b Output: distance from origin to second vertex in local system
  * @param c Output: perpendicular distance to third vertex
@@ -265,7 +264,6 @@ void reorderTriangleVertices(
 KOKKOS_INLINE_FUNCTION
 void computeReducedQuinticGeometry(
     Omega_h::Matrix<2,3> const& coords,
-    Real origin[2],
     Real& a, Real& b, Real& c,
     Real& sin_theta, Real& cos_theta,
     int order[3])
@@ -292,8 +290,7 @@ void computeReducedQuinticGeometry(
   // Project v2 onto v0-v1 edge to find origin
   Real buffer = (ab[0]*ac[0] + ab[1]*ac[1]) / ablensq;
   Real ac2ab[2] = {ab[0] * buffer, ab[1] * buffer};
-  origin[0] = ac2ab[0] + abcCoord[0][0];
-  origin[1] = ac2ab[1] + abcCoord[0][1];
+  Real origin[2] = {ac2ab[0] + abcCoord[0][0], ac2ab[1] + abcCoord[0][1]};
   
   // Distances from origin to each vertex (in reordered system)
   Real vec_a[2] = {origin[0] - abcCoord[0][0], origin[1] - abcCoord[0][1]};
@@ -360,6 +357,9 @@ void computeReducedQuinticCoefficients(
   
   // Solve A*X = B using our LU solver (row-major)
   int info = solveLU_internal(20, 18, &A[0][0], 20, &B[0][0], 18);
+  if (info != 0) {
+    Kokkos::abort("computeReducedQuinticCoefficients: LU solve failed (singular matrix)\n");
+  }
   
   // Copy solution to coeffs[18][20]
   for (int j = 0; j < 18; j++) {
@@ -389,9 +389,9 @@ inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
       KOKKOS_LAMBDA(int tri) {
     auto const& coords = triCoords_d(tri);
     
-    Real origin[2], a, b, c, sin_theta, cos_theta;
+    Real a, b, c, sin_theta, cos_theta;
     int order[3];
-    computeReducedQuinticGeometry(coords, origin, a, b, c, sin_theta, cos_theta, order);
+    computeReducedQuinticGeometry(coords, a, b, c, sin_theta, cos_theta, order);
     
     coeffs_d(tri, 0) = static_cast<Real>(order[0]);
     coeffs_d(tri, 1) = static_cast<Real>(order[1]);
