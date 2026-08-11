@@ -126,6 +126,7 @@ struct LinearTetrahedronToVertexField {
     return {0, tetCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
+//! [QuadraticTriangleToField]
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
@@ -187,6 +188,7 @@ struct QuadraticTriangleToField {
     return {0, triCompIdx, osh_ent, dofHolderTopo};
   }
 };
+//! [QuadraticTriangleToField]
 
 struct QuadraticTetrahedronToField {
   Omega_h::LOs tetVerts;
@@ -243,6 +245,7 @@ struct QuadraticTetrahedronToField {
   }
 };
 
+//! [ReducedQuinticTriangleToField]
 struct ReducedQuinticTriangleToField {
   Omega_h::LOs triVerts;
 
@@ -302,6 +305,7 @@ struct ReducedQuinticTriangleToField {
   }
 };
 
+//! [getTriangleElement]
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
@@ -351,6 +355,7 @@ struct ReducedQuinticTriangleElementResult {
   Kokkos::View<MeshField::Real**> coeffs;
 };
 
+//! [getReducedQuinticTriangleElement]
 inline ReducedQuinticTriangleElementResult
 getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
   if (mesh.dim() != 2 || mesh.family() != OMEGA_H_SIMPLEX) {
@@ -380,6 +385,7 @@ getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
     elemCoeffs};
 }
 
+//! [getTriangleElement]
 template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {

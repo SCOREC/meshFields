@@ -37,6 +37,7 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
+//! [CountIntegrator]
 template <typename FieldElement>
 class CountIntegrator : public MeshField::Integrator {
 private:
@@ -56,7 +57,9 @@ public:
     count = fes.numMeshEnts;
   }
 };
+//! [CountIntegrator]
 
+//! [doRun]
 template <template <typename...> typename Controller, size_t dim>
 void doRun(Omega_h::Mesh &mesh,
            MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
@@ -76,6 +79,7 @@ void doRun(Omega_h::Mesh &mesh,
   countInt.process(fes);
   assert(static_cast<size_t>(mesh.nelems()) == countInt.getCount());
 }
+//! [doRun]
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
