@@ -15,17 +15,19 @@ namespace MeshField {
  * Solves the linear system A*X = B where A is n×n and B is n×nrhs.
  * This replaces the need for LAPACK's dgesv for our 20×20 system.
  * 
- * @param n Dimension of the matrix (20 for reduced quintic)
- * @param nrhs Number of right-hand sides (18 for reduced quintic)
- * @param A Input matrix (destroyed on output), row-major format
- * @param lda Leading dimension of A
- * @param B Input/output: RHS on input, solution on output, row-major format
- * @param ldb Leading dimension of B
+ * @param A Input matrix (destroyed on output), row-major, unmanaged view
+ * @param B Input/output: RHS on input, solution on output, unmanaged view
  * @return 0 on success, positive value if singular
  */
-template<typename Real>
 KOKKOS_INLINE_FUNCTION
-int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb) {
+int solveLU_internal(
+    Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> A,
+    Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> B) {
+  const int n = static_cast<int>(A.extent(0));
+  const int nrhs = static_cast<int>(B.extent(1));
+  assert(A.extent(1) == static_cast<size_t>(n));
+  assert(B.extent(0) == static_cast<size_t>(n));
+
   // Use fixed-size array for pivoting (n=20 maximum, which fits all our use cases)
   // We use a stack array since this is device-compatible
   int pivot[20];
@@ -35,9 +37,9 @@ int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb) {
   for (int k = 0; k < n; k++) {
     // Find pivot
     int maxRow = k;
-    Real maxVal = Kokkos::fabs(A[k * lda + k]);
+    Real maxVal = Kokkos::fabs(A(k, k));
     for (int i = k + 1; i < n; i++) {
-      Real val = Kokkos::fabs(A[i * lda + k]);
+      Real val = Kokkos::fabs(A(i, k));
       if (val > maxVal) {
         maxVal = val;
         maxRow = i;
@@ -53,19 +55,19 @@ int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb) {
     // Swap rows in A if needed
     if (maxRow != k) {
       for (int j = 0; j < n; j++) {
-        Real tmp = A[k * lda + j];
-        A[k * lda + j] = A[maxRow * lda + j];
-        A[maxRow * lda + j] = tmp;
+        Real tmp = A(k, j);
+        A(k, j) = A(maxRow, j);
+        A(maxRow, j) = tmp;
       }
     }
     
     // Eliminate column
-    Real diag = A[k * lda + k];
+    Real diag = A(k, k);
     for (int i = k + 1; i < n; i++) {
-      Real factor = A[i * lda + k] / diag;
-      A[i * lda + k] = factor; // Store multiplier
+      Real factor = A(i, k) / diag;
+      A(i, k) = factor; // Store multiplier
       for (int j = k + 1; j < n; j++) {
-        A[i * lda + j] -= factor * A[k * lda + j];
+        A(i, j) -= factor * A(k, j);
       }
     }
   }
@@ -74,9 +76,9 @@ int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb) {
   for (int k = 0; k < n; k++) {
     if (pivot[k] != k) {
       for (int rhs = 0; rhs < nrhs; rhs++) {
-        Real tmp = B[k * ldb + rhs];
-        B[k * ldb + rhs] = B[pivot[k] * ldb + rhs];
-        B[pivot[k] * ldb + rhs] = tmp;
+        Real tmp = B(k, rhs);
+        B(k, rhs) = B(pivot[k], rhs);
+        B(pivot[k], rhs) = tmp;
       }
     }
   }
@@ -84,24 +86,24 @@ int solveLU_internal(int n, int nrhs, Real* A, int lda, Real* B, int ldb) {
   // Forward substitution: solve L*Y = B for each column
   for (int i = 0; i < n; i++) {
     for (int j = 0; j < i; j++) {
-      Real factor = A[i * lda + j];
+      Real factor = A(i, j);
       for (int rhs = 0; rhs < nrhs; rhs++) {
-        B[i * ldb + rhs] -= factor * B[j * ldb + rhs];
+        B(i, rhs) -= factor * B(j, rhs);
       }
     }
   }
   
   // Backward substitution: solve U*X = Y for each column
   for (int i = n - 1; i >= 0; i--) {
-    Real diag = A[i * lda + i];
+    Real diag = A(i, i);
     for (int j = i + 1; j < n; j++) {
-      Real factor = A[i * lda + j];
+      Real factor = A(i, j);
       for (int rhs = 0; rhs < nrhs; rhs++) {
-        B[i * ldb + rhs] -= factor * B[j * ldb + rhs];
+        B(i, rhs) -= factor * B(j, rhs);
       }
     }
     for (int rhs = 0; rhs < nrhs; rhs++) {
-      B[i * ldb + rhs] /= diag;
+      B(i, rhs) /= diag;
     }
   }
   
@@ -355,8 +357,10 @@ void computeReducedQuinticCoefficients(
     }
   }
   
-  // Solve A*X = B using our LU solver (row-major)
-  int info = solveLU_internal(20, 18, &A[0][0], 20, &B[0][0], 18);
+  // Solve A*X = B using our LU solver
+  Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> A_view(&A[0][0], 20, 20);
+  Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> B_view(&B[0][0], 20, 18);
+  int info = solveLU_internal(A_view, B_view);
   if (info != 0) {
     Kokkos::abort("computeReducedQuinticCoefficients: LU solve failed (singular matrix)\n");
   }
@@ -370,19 +374,36 @@ void computeReducedQuinticCoefficients(
 }
 
 /**
+ * @brief Result struct for precomputed reduced quintic coefficients.
+ *
+ * Separates the per-element data into three distinct Kokkos views for clarity:
+ * - elemOrder: vertex reordering [numTri][3]
+ * - elemGeomParams: geometric parameters [numTri][5] = [a, b, c, sin_theta, cos_theta]
+ * - elemCoeffs: shape function coefficients [numTri][18*20]
+ */
+struct ReducedQuinticCoeffs {
+  Kokkos::View<int*[3]> elemOrder;
+  Kokkos::View<Real*[5]> elemGeomParams;
+  Kokkos::View<Real*[18*20]> elemCoeffs;
+};
+
+/**
  * @brief Precompute all reduced quintic coefficients for a mesh from Omega_h::Matrix views.
  *
  * Accepts per-triangle coordinates as Matrix<2,3> populated by gather_vectors.
  * 
  * @param numTriangles Number of triangles in the mesh
  * @param triCoords_d Per-triangle vertex coordinates as Kokkos::View<Omega_h::Matrix<2,3>*>
- * @return Kokkos::View with coefficients, shape [numTriangles][8 + 18*20]
+ * @return ReducedQuinticCoeffs containing three separate views
  */
-inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
+inline ReducedQuinticCoeffs precomputeReducedQuinticCoefficients(
     int numTriangles,
     Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d)
 {
-  Kokkos::View<Real**> coeffs_d("coefficients_device", numTriangles, 8 + 18 * 20);
+  ReducedQuinticCoeffs result;
+  result.elemOrder = Kokkos::View<int*[3]>("elemOrder", numTriangles);
+  result.elemGeomParams = Kokkos::View<Real*[5]>("elemGeomParams", numTriangles);
+  result.elemCoeffs = Kokkos::View<Real*[18*20]>("elemCoeffs", numTriangles);
   
   Kokkos::parallel_for(
       "precomputeReducedQuinticCoefficients", numTriangles,
@@ -393,26 +414,26 @@ inline Kokkos::View<Real**> precomputeReducedQuinticCoefficients(
     int order[3];
     computeReducedQuinticGeometry(coords, a, b, c, sin_theta, cos_theta, order);
     
-    coeffs_d(tri, 0) = static_cast<Real>(order[0]);
-    coeffs_d(tri, 1) = static_cast<Real>(order[1]);
-    coeffs_d(tri, 2) = static_cast<Real>(order[2]);
-    coeffs_d(tri, 3) = a;
-    coeffs_d(tri, 4) = b;
-    coeffs_d(tri, 5) = c;
-    coeffs_d(tri, 6) = sin_theta;
-    coeffs_d(tri, 7) = cos_theta;
+    result.elemOrder(tri, 0) = order[0];
+    result.elemOrder(tri, 1) = order[1];
+    result.elemOrder(tri, 2) = order[2];
+    result.elemGeomParams(tri, 0) = a;
+    result.elemGeomParams(tri, 1) = b;
+    result.elemGeomParams(tri, 2) = c;
+    result.elemGeomParams(tri, 3) = sin_theta;
+    result.elemGeomParams(tri, 4) = cos_theta;
     
     Real coeffs_tri[18][20];
     computeReducedQuinticCoefficients(a, b, c, coeffs_tri);
     
     for (int i = 0; i < 18; i++) {
       for (int j = 0; j < 20; j++) {
-        coeffs_d(tri, 8 + i * 20 + j) = coeffs_tri[i][j];
+        result.elemCoeffs(tri, i * 20 + j) = coeffs_tri[i][j];
       }
     }
   });
   
-  return coeffs_d;
+  return result;
 }
 
 } // namespace MeshField

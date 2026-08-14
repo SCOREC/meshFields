@@ -38,27 +38,45 @@ bool testSolveLU() {
   // Verification: Row 1: 2(1)+1(1)+0(1)=3 OK, Row 2: 0(1)+2(1)+1(1)=3 OK, Row 3: 0(1)+0(1)+2(1)=2 OK
   
   const int n = 3;
-  Real A[9] = {2, 1, 0,
-               0, 2, 1,
-               0, 0, 2};
-  Real b[3] = {3, 3, 2};
+  Real A_host[9] = {2, 1, 0,
+                    0, 2, 1,
+                    0, 0, 2};
+  Real b_host[3] = {3, 3, 2};
   Real expected[3] = {1, 1, 1};
   
-  // For row-major storage with a single RHS: ldb = nrhs = 1 (not n)
-  int info = solveLU_internal(n, 1, A, n, b, 1);
+  // Allocate device Views and copy data to device
+  Kokkos::View<Real**, Kokkos::LayoutRight> A_d("A_device", 3, 3);
+  Kokkos::View<Real**, Kokkos::LayoutRight> b_d("b_device", 3, 1);
+  auto A_h = Kokkos::create_mirror_view(A_d);
+  auto b_h = Kokkos::create_mirror_view(b_d);
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) A_h(i, j) = A_host[i * 3 + j];
+    b_h(i, 0) = b_host[i];
+  }
+  Kokkos::deep_copy(A_d, A_h);
+  Kokkos::deep_copy(b_d, b_h);
+  
+  // Run LU solver on device
+  int info;
+  Kokkos::parallel_reduce("testSolveLU", 1, KOKKOS_LAMBDA(int, int& linfo) {
+    linfo = solveLU_internal(A_d, b_d);
+  }, info);
   
   if (info != 0) {
     std::cout << "  [FAIL] FAILED: LU solver returned error code " << info << "\n\n";
     return false;
   }
   
+  // Copy result back to host
+  Kokkos::deep_copy(b_h, b_d);
+  
   // Check solution
   Real tol = 1e-10;
   bool passed = true;
   std::cout << "  Solution:\n";
   for (int i = 0; i < n; i++) {
-    Real error = std::abs(b[i] - expected[i]);
-    std::cout << "    x[" << i << "] = " << b[i] 
+    Real error = std::abs(b_h(i, 0) - expected[i]);
+    std::cout << "    x[" << i << "] = " << b_h(i, 0) 
               << " (expected: " << expected[i] 
               << ", error: " << error << ")\n";
     if (error > tol) {
@@ -384,8 +402,10 @@ bool testFieldEvaluation(const char* testName, Omega_h::Matrix<2,3> const& coord
   }
   Kokkos::deep_copy(triCoords_d, triCoords_h);
   
-  auto elemCoeffs = precomputeReducedQuinticCoefficients(1, triCoords_d);
-  auto elemCoeffs_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), elemCoeffs);
+  auto coeffs = precomputeReducedQuinticCoefficients(1, triCoords_d);
+  auto elemOrder_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), coeffs.elemOrder);
+  auto elemGeomParams_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), coeffs.elemGeomParams);
+  auto elemCoeffs_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), coeffs.elemCoeffs);
   
   Real tol = 1e-8;
   bool passed = true;
@@ -415,9 +435,13 @@ bool testFieldEvaluation(const char* testName, Omega_h::Matrix<2,3> const& coord
     Kokkos::View<Real**> shapeGrads_d("shapeGrads", 18, 2);  // 2D
 
     Kokkos::parallel_for("EvaluateField", 1, KOKKOS_LAMBDA(int) {
-      auto coeffSlice = Kokkos::subview(elemCoeffs, 0, Kokkos::ALL());
-      auto shapeValues_array = shape.getValues(xiParam, coeffSlice);
-      auto shapeGrads_array = shape.getLocalGradients(xiParam, coeffSlice);
+      const int order[3] = {coeffs.elemOrder(0, 0), coeffs.elemOrder(0, 1), coeffs.elemOrder(0, 2)};
+      const Real a = coeffs.elemGeomParams(0, 0);
+      const Real b = coeffs.elemGeomParams(0, 1);
+      const Real c_geom = coeffs.elemGeomParams(0, 2);
+      auto coeffSlice = Kokkos::subview(coeffs.elemCoeffs, 0, Kokkos::ALL());
+      auto shapeValues_array = shape.getValues(xiParam, order, a, b, c_geom, coeffSlice);
+      auto shapeGrads_array = shape.getLocalGradients(xiParam, order, a, b, c_geom, coeffSlice);
       for (int i = 0; i < 18; i++) {
         shapeValues_d(i) = shapeValues_array[i];
         shapeGrads_d(i, 0) = shapeGrads_array[i][0];

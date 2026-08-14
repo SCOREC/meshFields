@@ -635,15 +635,20 @@ struct NonIsoparametricFieldElement
   using Base::NumComponents;
 
   GeometryType geometryFn;
-  Kokkos::View<Real**> elemCoeffs;
+  Kokkos::View<int*[3]> elemOrder;
+  Kokkos::View<Real*[5]> elemGeomParams;
+  Kokkos::View<Real*[18*20]> elemCoeffs;
 
   NonIsoparametricFieldElement(size_t numMeshEntsIn, const FieldAccessor &fieldIn,
                             const ShapeType shapeFnIn,
                             const GeometryType geometryFnIn,
                             const ElementDofHolderAccessor elm2dofIn,
-                            Kokkos::View<Real**> elemCoeffsIn)
+                            Kokkos::View<int*[3]> elemOrderIn,
+                            Kokkos::View<Real*[5]> elemGeomParamsIn,
+                            Kokkos::View<Real*[18*20]> elemCoeffsIn)
       : Base(numMeshEntsIn, fieldIn, shapeFnIn, elm2dofIn),
-        geometryFn(geometryFnIn), elemCoeffs(elemCoeffsIn) {}
+        geometryFn(geometryFnIn), elemOrder(elemOrderIn),
+        elemGeomParams(elemGeomParamsIn), elemCoeffs(elemCoeffsIn) {}
 
   /* general template for baseType which simply sets type
    */
@@ -696,23 +701,20 @@ struct NonIsoparametricFieldElement
     assert(ent >= 0);
     assert(static_cast<size_t>(ent) < this->numMeshEnts);
     ValArray c;
-    auto shapeValues = [&]() {
-      assert(elemCoeffs.data() != nullptr);
-      auto coeffSlice = Kokkos::subview(elemCoeffs, ent, Kokkos::ALL());
-      return this->shapeFn.getValues(localCoord, coeffSlice);
-    }();
+
+    // Extract per-element parameters from separated views
+    const int order[3] = {elemOrder(ent, 0), elemOrder(ent, 1), elemOrder(ent, 2)};
+    const Real a = elemGeomParams(ent, 0);
+    const Real b = elemGeomParams(ent, 1);
+    const Real c_geom = elemGeomParams(ent, 2);
+    const Real sin_theta = elemGeomParams(ent, 3);
+    const Real cos_theta = elemGeomParams(ent, 4);
+
+    auto coeffSlice = Kokkos::subview(elemCoeffs, ent, Kokkos::ALL());
+    const auto shapeValues = this->shapeFn.getValues(localCoord, order, a, b, c_geom, coeffSlice);
 
     for (size_t ci = 0; ci < NumComponents; ++ci)
       c[ci] = 0;
-
-    assert(elemCoeffs.data() != nullptr);
-    auto coeffSlice = Kokkos::subview(elemCoeffs, ent, Kokkos::ALL());
-
-    // Extract rotation parameters from coefficients
-    // elemCoeffs layout: [order[0], order[1], order[2], a, b, c, sin_theta,
-    // cos_theta, ...]
-    const Real sin_theta = coeffSlice(6);
-    const Real cos_theta = coeffSlice(7);
 
     for (auto topo : this->elm2dof.getTopology()) {
       // ReducedQuintic has 18 nodes: 3 vertices × 6 DOFs per vertex

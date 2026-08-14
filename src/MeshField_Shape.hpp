@@ -677,16 +677,9 @@ struct ReducedQuinticTriangleShape {
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi,
-                                          Kokkos::View<const Real*, Kokkos::LayoutStride> elemCoeffs) const {
-
-    // Extract geometric parameters from coefficient array
-    // elemCoeffs layout: [order[0], order[1], order[2], a, b, c, sin_theta, cos_theta, coeff_0_0, ..., coeff_17_19]
-    const int order[3] = {static_cast<int>(elemCoeffs(0)), 
-                          static_cast<int>(elemCoeffs(1)), 
-                          static_cast<int>(elemCoeffs(2))};
-    const Real a = elemCoeffs(3);
-    const Real b = elemCoeffs(4);
-    const Real c = elemCoeffs(5);
+                                          const int order[3],
+                                          Real a, Real b, Real c,
+                                          Kokkos::View<const Real*, Kokkos::LayoutStride> coeffs) const {
 
     // Transform parametric to local coordinates
     const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
@@ -713,7 +706,7 @@ struct ReducedQuinticTriangleShape {
         const int eta_idx  = poly[1];
 
         N_reordered[k] +=
-            elemCoeffs(8 + k * 20 + i) *
+            coeffs(k * 20 + i) *
             xi_pow[xi_idx] *
             eta_pow[eta_idx];
       }
@@ -742,15 +735,9 @@ struct ReducedQuinticTriangleShape {
   // Reduced Quintic shape functions.
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector2 const &xi,
-                                                      Kokkos::View<const Real*, Kokkos::LayoutStride> elemCoeffs) const {
-    
-    // Extract geometric parameters
-    const int order[3] = {static_cast<int>(elemCoeffs(0)), 
-                          static_cast<int>(elemCoeffs(1)), 
-                          static_cast<int>(elemCoeffs(2))};
-    const Real a = elemCoeffs(3);
-    const Real b = elemCoeffs(4);
-    const Real c = elemCoeffs(5);
+                                                      const int order[3],
+                                                      Real a, Real b, Real c,
+                                                      Kokkos::View<const Real*, Kokkos::LayoutStride> coeffs) const {
 
     // Transform parametric to local coordinates
     const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
@@ -799,7 +786,7 @@ struct ReducedQuinticTriangleShape {
         const auto poly = ReducedQuinticHelpers::getReducedQuinticPolyIdx(i);
         const int xi_idx  = poly[0];
         const int eta_idx = poly[1];
-        const Real coeff  = elemCoeffs(8 + k * 20 + i);
+        const Real coeff  = coeffs(k * 20 + i);
 
         if (xi_idx > 0)
           dN_dxi_local +=

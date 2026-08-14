@@ -352,7 +352,9 @@ struct ReducedQuinticTriangleElementResult {
   MeshField::ReducedQuinticTriangleShape shp;
   MeshField::LinearTriangleShape geomShp;
   Omegah::ReducedQuinticTriangleToField map;
-  Kokkos::View<MeshField::Real**> coeffs;
+  Kokkos::View<int*[3]> elemOrder;
+  Kokkos::View<MeshField::Real*[5]> elemGeomParams;
+  Kokkos::View<MeshField::Real*[18*20]> elemCoeffs;
 };
 
 //! [getReducedQuinticTriangleElement]
@@ -376,13 +378,15 @@ getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
       ExtractTriCoords(triVerts_d, coords_d, triCoords_d));
   
   // Precompute coefficients for all triangles entirely on device
-  auto elemCoeffs = MeshField::precomputeReducedQuinticCoefficients(numTri, triCoords_d);
+  auto coeffs = MeshField::precomputeReducedQuinticCoefficients(numTri, triCoords_d);
 
   return ReducedQuinticTriangleElementResult{
     MeshField::ReducedQuinticTriangleShape(),
     MeshField::LinearTriangleShape(),
     Omegah::ReducedQuinticTriangleToField(mesh),
-    elemCoeffs};
+    coeffs.elemOrder,
+    coeffs.elemGeomParams,
+    coeffs.elemCoeffs};
 }
 
 //! [getTriangleElement]
@@ -519,10 +523,10 @@ public:
       MeshField::fail("input mesh must be 2d\n");
     }
 
-    const auto [shp, geomShp, map, coeffs] = Omegah::getReducedQuinticTriangleElement(mesh);
+    const auto [shp, geomShp, map, elemOrder, elemGeomParams, elemCoeffs] = Omegah::getReducedQuinticTriangleElement(mesh);
 
     MeshField::NonIsoparametricFieldElement<ShapeField, decltype(shp), decltype(geomShp), decltype(map)> f(
-        meshInfo.numTri, field, shp, geomShp, map, coeffs);
+        meshInfo.numTri, field, shp, geomShp, map, elemOrder, elemGeomParams, elemCoeffs);
     auto eval = MeshField::evaluate(f, localCoords, offsets);
     return eval;
   }
