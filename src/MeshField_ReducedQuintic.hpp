@@ -3,6 +3,7 @@
 
 #include <MeshField_Defines.hpp>
 #include <MeshField_Fail.hpp>
+#include <MeshField_Shape.hpp>
 #include <Kokkos_Core.hpp>
 #include <Omega_h_matrix.hpp>
 #include <cmath>
@@ -12,8 +13,8 @@ namespace MeshField {
 /**
  * @brief Device-compatible LU decomposition with partial pivoting (internal helper)
  * 
- * Solves the linear system A*X = B where A is n×n and B is n×nrhs.
- * This replaces the need for LAPACK's dgesv for our 20×20 system.
+ * Solves the linear system A*X = B where A is nxn and B is nxnrhs.
+ * This replaces the need for LAPACK's dgesv for our 20x20 system.
  * 
  * @param A Input matrix (destroyed on output), row-major, unmanaged view
  * @param B Input/output: RHS on input, solution on output, unmanaged view
@@ -28,9 +29,9 @@ int solveLU_internal(
   assert(A.extent(1) == static_cast<size_t>(n));
   assert(B.extent(0) == static_cast<size_t>(n));
 
-  // Use fixed-size array for pivoting (n=20 maximum, which fits all our use cases)
+  // Use fixed-size array for pivoting (n=numBasisTerms maximum)
   // We use a stack array since this is device-compatible
-  int pivot[20];
+  int pivot[ReducedQuinticTriangleShape::numBasisTerms];
   const Real eps = 1e-14;
   
   // LU decomposition with partial pivoting
@@ -119,7 +120,7 @@ int solveLU_internal(
  */
 template<typename Real>
 KOKKOS_INLINE_FUNCTION
-void rotateDof(Real dofs_p[6], Real sin_theta_p, Real cos_theta_p)
+void rotateDof(Real dofs_p[ReducedQuinticTriangleShape::dofsPerVertex], Real sin_theta_p, Real cos_theta_p)
 {
   const Real s  = sin_theta_p;
   const Real c  = cos_theta_p;
@@ -127,7 +128,7 @@ void rotateDof(Real dofs_p[6], Real sin_theta_p, Real cos_theta_p)
   const Real cc = c * c;
   const Real sc = s * c;
 
-  const Real dofs_r[6] = {
+  const Real dofs_r[ReducedQuinticTriangleShape::dofsPerVertex] = {
     dofs_p[0],
     c  * dofs_p[1] + s  * dofs_p[2],
     c  * dofs_p[2] - s  * dofs_p[1],
@@ -136,14 +137,14 @@ void rotateDof(Real dofs_p[6], Real sin_theta_p, Real cos_theta_p)
     ss * dofs_p[3] - 2*sc * dofs_p[4] + cc * dofs_p[5]
   };
 
-  for (int i = 0; i < 6; i++)
+  for (size_t i = 0; i < ReducedQuinticTriangleShape::dofsPerVertex; i++)
     dofs_p[i] = dofs_r[i];
 }
 
 /**
  * @brief Device-compatible function to transform DOFs from physical to local coordinates
  * 
- * Transforms derivatives from physical (x,y) coordinates to local (ξ,η) coordinates
+ * Transforms derivatives from physical (x,y) coordinates to local (xi,eta) coordinates
  * using a rotation. This is necessary because ReducedQuintic shape functions are
  * defined in a local coordinate system aligned with the triangle's geometry.
  * 
@@ -159,7 +160,7 @@ Real transformDofPhysicalToLocal(
     int dof_idx,
     Real sin_theta,
     Real cos_theta,
-    const Real allDofs[6])
+    const Real allDofs[ReducedQuinticTriangleShape::dofsPerVertex])
 {
   const Real s  = sin_theta;
   const Real c  = cos_theta;
@@ -195,7 +196,7 @@ Real transformDofPhysicalToLocal(
 KOKKOS_INLINE_FUNCTION
 void reorderTriangleVertices(
     Omega_h::Matrix<2,3> const& coords,
-    int order[3])
+    int order[ReducedQuinticTriangleShape::numVertices])
 {
   // Compute edge vectors
   Real v1v2[2] = {coords[1][0] - coords[0][0], coords[1][1] - coords[0][1]};
@@ -268,14 +269,14 @@ void computeReducedQuinticGeometry(
     Omega_h::Matrix<2,3> const& coords,
     Real& a, Real& b, Real& c,
     Real& sin_theta, Real& cos_theta,
-    int order[3])
+    int order[ReducedQuinticTriangleShape::numVertices])
 {
   // First reorder vertices to put longest edge along xi-axis
   reorderTriangleVertices(coords, order);
   
   // Apply reordering
-  Real abcCoord[3][2];
-  for (int i = 0; i < 3; i++) {
+  Real abcCoord[ReducedQuinticTriangleShape::numVertices][2];
+  for (size_t i = 0; i < ReducedQuinticTriangleShape::numVertices; i++) {
     int idx = order[i];
     abcCoord[i][0] = coords[idx][0];
     abcCoord[i][1] = coords[idx][1];
@@ -318,15 +319,15 @@ template<typename Real>
 KOKKOS_INLINE_FUNCTION
 void computeReducedQuinticCoefficients(
     Real a, Real b, Real c,
-    Real coeffs[18][20])
+    Real coeffs[ReducedQuinticTriangleShape::numNodes][ReducedQuinticTriangleShape::numBasisTerms])
 {
   // Compute powers
   const Real a2 = a*a, a3 = a2*a, a4 = a2*a2, a5 = a2*a3;
   const Real b2 = b*b, b3 = b2*b, b4 = b2*b2, b5 = b2*b3;
   const Real c2 = c*c, c3 = c2*c, c4 = c2*c2, c5 = c2*c3;
   
-  // Build constraint matrix A (20x20)
-  Real A[20][20] = {
+  // Build constraint matrix A (numBasisTerms x numBasisTerms)
+  Real A[ReducedQuinticTriangleShape::numBasisTerms][ReducedQuinticTriangleShape::numBasisTerms] = {
     {1., -b, 0., b2, 0, 0, -b3, 0, 0, 0, b4, 0, 0, 0, 0, -b5, 0, 0, 0, 0},
     {0., 1., 0., -2.*b, 0., 0., 3*b2, 0, 0, 0, -4*b3, 0, 0, 0, 0, 5*b4, 0, 0, 0, 0},
     {0, 0, 1, 0, -b, 0, 0, b2, 0, 0, 0, -b3, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -349,25 +350,27 @@ void computeReducedQuinticCoefficients(
     {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5*b4*c, 3*b2*c3-2*b4*c, 2*b*c4-3*b3*c2, c5-4*b2*c3, -5*b*c4}
   };
   
-  // Initialize RHS as 20×18 identity matrix (first 18 rows are identity)
-  Real B[20][18];
-  for (int i = 0; i < 20; i++) {
-    for (int j = 0; j < 18; j++) {
+  // Initialize RHS as numBasisTerms x numNodes identity matrix
+  Real B[ReducedQuinticTriangleShape::numBasisTerms][ReducedQuinticTriangleShape::numNodes];
+  for (size_t i = 0; i < ReducedQuinticTriangleShape::numBasisTerms; i++) {
+    for (size_t j = 0; j < ReducedQuinticTriangleShape::numNodes; j++) {
       B[i][j] = (i == j) ? 1.0 : 0.0;
     }
   }
   
   // Solve A*X = B using our LU solver
-  Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> A_view(&A[0][0], 20, 20);
-  Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> B_view(&B[0][0], 20, 18);
+  Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> A_view(&A[0][0],
+      ReducedQuinticTriangleShape::numBasisTerms, ReducedQuinticTriangleShape::numBasisTerms);
+  Kokkos::View<Real**, Kokkos::LayoutRight, Kokkos::MemoryUnmanaged> B_view(&B[0][0],
+      ReducedQuinticTriangleShape::numBasisTerms, ReducedQuinticTriangleShape::numNodes);
   int info = solveLU_internal(A_view, B_view);
   if (info != 0) {
     Kokkos::abort("computeReducedQuinticCoefficients: LU solve failed (singular matrix)\n");
   }
   
-  // Copy solution to coeffs[18][20]
-  for (int j = 0; j < 18; j++) {
-    for (int i = 0; i < 20; i++) {
+  // Copy solution to coeffs[numNodes][numBasisTerms]
+  for (size_t j = 0; j < ReducedQuinticTriangleShape::numNodes; j++) {
+    for (size_t i = 0; i < ReducedQuinticTriangleShape::numBasisTerms; i++) {
       coeffs[j][i] = B[i][j];
     }
   }
@@ -382,9 +385,9 @@ void computeReducedQuinticCoefficients(
  * - elemCoeffs: shape function coefficients [numTri][18*20]
  */
 struct ReducedQuinticCoeffs {
-  Kokkos::View<int*[3]> elemOrder;
-  Kokkos::View<Real*[5]> elemGeomParams;
-  Kokkos::View<Real*[18*20]> elemCoeffs;
+  Kokkos::View<int*[ReducedQuinticTriangleShape::numVertices]> elemOrder;
+  Kokkos::View<Real*[ReducedQuinticTriangleShape::numGeomParams]> elemGeomParams;
+  Kokkos::View<Real*[ReducedQuinticTriangleShape::numNodes * ReducedQuinticTriangleShape::numBasisTerms]> elemCoeffs;
 };
 
 /**
@@ -401,9 +404,9 @@ inline ReducedQuinticCoeffs precomputeReducedQuinticCoefficients(
     Kokkos::View<Omega_h::Matrix<2,3>*> triCoords_d)
 {
   ReducedQuinticCoeffs result;
-  result.elemOrder = Kokkos::View<int*[3]>("elemOrder", numTriangles);
-  result.elemGeomParams = Kokkos::View<Real*[5]>("elemGeomParams", numTriangles);
-  result.elemCoeffs = Kokkos::View<Real*[18*20]>("elemCoeffs", numTriangles);
+  result.elemOrder = Kokkos::View<int*[ReducedQuinticTriangleShape::numVertices]>("elemOrder", numTriangles);
+  result.elemGeomParams = Kokkos::View<Real*[ReducedQuinticTriangleShape::numGeomParams]>("elemGeomParams", numTriangles);
+  result.elemCoeffs = Kokkos::View<Real*[ReducedQuinticTriangleShape::numNodes * ReducedQuinticTriangleShape::numBasisTerms]>("elemCoeffs", numTriangles);
   
   Kokkos::parallel_for(
       "precomputeReducedQuinticCoefficients", numTriangles,
@@ -411,7 +414,7 @@ inline ReducedQuinticCoeffs precomputeReducedQuinticCoefficients(
     auto const& coords = triCoords_d(tri);
     
     Real a, b, c, sin_theta, cos_theta;
-    int order[3];
+    int order[ReducedQuinticTriangleShape::numVertices];
     computeReducedQuinticGeometry(coords, a, b, c, sin_theta, cos_theta, order);
     
     result.elemOrder(tri, 0) = order[0];
@@ -423,12 +426,12 @@ inline ReducedQuinticCoeffs precomputeReducedQuinticCoefficients(
     result.elemGeomParams(tri, 3) = sin_theta;
     result.elemGeomParams(tri, 4) = cos_theta;
     
-    Real coeffs_tri[18][20];
+    Real coeffs_tri[ReducedQuinticTriangleShape::numNodes][ReducedQuinticTriangleShape::numBasisTerms];
     computeReducedQuinticCoefficients(a, b, c, coeffs_tri);
     
-    for (int i = 0; i < 18; i++) {
-      for (int j = 0; j < 20; j++) {
-        result.elemCoeffs(tri, i * 20 + j) = coeffs_tri[i][j];
+    for (size_t i = 0; i < ReducedQuinticTriangleShape::numNodes; i++) {
+      for (size_t j = 0; j < ReducedQuinticTriangleShape::numBasisTerms; j++) {
+        result.elemCoeffs(tri, i * ReducedQuinticTriangleShape::numBasisTerms + j) = coeffs_tri[i][j];
       }
     }
   });

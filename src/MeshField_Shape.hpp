@@ -642,9 +642,9 @@ namespace ReducedQuinticHelpers {
  * QuadraticTriangle, etc.), each ReducedQuintic element has geometry-dependent
  * shape functions.
  * 
- * This element uses 18 nodes (3 vertices × 6 DOFs per vertex):
+ * This element uses 18 nodes (3 vertices x 6 DOFs per vertex):
  * - DOFs per vertex: [value, d/dx, d/dy, d^2/dx^2, d^2/dxdy, d^2/dy^2]
- * - Polynomial order: 5 (20-term basis: xi^i * eta^j for i+j ≤ 5)
+ * - Polynomial order: 5 (20-term basis: xi^i * eta^j for i+j <= 5)
  * 
  * COORDINATE TRANSFORMATION:
  * The longest triangle edge is reordered to lie along the local xi-axis.
@@ -657,27 +657,32 @@ namespace ReducedQuinticHelpers {
  * are computed as L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1.
  * 
  * Transformation to local coordinates:
- *   xi_local = a*λ1 - b*λ0
- *   eta_local = c*λ2
+ *   xi_local = a*L1 - b*L0
+ *   eta_local = c*L2
  * 
  * Applied automatically via helper function parametricToLocal()
  * 
  * The geometric parameters (a, b, c) are stored with the coefficients and
  * retrieved during evaluation. Shape function coefficients are computed by
- * solving a 20×20 linear system based on boundary conditions.
+ * solving a 20x20 linear system based on boundary conditions.
  * 
  */
 struct ReducedQuinticTriangleShape {
-  static const size_t numNodes = 18;  // 3 vertices × 6 DOFs per vertex
-  static const size_t meshEntDim = 2;
+  static constexpr size_t numVertices = 3;       ///< Number of triangle vertices
+  static constexpr size_t dofsPerVertex = 6;     ///< DOFs per vertex (value, dx, dy, d2x, d2xy, d2y)
+  static constexpr size_t numNodes = 18;         ///< Total nodes = numVertices x dofsPerVertex
+  static constexpr size_t meshEntDim = 2;        ///< Mesh entity dimension (2D)
+  static constexpr size_t polynomialOrder = 5;   ///< Quintic polynomial order
+  static constexpr size_t numBasisTerms = 20;    ///< Polynomial basis terms (i+j <= 5, minus constrained)
+  static constexpr size_t numGeomParams = 5;     ///< Geometric parameters: a, b, c, sin_theta, cos_theta
   constexpr static Mesh_Topology DofHolders[1] = {Vertex};
-  constexpr static size_t NumDofHolders[1] = {3};      // 3 vertices
-  constexpr static size_t DofsPerHolder[1] = {6};      // 6 DOFs per vertex
-  constexpr static size_t Order = 5;
+  constexpr static size_t NumDofHolders[1] = {numVertices};
+  constexpr static size_t DofsPerHolder[1] = {dofsPerVertex};
+  constexpr static size_t Order = polynomialOrder;
 
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi,
-                                          const int order[3],
+                                          const int order[numVertices],
                                           Real a, Real b, Real c,
                                           Kokkos::View<const Real*, Kokkos::LayoutStride> coeffs) const {
 
@@ -687,9 +692,9 @@ struct ReducedQuinticTriangleShape {
     const Real eta_local = local[1];
     
     // Compute polynomial basis: xi_local^i * eta_local^j
-    Real xi_pow[6], eta_pow[6];
+    Real xi_pow[polynomialOrder + 1], eta_pow[polynomialOrder + 1];
     xi_pow[0] = 1.0;  eta_pow[0] = 1.0;
-    for (int i = 1; i < 6; i++) {
+    for (int i = 1; i <= static_cast<int>(polynomialOrder); i++) {
       xi_pow[i] = xi_pow[i-1] * xi_local;
       eta_pow[i] = eta_pow[i-1] * eta_local;
     }
@@ -700,13 +705,13 @@ struct ReducedQuinticTriangleShape {
     for (size_t k = 0; k < numNodes; k++) {
       N_reordered[k] = 0.0;
 
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < static_cast<int>(numBasisTerms); i++) {
         const auto poly = ReducedQuinticHelpers::getReducedQuinticPolyIdx(i);
         const int xi_idx   = poly[0];
         const int eta_idx  = poly[1];
 
         N_reordered[k] +=
-            coeffs(k * 20 + i) *
+            coeffs(k * numBasisTerms + i) *
             xi_pow[xi_idx] *
             eta_pow[eta_idx];
       }
@@ -715,12 +720,12 @@ struct ReducedQuinticTriangleShape {
     // Convert back to meshFields vertex ordering
     Kokkos::Array<Real, numNodes> N;
 
-    for (int v = 0; v < 3; ++v) {
+    for (size_t v = 0; v < numVertices; ++v) {
       const int orig_v = order[v];
 
-      for (int d = 0; d < 6; ++d) {
-        N[orig_v * 6 + d] =
-            N_reordered[v * 6 + d];
+      for (size_t d = 0; d < dofsPerVertex; ++d) {
+        N[orig_v * dofsPerVertex + d] =
+            N_reordered[v * dofsPerVertex + d];
       }
     }
 
@@ -735,7 +740,7 @@ struct ReducedQuinticTriangleShape {
   // Reduced Quintic shape functions.
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Vector2, numNodes> getLocalGradients(Vector2 const &xi,
-                                                      const int order[3],
+                                                      const int order[numVertices],
                                                       Real a, Real b, Real c,
                                                       Kokkos::View<const Real*, Kokkos::LayoutStride> coeffs) const {
 
@@ -745,13 +750,13 @@ struct ReducedQuinticTriangleShape {
     const Real eta_local = local[1];
     
     // Compute polynomial basis and derivatives in local coordinates
-    Real xi_pow[6], eta_pow[6];
-    Real dxi_pow[6], deta_pow[6];
+    Real xi_pow[polynomialOrder + 1], eta_pow[polynomialOrder + 1];
+    Real dxi_pow[polynomialOrder + 1], deta_pow[polynomialOrder + 1];
     
     xi_pow[0] = 1.0;  eta_pow[0] = 1.0;
     dxi_pow[0] = 0.0; deta_pow[0] = 0.0;
     
-    for (int i = 1; i < 6; i++) {
+    for (int i = 1; i <= static_cast<int>(polynomialOrder); i++) {
       xi_pow[i] = xi_pow[i-1] * xi_local;
       eta_pow[i] = eta_pow[i-1] * eta_local;
       dxi_pow[i] = i * xi_pow[i-1];
@@ -760,10 +765,10 @@ struct ReducedQuinticTriangleShape {
 
     // Compute matrix for local to barycentric gradient chain rule
     Real J[2][2] = {{0.0, 0.0}, {0.0, 0.0}};
-    for (int col = 0; col < 2; col++) {
+    for (int col = 0; col < static_cast<int>(meshEntDim); col++) {
         // d(lambda_k)/d(xi[col]) for k = 0, 1, 2
-        Real dlambda[3];
-        for (int k = 0; k < 3; k++) {
+        Real dlambda[numVertices];
+        for (size_t k = 0; k < numVertices; k++) {
             if      (order[k] == col) dlambda[k] =  1.0;
             else if (order[k] == 2)   dlambda[k] = -1.0;
             else                      dlambda[k] =  0.0;
@@ -782,11 +787,11 @@ struct ReducedQuinticTriangleShape {
       Real dN_dxi_local  = 0.0;
       Real dN_deta_local = 0.0;
 
-      for (int i = 0; i < 20; i++) {
+      for (int i = 0; i < static_cast<int>(numBasisTerms); i++) {
         const auto poly = ReducedQuinticHelpers::getReducedQuinticPolyIdx(i);
         const int xi_idx  = poly[0];
         const int eta_idx = poly[1];
-        const Real coeff  = coeffs(k * 20 + i);
+        const Real coeff  = coeffs(k * numBasisTerms + i);
 
         if (xi_idx > 0)
           dN_dxi_local +=
@@ -814,12 +819,12 @@ struct ReducedQuinticTriangleShape {
     // Convert back to meshFields vertex ordering
     Kokkos::Array<Vector2, numNodes> gradN_bary;
 
-    for (int v = 0; v < 3; ++v) {
+    for (size_t v = 0; v < numVertices; ++v) {
       const int orig_v = order[v];
 
-      for (int d = 0; d < 6; ++d) {
-        gradN_bary[orig_v * 6 + d] =
-            grad_reordered[v * 6 + d];
+      for (size_t d = 0; d < dofsPerVertex; ++d) {
+        gradN_bary[orig_v * dofsPerVertex + d] =
+            grad_reordered[v * dofsPerVertex + d];
       }
     }
 

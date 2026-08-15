@@ -19,7 +19,7 @@ using namespace MeshField;
  * Tests cover:
  * 1. LU solver with partial pivoting
  * 2. Geometric parameter computation
- * 3. Coordinate transformations (barycentric ↔ local)
+ * 3. Coordinate transformations (barycentric <-> local)
  * 4-8. Field evaluation with constant, linear, and quadratic fields
  */
 
@@ -145,7 +145,7 @@ bool testGeometryComputation() {
   }
   
   if (std::abs(sin_theta*sin_theta + cos_theta*cos_theta - 1.0) > tol) {
-    std::cout << "  [FAIL] sin^2θ + cos^2θ != 1\n";
+    std::cout << "  [FAIL] sin^2(theta) + cos^2(theta) != 1\n";
     passed = false;
   }
   
@@ -170,9 +170,9 @@ Vector3 localToBarycentric(Vector2 const& local,
   const Real eta = local[1];
 
   // From:
-  // xi  = -b*λ0 + a*λ1
-  // eta = c*λ2
-  // λ0 + λ1 + λ2 = 1
+  // xi  = -b*L0 + a*L1
+  // eta = c*L2
+  // L0 + L1 + L2 = 1
 
   const Real lambda2 = eta / c;
 

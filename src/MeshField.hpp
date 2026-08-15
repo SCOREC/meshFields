@@ -247,6 +247,7 @@ struct QuadraticTetrahedronToField {
 
 //! [ReducedQuinticTriangleToField]
 struct ReducedQuinticTriangleToField {
+  static constexpr MeshField::LO dofsPerVertex = MeshField::ReducedQuinticTriangleShape::dofsPerVertex;
   Omega_h::LOs triVerts;
 
   ReducedQuinticTriangleToField(Omega_h::Mesh& mesh)
@@ -275,10 +276,10 @@ struct ReducedQuinticTriangleToField {
     assert(topo == MeshField::Triangle);
 
     // shape function index -> vertex
-    const MeshField::LO localVtxIdx = triNodeIdx / 6;
+    const MeshField::LO localVtxIdx = triNodeIdx / dofsPerVertex;
 
     // dof component within vertex
-    const MeshField::LO vertexDof = triNodeIdx % 6;
+    const MeshField::LO vertexDof = triNodeIdx % dofsPerVertex;
 
     const auto triDim = 2;
     const auto vtxDim = 0;
@@ -352,9 +353,9 @@ struct ReducedQuinticTriangleElementResult {
   MeshField::ReducedQuinticTriangleShape shp;
   MeshField::LinearTriangleShape geomShp;
   Omegah::ReducedQuinticTriangleToField map;
-  Kokkos::View<int*[3]> elemOrder;
-  Kokkos::View<MeshField::Real*[5]> elemGeomParams;
-  Kokkos::View<MeshField::Real*[18*20]> elemCoeffs;
+  Kokkos::View<int*[MeshField::ReducedQuinticTriangleShape::numVertices]> elemOrder;
+  Kokkos::View<MeshField::Real*[MeshField::ReducedQuinticTriangleShape::numGeomParams]> elemGeomParams;
+  Kokkos::View<MeshField::Real*[MeshField::ReducedQuinticTriangleShape::numNodes * MeshField::ReducedQuinticTriangleShape::numBasisTerms]> elemCoeffs;
 };
 
 //! [getReducedQuinticTriangleElement]

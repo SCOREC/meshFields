@@ -635,17 +635,17 @@ struct NonIsoparametricFieldElement
   using Base::NumComponents;
 
   GeometryType geometryFn;
-  Kokkos::View<int*[3]> elemOrder;
-  Kokkos::View<Real*[5]> elemGeomParams;
-  Kokkos::View<Real*[18*20]> elemCoeffs;
+  Kokkos::View<int*[ShapeType::numVertices]> elemOrder;
+  Kokkos::View<Real*[ShapeType::numGeomParams]> elemGeomParams;
+  Kokkos::View<Real*[ShapeType::numNodes * ShapeType::numBasisTerms]> elemCoeffs;
 
   NonIsoparametricFieldElement(size_t numMeshEntsIn, const FieldAccessor &fieldIn,
                             const ShapeType shapeFnIn,
                             const GeometryType geometryFnIn,
                             const ElementDofHolderAccessor elm2dofIn,
-                            Kokkos::View<int*[3]> elemOrderIn,
-                            Kokkos::View<Real*[5]> elemGeomParamsIn,
-                            Kokkos::View<Real*[18*20]> elemCoeffsIn)
+                            Kokkos::View<int*[ShapeType::numVertices]> elemOrderIn,
+                            Kokkos::View<Real*[ShapeType::numGeomParams]> elemGeomParamsIn,
+                            Kokkos::View<Real*[ShapeType::numNodes * ShapeType::numBasisTerms]> elemCoeffsIn)
       : Base(numMeshEntsIn, fieldIn, shapeFnIn, elm2dofIn),
         geometryFn(geometryFnIn), elemOrder(elemOrderIn),
         elemGeomParams(elemGeomParamsIn), elemCoeffs(elemCoeffsIn) {}
@@ -703,7 +703,7 @@ struct NonIsoparametricFieldElement
     ValArray c;
 
     // Extract per-element parameters from separated views
-    const int order[3] = {elemOrder(ent, 0), elemOrder(ent, 1), elemOrder(ent, 2)};
+    const int order[ShapeType::numVertices] = {elemOrder(ent, 0), elemOrder(ent, 1), elemOrder(ent, 2)};
     const Real a = elemGeomParams(ent, 0);
     const Real b = elemGeomParams(ent, 1);
     const Real c_geom = elemGeomParams(ent, 2);
@@ -717,24 +717,19 @@ struct NonIsoparametricFieldElement
       c[ci] = 0;
 
     for (auto topo : this->elm2dof.getTopology()) {
-      // ReducedQuintic has 18 nodes: 3 vertices × 6 DOFs per vertex
-      const size_t numVertices = 3;
-      const size_t dofsPerVertex = 6;
-
-      for (size_t vi = 0; vi < numVertices; ++vi) {
-        // Gather all 6 DOFs for this vertex in physical coordinates
-        Real physicalDofs[6];
-        for (size_t di = 0; di < dofsPerVertex; ++di) {
-          const size_t ni = vi * dofsPerVertex + di;
-          auto map = this->elm2dof(ni, 0, ent, topo); // ci=0 since ReducedQuintic is
-                                                // scalar
+      for (size_t vi = 0; vi < ShapeType::numVertices; ++vi) {
+        // Gather all DOFs for this vertex in physical coordinates
+        Real physicalDofs[ShapeType::dofsPerVertex];
+        for (size_t di = 0; di < ShapeType::dofsPerVertex; ++di) {
+          const size_t ni = vi * ShapeType::dofsPerVertex + di;
+          auto map = this->elm2dof(ni, 0, ent, topo); // ci=0 since ReducedQuintic is scalar
           physicalDofs[di] =
               this->field(map.entity, map.node, map.component, map.topo);
         }
 
         // Transform DOFs to local coordinates and accumulate
-        for (size_t di = 0; di < dofsPerVertex; ++di) {
-          const size_t ni = vi * dofsPerVertex + di;
+        for (size_t di = 0; di < ShapeType::dofsPerVertex; ++di) {
+          const size_t ni = vi * ShapeType::dofsPerVertex + di;
           const Real localDof = transformDofPhysicalToLocal(
               di, sin_theta, cos_theta, physicalDofs);
 
