@@ -229,9 +229,9 @@ bool testCoordinateTransformation()
 
     int order[3] = {0, 1, 2};  // No reordering for this simple case
 
-    auto p0 = ReducedQuinticHelpers::parametricToLocal(v0, order, a,b,c);
-    auto p1 = ReducedQuinticHelpers::parametricToLocal(v1, order, a,b,c);
-    auto p2 = ReducedQuinticHelpers::parametricToLocal(v2, order, a,b,c);
+    auto p0 = ReducedQuinticTriangleShape::parametricToLocal(v0, order, a,b,c);
+    auto p1 = ReducedQuinticTriangleShape::parametricToLocal(v1, order, a,b,c);
+    auto p2 = ReducedQuinticTriangleShape::parametricToLocal(v2, order, a,b,c);
 
     passed &= checkNear(p0[0], 0.0, "vertex0 xi");
     passed &= checkNear(p0[1], 0.0, "vertex0 eta");
@@ -245,7 +245,7 @@ bool testCoordinateTransformation()
     Vector2 centroid = {1.0/3.0, 1.0/3.0};
 
     auto center =
-        ReducedQuinticHelpers::parametricToLocal(
+        ReducedQuinticTriangleShape::parametricToLocal(
             centroid, order, a,b,c);
 
     passed &= checkNear(center[0], 4.0/3.0,
@@ -273,9 +273,9 @@ bool testCoordinateTransformation()
 
     int order[3] = {0, 1, 2}; 
 
-    auto p0 = ReducedQuinticHelpers::parametricToLocal(v0, order, a,b,c);
-    auto p1 = ReducedQuinticHelpers::parametricToLocal(v1, order, a,b,c);
-    auto p2 = ReducedQuinticHelpers::parametricToLocal(v2, order, a,b,c);
+    auto p0 = ReducedQuinticTriangleShape::parametricToLocal(v0, order, a,b,c);
+    auto p1 = ReducedQuinticTriangleShape::parametricToLocal(v1, order, a,b,c);
+    auto p2 = ReducedQuinticTriangleShape::parametricToLocal(v2, order, a,b,c);
 
     passed &= checkNear(p0[0], -3.2,
                         "vertex0 xi");
@@ -295,7 +295,7 @@ bool testCoordinateTransformation()
     Vector2 centroid = {1.0/3.0, 1.0/3.0};
 
     auto center =
-        ReducedQuinticHelpers::parametricToLocal(
+        ReducedQuinticTriangleShape::parametricToLocal(
             centroid, order, a,b,c);
 
     passed &= checkNear(center[0],
@@ -329,7 +329,7 @@ bool testCoordinateTransformation()
     Vector2 param = {bary[1], bary[2]};
 
     auto recovered =
-        ReducedQuinticHelpers::parametricToLocal(
+        ReducedQuinticTriangleShape::parametricToLocal(
             param, order, a,b,c);
 
     std::cout

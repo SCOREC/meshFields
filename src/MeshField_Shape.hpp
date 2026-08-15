@@ -558,77 +558,6 @@ struct QuadraticTetrahedronShape {
 };
 
 /**
- * @brief Helper functions for reduced quintic coordinate transformations
- */
-namespace ReducedQuinticHelpers {
-  /**
-   * @brief Transform parametric coordinates to reduced quintic local coordinates
-   * 
-   * local coordinate system (origin at foot of perpendicular):
-   *   - v0 is at (-b, 0)
-   *   - v1 is at (a, 0)
-   *   - v2 is at (0, c)
-   * 
-   * @param xi Parametric coordinates (xi0, xi1) where L0=1-xi0-xi1, L1=xi0, L2=xi1
-   * @param order Vertex reordering [3] - order[i] gives original index
-   * @param a Distance from origin to v1
-   * @param b Distance from origin to v0
-   * @param c Perpendicular distance from origin to v2
-   * @return Vector2 containing [xi_local, eta_local]
-   */
-  KOKKOS_INLINE_FUNCTION
-  Vector2 parametricToLocal(
-      Vector2 const& xi,
-      int const order[3],
-      Real a,
-      Real b,
-      Real c)
-  {
-    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
-    // First compute barycentric coordinates: L0 = 1-xi[0]-xi[1], L1 = xi[0], L2 = xi[1]
-    const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
-    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
-    const Real L1 = xi[0];
-    const Real L2 = xi[1];
-    
-    // Create array of barycentric coordinates
-    Real bary[3] = {L0, L1, L2};
-    
-    // Reorder barycentric coordinates according to vertex ordering
-    const Real lambda0 = bary[order[0]];
-    const Real lambda1 = bary[order[1]];
-    const Real lambda2 = bary[order[2]];
-
-    const Real xi_local  = a * lambda1 - b * lambda0;
-    const Real eta_local = c * lambda2;
-
-    return {xi_local, eta_local};
-  }
-
-  /**
-  * @brief Get polynomial index for reduced quintic basis
-  * 
-  * Returns [i,j] for xi^i * eta^j terms where i+j <= 5
-  * Total of 21 possible terms, but we use 20 (the 21st is constrained)
-  * 
-  * @param idx Index from 0 to 19
-  * @return Pair of integers [xi_power, eta_power]
-  */
-  KOKKOS_INLINE_FUNCTION
-  constexpr Kokkos::Array<int, 2> getReducedQuinticPolyIdx(int idx) {
-    // Order: (0,0), (1,0), (0,1), (2,0), (1,1), (0,2), ...
-    // Pattern: for each total degree d from 0 to 5, enumerate (i,j) where i+j=d
-    constexpr Kokkos::Array<int, 2> indices[20] = {
-      {0,0}, {1,0}, {0,1}, {2,0}, {1,1}, {0,2}, {3,0}, {2,1}, {1,2}, {0,3},
-      {4,0}, {3,1}, {2,2}, {1,3}, {0,4}, {5,0}, {3,2}, {2,3}, {1,4}, {0,5}
-    };
-    return indices[idx];
-  }
-} // namespace ReducedQuinticHelpers
-
-/**
  * @brief Reduced quintic triangle element
  * 
  * Implements the method described in:
@@ -680,6 +609,72 @@ struct ReducedQuinticTriangleShape {
   constexpr static size_t DofsPerHolder[1] = {dofsPerVertex};
   constexpr static size_t Order = polynomialOrder;
 
+  /**
+   * @brief Transform parametric coordinates to reduced quintic local coordinates
+   * 
+   * local coordinate system (origin at foot of perpendicular):
+   *   - v0 is at (-b, 0)
+   *   - v1 is at (a, 0)
+   *   - v2 is at (0, c)
+   * 
+   * @param xi Parametric coordinates (xi0, xi1) where L0=1-xi0-xi1, L1=xi0, L2=xi1
+   * @param order Vertex reordering [3] - order[i] gives original index
+   * @param a Distance from origin to v1
+   * @param b Distance from origin to v0
+   * @param c Perpendicular distance from origin to v2
+   * @return Vector2 containing [xi_local, eta_local]
+   */
+  KOKKOS_INLINE_FUNCTION
+  static Vector2 parametricToLocal(
+      Vector2 const& xi,
+      int const order[numVertices],
+      Real a,
+      Real b,
+      Real c)
+  {
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
+    // First compute barycentric coordinates: L0 = 1-xi[0]-xi[1], L1 = xi[0], L2 = xi[1]
+    const Real L0 = 1 - xi[0] - xi[1];
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
+    const Real L1 = xi[0];
+    const Real L2 = xi[1];
+    
+    // Create array of barycentric coordinates
+    Real bary[numVertices] = {L0, L1, L2};
+    
+    // Reorder barycentric coordinates according to vertex ordering
+    const Real lambda0 = bary[order[0]];
+    const Real lambda1 = bary[order[1]];
+    const Real lambda2 = bary[order[2]];
+
+    const Real xi_local  = a * lambda1 - b * lambda0;
+    const Real eta_local = c * lambda2;
+
+    return {xi_local, eta_local};
+  }
+
+  /**
+  * @brief Get polynomial index for reduced quintic basis
+  * 
+  * Returns [i,j] for xi^i * eta^j terms where i+j <= 5
+  * Total of 21 possible terms, but we use 20 (the 21st is constrained)
+  * 
+  * @param idx Index from 0 to 19
+  * @return Pair of integers [xi_power, eta_power]
+  */
+  KOKKOS_INLINE_FUNCTION
+  static constexpr Kokkos::Array<int, 2> getReducedQuinticPolyIdx(int idx) {
+    // Order: (0,0), (1,0), (0,1), (2,0), (1,1), (0,2), ...
+    // Pattern: for each total degree d from 0 to 5, enumerate (i,j) where i+j=d
+    constexpr Kokkos::Array<int, 2> indices[numBasisTerms] = {
+      {0,0}, {1,0}, {0,1}, {2,0}, {1,1}, {0,2}, {3,0}, {2,1}, {1,2}, {0,3},
+      {4,0}, {3,1}, {2,2}, {1,3}, {0,4}, {5,0}, {3,2}, {2,3}, {1,4}, {0,5}
+    };
+    return indices[idx];
+  }
+
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi,
                                           const int order[numVertices],
@@ -687,7 +682,7 @@ struct ReducedQuinticTriangleShape {
                                           Kokkos::View<const Real*, Kokkos::LayoutStride> coeffs) const {
 
     // Transform parametric to local coordinates
-    const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
+    const auto local = parametricToLocal(xi, order, a, b, c);
     const Real xi_local = local[0];
     const Real eta_local = local[1];
     
@@ -706,7 +701,7 @@ struct ReducedQuinticTriangleShape {
       N_reordered[k] = 0.0;
 
       for (int i = 0; i < static_cast<int>(numBasisTerms); i++) {
-        const auto poly = ReducedQuinticHelpers::getReducedQuinticPolyIdx(i);
+        const auto poly = getReducedQuinticPolyIdx(i);
         const int xi_idx   = poly[0];
         const int eta_idx  = poly[1];
 
@@ -745,7 +740,7 @@ struct ReducedQuinticTriangleShape {
                                                       Kokkos::View<const Real*, Kokkos::LayoutStride> coeffs) const {
 
     // Transform parametric to local coordinates
-    const auto local = ReducedQuinticHelpers::parametricToLocal(xi, order, a, b, c);
+    const auto local = parametricToLocal(xi, order, a, b, c);
     const Real xi_local = local[0];
     const Real eta_local = local[1];
     
@@ -788,7 +783,7 @@ struct ReducedQuinticTriangleShape {
       Real dN_deta_local = 0.0;
 
       for (int i = 0; i < static_cast<int>(numBasisTerms); i++) {
-        const auto poly = ReducedQuinticHelpers::getReducedQuinticPolyIdx(i);
+        const auto poly = getReducedQuinticPolyIdx(i);
         const int xi_idx  = poly[0];
         const int eta_idx = poly[1];
         const Real coeff  = coeffs(k * numBasisTerms + i);

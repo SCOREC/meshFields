@@ -10,7 +10,6 @@
 #include "Omega_h_file.hpp"    //move
 #include "Omega_h_mesh.hpp"    //move
 #include "Omega_h_simplex.hpp" //move
-#include <vector>
 
 namespace {
 
@@ -348,19 +347,8 @@ struct ExtractTriCoords {
   }
 };
 
-// Result type for getReducedQuinticTriangleElement
-struct ReducedQuinticTriangleElementResult {
-  MeshField::ReducedQuinticTriangleShape shp;
-  MeshField::LinearTriangleShape geomShp;
-  Omegah::ReducedQuinticTriangleToField map;
-  Kokkos::View<int*[MeshField::ReducedQuinticTriangleShape::numVertices]> elemOrder;
-  Kokkos::View<MeshField::Real*[MeshField::ReducedQuinticTriangleShape::numGeomParams]> elemGeomParams;
-  Kokkos::View<MeshField::Real*[MeshField::ReducedQuinticTriangleShape::numNodes * MeshField::ReducedQuinticTriangleShape::numBasisTerms]> elemCoeffs;
-};
-
 //! [getReducedQuinticTriangleElement]
-inline ReducedQuinticTriangleElementResult
-getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
+inline auto getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
   if (mesh.dim() != 2 || mesh.family() != OMEGA_H_SIMPLEX) {
     MeshField::fail("getReducedQuinticTriangleElement requires 2D simplex mesh\n");
   }
@@ -381,7 +369,15 @@ getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
   // Precompute coefficients for all triangles entirely on device
   auto coeffs = MeshField::precomputeReducedQuinticCoefficients(numTri, triCoords_d);
 
-  return ReducedQuinticTriangleElementResult{
+  struct result {
+    MeshField::ReducedQuinticTriangleShape shp;
+    MeshField::LinearTriangleShape geomShp;
+    Omegah::ReducedQuinticTriangleToField map;
+    Kokkos::View<int*[MeshField::ReducedQuinticTriangleShape::numVertices]> elemOrder;
+    Kokkos::View<MeshField::Real*[MeshField::ReducedQuinticTriangleShape::numGeomParams]> elemGeomParams;
+    Kokkos::View<MeshField::Real*[MeshField::ReducedQuinticTriangleShape::numNodes * MeshField::ReducedQuinticTriangleShape::numBasisTerms]> elemCoeffs;
+  };
+  return result{
     MeshField::ReducedQuinticTriangleShape(),
     MeshField::LinearTriangleShape(),
     Omegah::ReducedQuinticTriangleToField(mesh),
