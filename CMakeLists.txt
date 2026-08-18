@@ -49,6 +49,8 @@ set(MESHFIELD_SOURCES
 )
 
 add_library(meshfields ${MESHFIELD_SOURCES})
+# create a target for in-tree builds that matches the installed target name
+add_library(meshfields::meshfields ALIAS meshfields)
 
 target_compile_features(meshfields INTERFACE cxx_std_20)
 target_include_directories(meshfields
