@@ -118,7 +118,6 @@ int solveLU_internal(
  * @param sin_theta_p Sine of rotation angle
  * @param cos_theta_p Cosine of rotation angle
  */
-template<typename Real>
 KOKKOS_INLINE_FUNCTION
 void rotateDof(Real dofs_p[ReducedQuinticTriangleShape::dofsPerVertex], Real sin_theta_p, Real cos_theta_p)
 {
@@ -154,7 +153,6 @@ void rotateDof(Real dofs_p[ReducedQuinticTriangleShape::dofsPerVertex], Real sin
  * @param allDofs Array of all 6 DOFs for this vertex in physical coordinates
  * @return The transformed DOF value in local coordinates
  */
-template<typename Real>
 KOKKOS_INLINE_FUNCTION
 Real transformDofPhysicalToLocal(
     int dof_idx,
