@@ -368,7 +368,7 @@ auto CreateReducedQuinticField(const MeshInfo &meshInfo) {
     fail("mesh has no vertices\n");
   }
   static constexpr size_t reducedQuinticNumComp =
-      6; // value, dx, dy, dxx, dxy, dyy
+      ReducedQuinticTriangleShape::dofsPerVertex; // value, dx, dy, dxx, dxy, dyy
   using DataType = Real;
   using MemorySpace = typename ExecutionSpace::memory_space;
 #ifdef MESHFIELDS_ENABLE_CABANA

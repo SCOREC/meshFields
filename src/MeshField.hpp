@@ -244,7 +244,6 @@ struct QuadraticTetrahedronToField {
   }
 };
 
-//! [ReducedQuinticTriangleToField]
 struct ReducedQuinticTriangleToField {
   static constexpr MeshField::LO dofsPerVertex = MeshField::ReducedQuinticTriangleShape::dofsPerVertex;
   Omega_h::LOs triVerts;
@@ -347,7 +346,6 @@ struct ExtractTriCoords {
   }
 };
 
-//! [getReducedQuinticTriangleElement]
 inline auto getReducedQuinticTriangleElement(Omega_h::Mesh &mesh) {
   if (mesh.dim() != 2 || mesh.family() != OMEGA_H_SIMPLEX) {
     MeshField::fail("getReducedQuinticTriangleElement requires 2D simplex mesh\n");

@@ -16,7 +16,7 @@ namespace MeshField {
  * Solves the linear system A*X = B where A is nxn and B is nxnrhs.
  * This replaces the need for LAPACK's dgesv for our 20x20 system.
  * 
- * @param A Input matrix (destroyed on output), row-major, unmanaged view
+ * @param A Input matrix, row-major, unmanaged view
  * @param B Input/output: RHS on input, solution on output, unmanaged view
  * @return 0 on success, positive value if singular
  */
@@ -29,7 +29,7 @@ int solveLU_internal(
   assert(A.extent(1) == static_cast<size_t>(n));
   assert(B.extent(0) == static_cast<size_t>(n));
 
-  // Use fixed-size array for pivoting (n=numBasisTerms maximum)
+  // Use fixed-size array for pivoting
   // We use a stack array since this is device-compatible
   int pivot[ReducedQuinticTriangleShape::numBasisTerms];
   const Real eps = 1e-14;
