@@ -1,0 +1,117 @@
+name: self-hosted.yml
+
+on:
+  pull_request:
+    branches:
+      - main
+  # Manual trigger
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    # The asics environment is only for launching on self-hosted runners.
+    # Do not use or edit this environment for any other purpose.
+    environment: asics
+    permissions:
+      contents: read
+    # The type of runner that the job will run on
+    runs-on: [self-hosted, linux, x64, gpu]
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          path: 'meshfields_${{ github.event.id }}' #under $GITHUB_WORKSPACE
+          
+      - name: build
+        id: build
+        shell: bash
+        run: |
+          set +e #avoid exiting when lua modules return non-zero on 'warning' messages
+          source /etc/profile #provides module command
+          module use /opt/scorec/spack/rhel9/v0222_2/lmod/linux-rhel9-x86_64/Core/
+          module load gcc/13.2.0-4eahhas
+          module load mpich/4.2.3-62uy3hd
+          module load cuda/12.6.2-gqq65nw
+          module load cmake
+          set -e
+
+          echo "github.workspace ${{github.workspace}}"
+          
+          date=`date +%F-%H-%M`
+          workDir=${{github.workspace}}/meshfieldsCI_${date}
+          mkdir -p $workDir
+          echo "MESHFIELDS_WORK_DIR=$(echo $workDir)" >> $GITHUB_ENV
+          echo "workDir $workDir"
+
+          # kokkos
+          git clone --depth 1 --branch 5.1.1 https://github.com/Kokkos/kokkos.git ${workDir}/kokkos
+          kkbdir=${workDir}/build-kokkos
+          cmake -S ${workDir}/kokkos -B $kkbdir \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
+            -DKokkos_ARCH_AMPERE80=ON \
+            -DKokkos_ENABLE_SERIAL=ON \
+            -DKokkos_ENABLE_OPENMP=off \
+            -DKokkos_ENABLE_CUDA=on \
+            -DKokkos_ENABLE_CUDA_LAMBDA=on \
+            -DKokkos_ENABLE_DEBUG=off \
+            -DKokkos_ENABLE_IMPL_VIEW_LEGACY=ON \
+            -DCMAKE_INSTALL_PREFIX=$kkbdir/install
+          cmake --build $kkbdir --target install -j 4
+
+          ##cabana
+          git clone https://github.com/ECP-copa/Cabana.git ${workDir}/cabana
+          cabbdir=${workDir}/build-cab
+          cmake -S ${workDir}/cabana -B $cabbdir \
+            -DCMAKE_BUILD_TYPE="Release" \
+            -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
+            -DKokkos_ROOT=$kkbdir/install \
+            -DCabana_ENABLE_MPI=OFF \
+            -DCabana_ENABLE_CAJITA=OFF \
+            -DCabana_ENABLE_TESTING=OFF \
+            -DCabana_ENABLE_EXAMPLES=OFF \
+            -DCabana_ENABLE_Cuda=ON \
+            -DCMAKE_INSTALL_PREFIX=$cabbdir/install
+          cmake --build $cabbdir -j 4 --target install
+
+          # omegah
+          git clone https://github.com/SCOREC/omega_h.git ${workDir}/omegah
+          ohbdir=${workDir}/build-omegah
+          cmake -S ${workDir}/omegah -B $ohbdir \
+            -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=on \
+            -DOmega_h_USE_Kokkos=on \
+            -DOmega_h_CUDA_ARCH="80" \
+            -DCMAKE_CUDA_ARCHITECTURES="80" \
+            -DKokkos_PREFIX=$kkbdir/install \
+            -DBUILD_SHARED_LIBS=on
+          cmake --build $ohbdir -j 6 --target install
+
+          #meshfields
+          mfbdir=${workDir}/build-meshfields
+          cmake -S meshfields_${{ github.event.id }} -B $mfbdir \
+            -DMeshFields_USE_Cabana=on \
+            -DOmega_h_ROOT=$ohbdir/install \
+            -DKokkos_ROOT=$kkbdir/install \
+            -DCabana_ROOT=$cabbdir/install \
+            -DMeshFields_IS_TESTING=on
+          cmake --build $mfbdir -j4
+          ctest --test-dir $mfbdir --output-on-failure 
+
+      # - name: Save Result Link
+      #   if: ${{ !cancelled() }} #prepare report unless the job was cancelled
+      #   run: |
+      #     mkdir -p ./pr
+      #     echo "${{ github.event.id }}"  > ./pr/issueNumber
+      #     echo -n "Test Result: ${{ steps.build.outcome }} "  > ./pr/message
+      #     echo "[(details)](https://github.com/${{github.repository}}/actions/runs/${{ github.run_id }})" >> ./pr/message
+
+      - name: Cleanup
+        if: ${{ !cancelled() }}
+        run: |
+          echo "MESHFIELDS_WORK_DIR $MESHFIELDS_WORK_DIR"
+          rm -rf $MESHFIELDS_WORK_DIR
