@@ -392,12 +392,18 @@ struct FieldElement {
         const auto grad = getGradients<MeshEntDim>(localCoords, pt);
         auto A = Kokkos::subview(res, ent * numPts + pt, Kokkos::ALL(),
                                  Kokkos::ALL());
+        Real localA[MeshEntDim][MeshEntDim] = {};
         for (size_t node = 0; node < ShapeType::numNodes; node++) {
           for (size_t i = 0; i < MeshEntDim; ++i) {
             for (size_t j = 0; j < MeshEntDim; ++j) {
-              A(j, i) += vals[node * MeshEntDim + i] *
-                         getNodalGradients(grad, node, j);
+              localA[j][i] += vals[node * MeshEntDim + i] *
+                              getNodalGradients(grad, node, j);
             }
+          }
+        }
+        for (size_t i = 0; i < MeshEntDim; ++i) {
+          for (size_t j = 0; j < MeshEntDim; ++j) {
+            A(i, j) = localA[i][j];
           }
         }
       };
@@ -499,12 +505,18 @@ struct FieldElement {
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
               const auto grad = getGradients<MeshEntDim>(localCoords, pt);
               auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
+              Real localA[MeshEntDim][MeshEntDim] = {};
               for (size_t node = 0; node < ShapeType::numNodes; node++) {
                 for (size_t i = 0; i < MeshEntDim; ++i) {
                   for (size_t j = 0; j < MeshEntDim; ++j) {
-                    A(j, i) += vals[node * MeshEntDim + i] *
-                               getNodalGradients(grad, node, j);
+                    localA[j][i] += vals[node * MeshEntDim + i] *
+                                    getNodalGradients(grad, node, j);
                   }
+                }
+              }
+              for (size_t i = 0; i < MeshEntDim; ++i) {
+                for (size_t j = 0; j < MeshEntDim; ++j) {
+                  A(i, j) = localA[i][j];
                 }
               }
             }
