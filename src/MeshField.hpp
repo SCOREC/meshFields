@@ -51,7 +51,7 @@ createCoordinateField(const MeshField::MeshInfo &mesh_info,
       coordField(i, 0, 2, MeshField::Vertex) = coords[i * meshDim + 2];
     }
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
+  MeshField::parallel_for<decltype(coordFieldWithCtrlr.ctrlr)>({0}, {mesh_info.numVtx},
                           setCoordField, "setCoordField");
   return coordFieldWithCtrlr;
 }

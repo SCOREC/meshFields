@@ -38,7 +38,7 @@ void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real *> coords,
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
     field(vtx, 0, 0, MeshField::Vertex) = coords(vtx);
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts}, setFieldAtVertices,
+  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {numVerts}, setFieldAtVertices,
                           "setFieldAtVertices");
 }
 

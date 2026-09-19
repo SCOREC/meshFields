@@ -23,14 +23,6 @@ Kokkos::View<MeshField::LO *> getOffsets(MeshField::LO numItems,
       });
   return offsets;
 }
-template <typename T, template <typename...> class Y> struct checkController {
-  static constexpr bool value = false;
-};
-
-template <template <typename...> class T, typename... innerArgs>
-struct checkController<T<innerArgs...>, T> {
-  static constexpr bool value = true;
-};
 
 // chatgpt prompt 2/20/2025:
 //  c++ static assert that checks that a type
@@ -375,7 +367,7 @@ struct FieldElement {
       };
       //if constexpr (checkController<decltype(FieldAccessor::meshField),
       //                              KokkosController>::value) {
-        MeshField::parallel_for(typename FieldAccessor::Ctrlr::ExecutionSpace(), {0, 0},
+        MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
       //} else {
       //  MeshField::simd_parallel_for(field.meshField, {0, 0},
@@ -413,8 +405,7 @@ struct FieldElement {
       };
       //if constexpr (checkController<decltype(FieldAccessor::meshField),
       //                              KokkosController>::value) {
-        MeshField::parallel_for(
-            typename FieldAccessor::Ctrlr::ExecutionSpace(), {0, 0},
+        MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
       //} else {
       //  MeshField::simd_parallel_for(field.meshField, {0, 0},
@@ -574,8 +565,7 @@ evaluateFixed(FieldElement &fes, Kokkos::View<Real **> localCoords) {
   };
   //if constexpr (checkController<decltype(fes.field.meshField),
   //                              KokkosController>::value) {
-    MeshField::parallel_for(typename decltype(fes.field)::Ctrlr::ExecutionSpace(),
-                            {0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
+    MeshField::parallel_for<typename decltype(fes.field)::Ctrlr>({0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
                             "evaluate");
   //} else {
    // MeshField::simd_parallel_for(fes.field.meshField, {0, 0},
