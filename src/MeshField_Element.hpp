@@ -6,7 +6,6 @@
 #include <MeshField_Fail.hpp>
 #include <MeshField_For.hpp>
 #include <MeshField_Shape.hpp>
-#include <MeshField_SimdFor.hpp>
 #include <MeshField_Utility.hpp> // getLastValue
 #include <iostream>
 #include <type_traits> // has_static_size helper
