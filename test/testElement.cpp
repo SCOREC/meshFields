@@ -42,12 +42,12 @@ void triangleLocalPointEval() {
   const MeshField::MeshInfo meshInfo{.numVtx = 5, .numTri = 3};
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 2, 1>(
-      meshInfo);
+      meshInfo).field;
 
   MeshField::FieldElement f(numElms, field, MeshField::LinearTriangleShape(),
                             LinearTriangleToVertexField());
 
-  Kokkos::View<MeshField::Real[3][3]> lc("localCoords");
+  Kokkos::View<MeshField::Real[3][2]> lc("localCoords");
   Kokkos::deep_copy(lc, 1.0 / 3);
   auto x = MeshField::evaluate(f, lc);
 }
@@ -86,13 +86,13 @@ void edgeLocalPointEval() {
   const MeshField::MeshInfo meshInfo{.numVtx = 5, .numEdge = 7, .dim = 1};
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 1, 1, 1>(
-      meshInfo);
+      meshInfo).field;
 
   MeshField::FieldElement f(meshInfo.numEdge, field,
                             MeshField::LinearEdgeShape(),
                             LinearEdgeToVertexField());
 
-  Kokkos::View<MeshField::Real[7][2]> lc("localCoords");
+  Kokkos::View<MeshField::Real[7][1]> lc("localCoords");
   Kokkos::deep_copy(lc, 1.0 / 2);
   auto x = MeshField::evaluate(f, lc);
 }
@@ -138,13 +138,13 @@ void quadraticTriangleLocalPointEval() {
       .numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
   auto field = MeshField::CreateLagrangeField<
       ExecutionSpace, MeshField::KokkosController, MeshField::Real, 2, 2, 1>(
-      meshInfo);
+      meshInfo).field;
 
   MeshField::FieldElement f(meshInfo.numTri, field,
                             MeshField::QuadraticTriangleShape(),
                             QuadraticTriangleToField());
 
-  Kokkos::View<MeshField::Real[1][3]> lc("localCoords");
+  Kokkos::View<MeshField::Real[1][2]> lc("localCoords");
   Kokkos::deep_copy(lc, 1.0 / 3);
   auto x = MeshField::evaluate(f, lc);
 }
@@ -193,13 +193,13 @@ void quadraticTetrahedronLocalPointEval() {
       MeshField::CreateLagrangeField<ExecutionSpace,
                                      MeshField::KokkosController,
                                      MeshField::Real, ShapeOrder, MeshDim, 1>(
-          meshInfo);
+          meshInfo).field;
 
   MeshField::FieldElement f(meshInfo.numTet, field,
                             MeshField::QuadraticTetrahedronShape(),
                             QuadraticTetrahedronToField());
 
-  Kokkos::View<MeshField::Real[1][4]> lc("localCoords");
+  Kokkos::View<MeshField::Real[1][3]> lc("localCoords");
   Kokkos::deep_copy(lc, 1.0 / 4);
   auto x = MeshField::evaluate(f, lc);
 }

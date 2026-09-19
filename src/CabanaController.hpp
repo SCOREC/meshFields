@@ -2,6 +2,7 @@
 #define cabanaslicewrapper_hpp
 
 #include <initializer_list>
+#include <memory>
 #include <type_traits>
 
 #include <Cabana_Core.hpp>
@@ -110,13 +111,15 @@ private:
   template <class T, int stride>
   using wrapper_slice_t = CabanaSliceWrapper<member_slice_t<T, stride>, T>;
 
+  using AoSoATuple =
+      std::tuple<Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>;
+
   template <size_t... I>
   static auto construct(std::integer_sequence<size_t, I...>,
                         std::vector<int> &obj) {
-    return std::tuple<
-        Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>{
+    return std::make_shared<AoSoATuple>(
         Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>(
-            "sliceAoSoA", obj[I])...};
+            "sliceAoSoA", obj[I])...);
   }
 
   template <typename T1, typename... Tx> void construct_sizes() {
@@ -148,14 +151,18 @@ private:
   }
 
   // member vaiables
-  std::tuple<Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>
-      aosoa;
+  // shared_ptr so copies of CabanaController (e.g. the by-value parameter in
+  // makeField()) share the same backing AoSoA storage instead of each
+  // allocating (and later deallocating) an independent copy. CabanaController
+  // is host-only, never copied into KOKKOS_INLINE_FUNCTION/device-lambda
+  // contexts, so a std::shared_ptr member is safe here.
+  std::shared_ptr<AoSoATuple> aosoa;
   int num_tuples[sizeof...(Ts)];
   unsigned short theta = 0;
   int extent_sizes[sizeof...(Ts)][MAX_RANK];
 
 public:
-  CabanaController() {
+  CabanaController() : aosoa(std::make_shared<AoSoATuple>()) {
     static_assert(sizeof...(Ts) != 0);
     for (int i = 0; i < sizeof...(Ts); ++i) {
       num_tuples[i] = 0;
@@ -189,7 +196,7 @@ public:
     using type = std::tuple_element_t<index, TypeTuple>;
     const int stride = sizeof(Cabana::SoA<Cabana::MemberTypes<type>, vecLen>) /
                        sizeof(member_value_t<index>);
-    auto slice = Cabana::slice<0>(std::get<index>(aosoa));
+    auto slice = Cabana::slice<0>(std::get<index>(*aosoa));
     int sizes[MAX_RANK];
     for (int i = 0; i < MAX_RANK; i++)
       sizes[i] = this->size(index, i);

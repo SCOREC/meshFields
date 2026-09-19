@@ -60,10 +60,10 @@ void doRun(Omega_h::Mesh &mesh,
   auto coords = mesh.coords();
   Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int vtx) {
-        field(vtx, 0, 0, MeshField::Vertex) = coords[vtx * dim];
-        field(vtx, 0, 1, MeshField::Vertex) = coords[vtx * dim + 1];
+        field.field(vtx, 0, 0, MeshField::Vertex) = coords[vtx * dim];
+        field.field(vtx, 0, 1, MeshField::Vertex) = coords[vtx * dim + 1];
         if constexpr (dim == 3) {
-          field(vtx, 0, 2, MeshField::Vertex) = coords[vtx * dim + 2];
+          field.field(vtx, 0, 2, MeshField::Vertex) = coords[vtx * dim + 2];
         }
       });
   if (ShapeOrder == 2) {
@@ -76,12 +76,12 @@ void doRun(Omega_h::Mesh &mesh,
           const auto x = (coords[left * dim] + coords[right * dim]) / 2.0;
           const auto y =
               (coords[left * dim + 1] + coords[right * dim + 1]) / 2.0;
-          field(edge, 0, 0, MeshField::Edge) = x;
-          field(edge, 0, 1, MeshField::Edge) = y;
+          field.field(edge, 0, 0, MeshField::Edge) = x;
+          field.field(edge, 0, 1, MeshField::Edge) = y;
           if constexpr (dim == 3) {
             const auto z =
                 (coords[left * dim + 2] + coords[right * dim + 2]) / 2.0;
-            field(edge, 0, 2, MeshField::Edge) = z;
+            field.field(edge, 0, 2, MeshField::Edge) = z;
           }
         });
   }
@@ -94,7 +94,7 @@ void doRun(Omega_h::Mesh &mesh,
     }
   };
   const auto [shp, map] = shapeSet();
-  MeshField::FieldElement fes(1, field, shp, map);
+  MeshField::FieldElement fes(1, field.field, shp, map);
   const int maxn = 32;
   int binom[maxn + 1][maxn + 1];
   for (int n = 0; n <= maxn; n++) {

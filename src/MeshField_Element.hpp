@@ -98,15 +98,35 @@ KOKKOS_INLINE_FUNCTION auto addTensorProduct(VecA const &a, VecB const &b,
 
 namespace MeshField {
 
+
+//
+
 /**
- * @brief
- * Return type used by structs/classes that implement the
- * ElementDofHolderAccessor parenthesis operator
+ * @brief Supports mapping between mesh (i.e., Omega_h) ordering and MeshFields
+ * ordering
+ *
+ * Return type used by structs/classes that implement the ElementDofHolderAccessor parenthesis operator.  See @ref adding-shape-functions-omegah "Adding Shape Functions Omega_h Element Topologies" 
  */
 struct ElementToDofHolderMap {
+  /** Which node is being accessed; non-zero 
+   *  for mesh entities associated with multiple nodes
+   */
   LO node;
+
+  /** Index into the vector quantity associated with the node; for linear and
+   *  quadratic Lagrange shape functions over triangles and tetrahedra this is
+   *  passed through as \f$d=0\ldots\mathtt{meshEntDim}-1\f$
+   */
   LO component;
+
+  /** On-process index of the Omega_h mesh entity - mapped to from the input
+   *  nodeIndex and elementIndex passed to the parenthesis operator
+   */
   LO entity;
+
+  /** Topological type of the entity at entityIndex 
+   *  (e.g., Vertex, Edge, Triangle)
+   */
   Mesh_Topology topo;
 };
 
@@ -179,15 +199,16 @@ struct FieldElement {
    * @return the result of evaluation
    */
   KOKKOS_INLINE_FUNCTION ValArray
-  getValue(int ent, Kokkos::Array<Real, MeshEntDim + 1> localCoord) const {
-    assert(ent < numMeshEnts);
+  getValue(int ent, Kokkos::Array<Real, MeshEntDim> localCoord) const {
+    assert(ent >= 0);
+    assert(static_cast<size_t>(ent) < numMeshEnts);
     ValArray c;
     const auto shapeValues = shapeFn.getValues(localCoord);
-    for (int ci = 0; ci < NumComponents; ++ci)
+    for (size_t ci = 0; ci < NumComponents; ++ci)
       c[ci] = 0;
     for (auto topo : elm2dof.getTopology()) { // element topology
-      for (int ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (int ci = 0; ci < NumComponents; ++ci) {
+      for (size_t ni = 0; ni < shapeFn.numNodes; ++ni) {
+        for (size_t ci = 0; ci < NumComponents; ++ci) {
           auto map = elm2dof(ni, ci, ent, topo);
           const auto fval =
               field(map.entity, map.node, map.component, map.topo);
@@ -204,8 +225,8 @@ struct FieldElement {
   KOKKOS_INLINE_FUNCTION NodeArray getNodeValues(int ent) const {
     NodeArray c;
     for (auto topo : elm2dof.getTopology()) { // element topology
-      for (int ni = 0; ni < ShapeType::numNodes; ++ni) {
-        for (int d = 0; d < ShapeType::meshEntDim; ++d) {
+      for (size_t ni = 0; ni < ShapeType::numNodes; ++ni) {
+        for (size_t d = 0; d < ShapeType::meshEntDim; ++d) {
           auto map = elm2dof(ni, d, ent, topo);
           const auto fval =
               field(map.entity, map.node, map.component, map.topo);
@@ -229,11 +250,13 @@ struct FieldElement {
    * @return the result of evaluation
    */
   KOKKOS_INLINE_FUNCTION Real getJacobian1d(int ent) const {
-    assert(ent < numMeshEnts);
-    const auto nodalGradients = shapeFn.getLocalGradients();
+    assert(ent >= 0);
+    assert(static_cast<size_t>(ent) < numMeshEnts);
+    Vector1 ignored;
+    const auto nodalGradients = shapeFn.getLocalGradients(ignored);
     const auto nodeValues = getNodeValues(ent);
     auto g = nodalGradients[0] * nodeValues[0];
-    for (int i = 1; i < shapeFn.numNodes; ++i) {
+    for (size_t i = 1; i < shapeFn.numNodes; ++i) {
       g = g + nodalGradients[i] * nodeValues[i];
     }
     return g;
@@ -244,7 +267,7 @@ struct FieldElement {
    * heavily based on SCOREC/core @ 7cd76473 apf/apfVectorElement.cc
    */
   template <typename Matrices>
-  Kokkos::View<Real *> getJacobianDeterminants(Matrices const &J) {
+  Kokkos::View<Real *> getJacobianDeterminants(Matrices const &J) const {
     static_assert(has_static_rank<Matrices>::value,
                   "Matrices must have a static rank() method.");
     static_assert(has_extent_method<Matrices>::value,
@@ -313,27 +336,6 @@ struct FieldElement {
     return Kokkos::View<Real *>("foo", J.extent(0));
   }
 
-  template <size_t MeshEntDim>
-  KOKKOS_INLINE_FUNCTION auto getGradients(Kokkos::View<Real **> lc,
-                                           size_t pt) const {
-    if constexpr (ShapeType::Order == 1) {
-      return shapeFn.getLocalGradients();
-    } else {
-      Kokkos::Array<Real, MeshEntDim + 1> coord;
-      for (int i = 0; i < MeshEntDim + 1; ++i) {
-        coord[i] = lc(pt, i);
-      }
-      return shapeFn.getLocalGradients(coord);
-    }
-  }
-  KOKKOS_INLINE_FUNCTION auto getNodalGradients(auto grad, size_t node,
-                                                size_t d) const {
-    if constexpr (ShapeType::Order == 1) {
-      return grad[node * MeshEntDim + d];
-    } else {
-      return grad[node][d];
-    }
-  }
   Kokkos::View<Real ***> getJacobiansFixed(Kokkos::View<Real **> localCoords) {
     if (Debug) {
       LO numErrors = 0;
@@ -371,16 +373,15 @@ struct FieldElement {
         const auto val = getJacobian1d(ent);
         res(pt, 0, 0) = val;
       };
-      if constexpr (checkController<decltype(FieldAccessor::meshField),
-                                    KokkosController>::value) {
-        MeshField::parallel_for(
-            typename decltype(FieldAccessor::meshField)::exe(), {0, 0},
+      //if constexpr (checkController<decltype(FieldAccessor::meshField),
+      //                              KokkosController>::value) {
+        MeshField::parallel_for(typename FieldAccessor::Ctrlr::ExecutionSpace(), {0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
-      } else {
-        MeshField::simd_parallel_for(field.meshField, {0, 0},
-                                     {numMeshEnts, numPts}, jacobianFunc,
-                                     "1dJacobian");
-      }
+      //} else {
+      //  MeshField::simd_parallel_for(field.meshField, {0, 0},
+      //                               {numMeshEnts, numPts}, jacobianFunc,
+      //                               "1dJacobian");
+      //}
       return res;
     } else if constexpr (MeshEntDim == 2 || MeshEntDim == 3) {
       const auto numPts = localCoords.extent(0);
@@ -389,15 +390,18 @@ struct FieldElement {
       Kokkos::deep_copy(res, 0.0);
       auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int ent, const int pt) {
         const auto vals = getNodeValues(ent);
-        const auto grad = getGradients<MeshEntDim>(localCoords, pt);
-        auto A = Kokkos::subview(res, ent * numPts + pt, Kokkos::ALL(),
+        Kokkos::Array<Real, MeshEntDim> xi;
+              for (size_t d = 0; d < MeshEntDim; d++)
+                xi[d] = localCoords(pt, d);
+              const auto grad = shapeFn.getLocalGradients(xi);
+	auto A = Kokkos::subview(res, ent * numPts + pt, Kokkos::ALL(),
                                  Kokkos::ALL());
         Real localA[MeshEntDim][MeshEntDim] = {};
         for (size_t node = 0; node < ShapeType::numNodes; node++) {
           for (size_t i = 0; i < MeshEntDim; ++i) {
             for (size_t j = 0; j < MeshEntDim; ++j) {
               localA[j][i] += vals[node * MeshEntDim + i] *
-                              getNodalGradients(grad, node, j);
+                              grad[node * MeshEntDim + j];
             }
           }
         }
@@ -407,16 +411,16 @@ struct FieldElement {
           }
         }
       };
-      if constexpr (checkController<decltype(FieldAccessor::meshField),
-                                    KokkosController>::value) {
+      //if constexpr (checkController<decltype(FieldAccessor::meshField),
+      //                              KokkosController>::value) {
         MeshField::parallel_for(
-            typename decltype(FieldAccessor::meshField)::exe(), {0, 0},
+            typename FieldAccessor::Ctrlr::ExecutionSpace(), {0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
-      } else {
-        MeshField::simd_parallel_for(field.meshField, {0, 0},
-                                     {numMeshEnts, numPts}, jacobianFunc,
-                                     "2d3dJacobian");
-      }
+      //} else {
+      //  MeshField::simd_parallel_for(field.meshField, {0, 0},
+      //                               {numMeshEnts, numPts}, jacobianFunc,
+      //                               "2d3dJacobian");
+      //}
       return res;
     }
   }
@@ -437,21 +441,22 @@ struct FieldElement {
    * @return Kokkos::View containing the jacobian for all the mesh elements
    */
   Kokkos::View<Real ***> getJacobians(Kokkos::View<Real **> localCoords,
-                                      Kokkos::View<LO *> offsets) {
+                                      Kokkos::View<LO *> offsets) const {
     if (Debug) {
       // check input parametric coords are positive and sum to one
+      // TODO move this to helper function
       LO numErrors = 0;
       Kokkos::parallel_reduce(
           "checkCoords", numMeshEnts,
           KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
             Real sum = 0;
             LO isError = 0;
-            for (int i = 0; i < localCoords.extent(1); i++) {
+            for (size_t i = 0; i < localCoords.extent(1); i++) {
               if (localCoords(ent, i) < 0)
                 isError++;
               sum += localCoords(ent, i);
             }
-            if (Kokkos::fabs(sum - 1) > MachinePrecision)
+            if (sum > 1.0)
               isError++;
             lerrors += isError;
           },
@@ -466,10 +471,10 @@ struct FieldElement {
            "must be at least %zu.\n",
            numMeshEnts);
     }
-    if (localCoords.extent(1) != MeshEntDim + 1) {
+    if (localCoords.extent(1) != MeshEntDim) {
       fail("Dimension 1 of the input array of local coordinates "
            "must have size = %zu.\n",
-           MeshEntDim + 1);
+           MeshEntDim);
     }
     if (offsets.size() != numMeshEnts + 1) {
       fail("The input array of offsets must have size = %zu\n",
@@ -503,14 +508,17 @@ struct FieldElement {
             const auto vals = getNodeValues(ent);
             assert(vals.size() == MeshEntDim * ShapeType::numNodes);
             for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-              const auto grad = getGradients<MeshEntDim>(localCoords, pt);
               auto A = Kokkos::subview(res, pt, Kokkos::ALL(), Kokkos::ALL());
               Real localA[MeshEntDim][MeshEntDim] = {};
+              Kokkos::Array<Real, MeshEntDim> xi;
+              for (size_t d = 0; d < MeshEntDim; d++)
+                xi[d] = localCoords(pt, d);
+              const auto grad = shapeFn.getLocalGradients(xi);
               for (size_t node = 0; node < ShapeType::numNodes; node++) {
                 for (size_t i = 0; i < MeshEntDim; ++i) {
                   for (size_t j = 0; j < MeshEntDim; ++j) {
                     localA[j][i] += vals[node * MeshEntDim + i] *
-                                    getNodalGradients(grad, node, j);
+                                    grad[node * MeshEntDim + j];
                   }
                 }
               }
@@ -556,7 +564,7 @@ evaluateFixed(FieldElement &fes, Kokkos::View<Real **> localCoords) {
   const auto numPts = localCoords.extent(0);
   Kokkos::View<Real *[numComponents]> res("result", numPts * fes.numMeshEnts);
   auto evaluateFunc = KOKKOS_LAMBDA(const int ent, const int pt) {
-    Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
+    Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
     for (int i = 0; i < localCoords.extent(1); ++i)
       lc[i] = localCoords(pt, i);
     const auto val = fes.getValue(ent, lc);
@@ -564,16 +572,16 @@ evaluateFixed(FieldElement &fes, Kokkos::View<Real **> localCoords) {
       res(ent * numPts + pt, i) = val[i];
     }
   };
-  if constexpr (checkController<decltype(fes.field.meshField),
-                                KokkosController>::value) {
-    MeshField::parallel_for(typename decltype(fes.field.meshField)::exe(),
+  //if constexpr (checkController<decltype(fes.field.meshField),
+  //                              KokkosController>::value) {
+    MeshField::parallel_for(typename decltype(fes.field)::Ctrlr::ExecutionSpace(),
                             {0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
                             "evaluate");
-  } else {
-    MeshField::simd_parallel_for(fes.field.meshField, {0, 0},
-                                 {fes.numMeshEnts, numPts}, evaluateFunc,
-                                 "evaluate");
-  }
+  //} else {
+   // MeshField::simd_parallel_for(fes.field.meshField, {0, 0},
+   //                              {fes.numMeshEnts, numPts}, evaluateFunc,
+   //                              "evaluate");
+  //}
   return res;
 }
 
@@ -607,12 +615,12 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
         KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
           Real sum = 0;
           LO isError = 0;
-          for (int i = 0; i < localCoords.extent(1); i++) {
+          for (size_t i = 0; i < localCoords.extent(1); i++) {
             if (localCoords(ent, i) < 0)
               isError++;
             sum += localCoords(ent, i);
           }
-          if (Kokkos::fabs(sum - 1) > MachinePrecision)
+          if (sum > 1.0)
             isError++;
           lerrors += isError;
         },
@@ -623,10 +631,10 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
     }
   }
 
-  if (localCoords.extent(1) != fes.MeshEntDim + 1) {
+  if (localCoords.extent(1) != fes.MeshEntDim) {
     fail("Dimension 1 of the input array of local coordinates "
          "must have size = %zu.\n",
-         fes.MeshEntDim + 1);
+         fes.MeshEntDim);
   }
   if (offsets.size() != fes.numMeshEnts + 1) {
     fail("The input array of offsets must have size = %zu\n",
@@ -635,7 +643,7 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
   LO numLocalCoords;
   Kokkos::deep_copy(numLocalCoords,
                     Kokkos::subview(offsets, offsets.size() - 1));
-  if (localCoords.extent(0) != numLocalCoords) {
+  if (localCoords.extent(0) != static_cast<size_t>(numLocalCoords)) {
     fail("The size of dimension 0 of the local coordinates input array (%zu) "
          "does not match the last entry of the offsets array (%d).\n",
          localCoords.extent(0), numLocalCoords);
@@ -646,13 +654,13 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
   Kokkos::View<Real *[numComponents]> res("result", numPts);
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
-        Kokkos::Array<Real, FieldElement::MeshEntDim + 1> lc;
+        Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
         // TODO use nested parallel for?
         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
-          for (int i = 0; i < localCoords.extent(1); i++) // better way?
+          for (size_t i = 0; i < localCoords.extent(1); i++) // better way?
             lc[i] = localCoords(pt, i);
           const auto val = fes.getValue(ent, lc);
-          for (int i = 0; i < numComponents; i++)
+          for (size_t i = 0; i < numComponents; i++)
             res(pt, i) = val[i];
         }
       });

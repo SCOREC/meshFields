@@ -40,9 +40,10 @@ decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
 createCoordinateField(const MeshField::MeshInfo &mesh_info,
                       Omega_h::Reals coords) {
   const auto meshDim = mesh_info.dim;
-  auto coordField =
+  auto coordFieldWithCtrlr =
       MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
           mesh_info);
+  auto coordField = coordFieldWithCtrlr.field;
   auto setCoordField = KOKKOS_LAMBDA(const int &i) {
     coordField(i, 0, 0, MeshField::Vertex) = coords[i * meshDim];
     coordField(i, 0, 1, MeshField::Vertex) = coords[i * meshDim + 1];
@@ -52,7 +53,7 @@ createCoordinateField(const MeshField::MeshInfo &mesh_info,
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
                           setCoordField, "setCoordField");
-  return coordField;
+  return coordFieldWithCtrlr;
 }
 
 } // anonymous namespace
@@ -123,6 +124,7 @@ struct LinearTetrahedronToVertexField {
     return {0, tetCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
   }
 };
+//! [QuadraticTriangleToField]
 struct QuadraticTriangleToField {
   Omega_h::LOs triVerts;
   Omega_h::LOs triEdges;
@@ -184,6 +186,7 @@ struct QuadraticTriangleToField {
     return {0, triCompIdx, osh_ent, dofHolderTopo};
   }
 };
+//! [QuadraticTriangleToField]
 
 struct QuadraticTetrahedronToField {
   Omega_h::LOs tetVerts;
@@ -207,7 +210,7 @@ struct QuadraticTetrahedronToField {
   operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
              MeshField::LO tet, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Tetrahedron);
-    const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 3, 4, 5, 0, 2, 1};
+    const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 3, 4, 5, 0, 1, 2};
     const MeshField::Mesh_Topology tetNode2DofHolderTopo[10] = {
         MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
         MeshField::Vertex, MeshField::Edge,   MeshField::Edge,
@@ -220,6 +223,8 @@ struct QuadraticTetrahedronToField {
       const auto tetDim = 3;
       const auto vtxDim = 0;
       const auto ignored = -1;
+      // cyclic rotation of the omegah vertex order to map to the meshfields order
+      // defined by the shape functions in MeshField_Shape.hpp
       const auto localVtxIdx = (Omega_h::simplex_down_template(
                                     tetDim, vtxDim, dofHolderIdx, ignored) +
                                 3) %
@@ -238,6 +243,7 @@ struct QuadraticTetrahedronToField {
   }
 };
 
+//! [getTriangleElement]
 template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
@@ -256,6 +262,7 @@ template <int ShapeOrder> auto getTriangleElement(Omega_h::Mesh &mesh) {
                   QuadraticTriangleToField(mesh)};
   }
 }
+//! [getTriangleElement]
 template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
   static_assert(ShapeOrder == 1 || ShapeOrder == 2);
   if constexpr (ShapeOrder == 1) {
@@ -299,7 +306,7 @@ public:
 
   template <typename DataType, size_t order, size_t numComp>
   // Ordering of field indexing changed to 'entity, node, component'
-  auto CreateLagrangeField() {
+  auto CreateLagrangeField() const {
     return MeshField::CreateLagrangeField<ExecutionSpace, Controller, DataType,
                                           order, dim, numComp>(meshInfo);
   }
@@ -307,17 +314,18 @@ public:
   auto getCoordField() { return coordField; }
 
   // FIXME support 2d and 3d and fields with order>1
-  template <typename Field> void writeVtk(Field &field) {
+  template <typename Field> void writeVtk(Field &field) const {
     using FieldDataType = typename decltype(field.vtxField)::BaseType;
     // HACK assumes there is a vertex field.. in the Field Mixin object
     auto field_view = field.vtxField.serialize();
     Omega_h::Write<FieldDataType> field_write(field_view);
-    mesh.add_tag(0, "field", 1, Omega_h::read(field_write));
+    mesh.add_tag(0, "field", 1, Omega_h::read(field_write), false,
+                 Omega_h::ArrayType::VectorND);
     Omega_h::vtk::write_parallel("foo.vtk", &mesh, mesh.dim());
   }
 
   template <typename ViewType = Kokkos::View<MeshField::LO *>>
-  ViewType createOffsets(size_t numTri, size_t numPtsPerElem) {
+  ViewType createOffsets(size_t numTri, size_t numPtsPerElem) const {
     ViewType offsets("offsets", numTri + 1);
     Kokkos::parallel_for(
         "setOffsets", numTri,
@@ -329,8 +337,8 @@ public:
 
   // evaluate a field at the specified local coordinate for each triangle
   template <typename ViewType, typename ShapeField>
-  auto triangleLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                              ShapeField field) {
+  auto triangleLocalPointEval(const ViewType &localCoords, size_t NumPtsPerElem,
+                              const ShapeField &field) const {
     auto offsets = createOffsets(meshInfo.numTri, NumPtsPerElem);
     auto eval = triangleLocalPointEval<ViewType, ShapeField>(localCoords,
                                                              offsets, field);
@@ -339,8 +347,9 @@ public:
 
   // evaluate a field at the specified local coordinates for each triangle
   template <typename ViewType, typename ShapeField>
-  auto triangleLocalPointEval(ViewType localCoords, Kokkos::View<LO *> offsets,
-                              ShapeField field) {
+  auto triangleLocalPointEval(const ViewType &localCoords,
+                              Kokkos::View<LO *> offsets,
+                              const ShapeField &field) const {
     const auto MeshDim = 2;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 2d\n");
@@ -359,16 +368,18 @@ public:
   }
 
   template <typename ViewType, typename ShapeField>
-  auto tetrahedronLocalPointEval(ViewType localCoords, size_t NumPtsPerElem,
-                                 ShapeField field) {
+  auto tetrahedronLocalPointEval(const ViewType &localCoords,
+                                 size_t NumPtsPerElem,
+                                 const ShapeField &field) const {
     auto offsets = createOffsets(meshInfo.numTet, NumPtsPerElem);
     auto eval = tetrahedronLocalPointEval(localCoords, offsets, field);
     return eval;
   }
 
   template <typename ViewType, typename ShapeField>
-  auto tetrahedronLocalPointEval(ViewType localCoords,
-                                 Kokkos::View<LO *> offsets, ShapeField field) {
+  auto tetrahedronLocalPointEval(const ViewType &localCoords,
+                                 Kokkos::View<LO *> offsets,
+                                 const ShapeField &field) const {
     const auto MeshDim = 3;
     if (mesh.dim() != MeshDim) {
       MeshField::fail("input mesh must be 3d\n");

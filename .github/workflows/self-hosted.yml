@@ -1,29 +1,28 @@
-name: pr_comment_trigger_self_hosted
+name: self-hosted.yml
 
-# Controls when the workflow will run
 on:
-  issue_comment:                                     
-    types: [created]
+  pull_request:
+    branches:
+      - main
+  # Manual trigger
+  workflow_dispatch:
 
 jobs:
   build_and_test:
+    # The asics environment is only for launching on self-hosted runners.
+    # Do not use or edit this environment for any other purpose.
+    environment: asics
     permissions:
       contents: read
     # The type of runner that the job will run on
     runs-on: [self-hosted, linux, x64, gpu]
 
-    if: |
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/runtests') &&
-      ((github.event.comment.user.login == 'cwsmith') ||
-       (github.event.comment.user.login == 'jacobmerson'))
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
         with:
-          ref: refs/pull/${{ github.event.issue.number }}/head
           submodules: recursive
-          path: 'meshfields_${{ github.event.issue.number }}' #under $GITHUB_WORKSPACE
+          path: 'meshfields_${{ github.event.id }}' #under $GITHUB_WORKSPACE
           
       - name: build
         id: build
@@ -94,7 +93,7 @@ jobs:
 
           #meshfields
           mfbdir=${workDir}/build-meshfields
-          cmake -S meshfields_${{ github.event.issue.number }} -B $mfbdir \
+          cmake -S meshfields_${{ github.event.id }} -B $mfbdir \
             -DMeshFields_USE_Cabana=on \
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
@@ -103,20 +102,13 @@ jobs:
           cmake --build $mfbdir -j4
           ctest --test-dir $mfbdir --output-on-failure 
 
-      - name: Save Result Link
-        if: ${{ !cancelled() }} #prepare report unless the job was cancelled
-        run: |
-          mkdir -p ./pr
-          echo "${{ github.event.issue.number }}"  > ./pr/issueNumber
-          echo -n "Test Result: ${{ steps.build.outcome }} "  > ./pr/message
-          echo "[(details)](https://github.com/${{github.repository}}/actions/runs/${{ github.run_id }})" >> ./pr/message
-
-      - name: Upload Result
-        if: ${{ !cancelled() }} #upload unless the job was cancelled
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr
-          path: pr/
+      # - name: Save Result Link
+      #   if: ${{ !cancelled() }} #prepare report unless the job was cancelled
+      #   run: |
+      #     mkdir -p ./pr
+      #     echo "${{ github.event.id }}"  > ./pr/issueNumber
+      #     echo -n "Test Result: ${{ steps.build.outcome }} "  > ./pr/message
+      #     echo "[(details)](https://github.com/${{github.repository}}/actions/runs/${{ github.run_id }})" >> ./pr/message
 
       - name: Cleanup
         if: ${{ !cancelled() }}

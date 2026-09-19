@@ -9,14 +9,21 @@
 #include <type_traits> // has_static_size helper
 
 namespace MeshField {
+
 // directly copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.[h|cc]
 template <size_t pointSize> struct IntegrationPoint {
   // template parameter pointSize specifies the length of the integration point
   // array for one point
-  IntegrationPoint(Kokkos::Array<Real, pointSize> const &p, double w)
-      : param(p), weight(w) {}
+  IntegrationPoint(Kokkos::Array<Real, pointSize> const &p, double w, int d,
+                   int i)
+      : param(p), weight(w), dim(d), idx(i) {}
   Kokkos::Array<Real, pointSize> param;
   double weight;
+  // dim and idx represent the topological mesh entity the point is classified
+  // on dim represents whether it is edge, vertex, face, etc idx represents the
+  // index of the entity as defined by the shape function
+  int dim;
+  int idx;
 };
 template <size_t pointSize> class Integration {
 public:
@@ -41,32 +48,72 @@ public:
   virtual Integration<pointSize> const *getIntegration(int i) const = 0;
 };
 
-class TriangleIntegration : public EntityIntegration<3> {
+// points are given in the reduced parametric coordinates (xi0=L1, xi1=L2,
+// ...); the redundant barycentric coordinate L0 = 1-sum(xi) is omitted
+//! [TriangleIntegration]
+class TriangleIntegration : public EntityIntegration<2> {
+public:
+  class N1 : public Integration<2> {
+  public:
+    virtual int countPoints() const { return 1; }
+    virtual std::vector<IntegrationPoint<2>> getPoints() const {
+      return {IntegrationPoint(Vector2{1. / 3., 1. / 3.}, 1.0 / 2.0, 2, 0)};
+    }
+    virtual int getAccuracy() const { return 1; }
+  }; // end N1
+  class N2 : public Integration<2> {
+  public:
+    virtual int countPoints() const { return 3; }
+    virtual std::vector<IntegrationPoint<2>> getPoints() const {
+      return {IntegrationPoint(
+                  Vector2{0.166666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.666666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.166666666666667, 0.666666666666667}, 1. / 3. / 2.0, 2, 0)};
+    }
+    virtual int getAccuracy() const { return 2; }
+  }; // end N2
+  virtual int countIntegrations() const { return 2; }
+  virtual Integration<2> const *getIntegration(int i) const {
+    static N1 i1;
+    static N2 i2;
+    static Integration<2> *integrations[2] = {&i1, &i2};
+    return integrations[i];
+  }
+};
+//! [TriangleIntegration]
+
+class TetrahedronIntegration : public EntityIntegration<3> {
 public:
   class N1 : public Integration<3> {
   public:
     virtual int countPoints() const { return 1; }
     virtual std::vector<IntegrationPoint<3>> getPoints() const {
-      return {IntegrationPoint(Vector3{1. / 3., 1. / 3., 1. / 3.}, 1.0 / 2.0)};
+      return {IntegrationPoint(Vector3{0.25, 0.25, 0.25}, 1.0 / 6.0, 3, 0)};
     }
     virtual int getAccuracy() const { return 1; }
-  }; // end N1
+  };
   class N2 : public Integration<3> {
   public:
-    virtual int countPoints() const { return 3; }
+    virtual int countPoints() const { return 4; }
     virtual std::vector<IntegrationPoint<3>> getPoints() const {
-      return {IntegrationPoint(Vector3{0.666666666666667, 0.166666666666667,
-                                       0.166666666666667},
-                               1. / 3. / 2.0),
-              IntegrationPoint(Vector3{0.166666666666667, 0.666666666666667,
-                                       0.166666666666667},
-                               1. / 3. / 2.0),
-              IntegrationPoint(Vector3{0.166666666666667, 0.166666666666667,
-                                       0.666666666666667},
-                               1. / 3. / 2.0)};
+
+      return {IntegrationPoint(Vector3{0.138196601125011, 0.138196601125011,
+                                       0.585410196624969},
+                               0.25 / 6.0, 3, 0),
+              IntegrationPoint(Vector3{0.138196601125011, 0.138196601125011,
+                                       0.138196601125011},
+                               0.25 / 6.0, 3, 0),
+              IntegrationPoint(Vector3{0.585410196624969, 0.138196601125011,
+                                       0.138196601125011},
+                               0.25 / 6.0, 3, 0),
+              IntegrationPoint(Vector3{0.138196601125011, 0.585410196624969,
+                                       0.138196601125011},
+                               0.25 / 6.0, 3, 0)};
     }
     virtual int getAccuracy() const { return 2; }
-  }; // end N2
+  };
   virtual int countIntegrations() const { return 2; }
   virtual Integration<3> const *getIntegration(int i) const {
     static N1 i1;
@@ -75,45 +122,7 @@ public:
     return integrations[i];
   }
 };
-
-class TetrahedronIntegration : public EntityIntegration<4> {
-public:
-  class N1 : public Integration<4> {
-  public:
-    virtual int countPoints() const { return 1; }
-    virtual std::vector<IntegrationPoint<4>> getPoints() const {
-      return {IntegrationPoint(Vector4{0.25, 0.25, 0.25, 0.25}, 1.0 / 6.0)};
-    }
-    virtual int getAccuracy() const { return 1; }
-  };
-  class N2 : public Integration<4> {
-  public:
-    virtual int countPoints() const { return 4; }
-    virtual std::vector<IntegrationPoint<4>> getPoints() const {
-
-      return {IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
-                                       0.138196601125011, 0.585410196624967},
-                               0.25 / 6.0),
-              IntegrationPoint(Vector4{0.585410196624967, 0.138196601125011,
-                                       0.138196601125011, 0.138196601125011},
-                               0.25 / 6.0),
-              IntegrationPoint(Vector4{0.138196601125011, 0.585410196624967,
-                                       0.138196601125011, 0.138196601125011},
-                               0.25 / 6.0),
-              IntegrationPoint(Vector4{0.138196601125011, 0.138196601125011,
-                                       0.585410196624967, 0.138196601125011},
-                               0.25 / 6.0)};
-    }
-    virtual int getAccuracy() const { return 2; }
-  };
-  virtual int countIntegrations() const { return 2; }
-  virtual Integration<4> const *getIntegration(int i) const {
-    static N1 i1;
-    static N2 i2;
-    static Integration<4> *integrations[2] = {&i1, &i2};
-    return integrations[i];
-  }
-};
+//! [getIntegration]
 template <Mesh_Topology topo> auto const getIntegration() {
   if constexpr (topo == Triangle) {
     return std::make_shared<TriangleIntegration>();
@@ -122,6 +131,7 @@ template <Mesh_Topology topo> auto const getIntegration() {
   }
   fail("getIntegration does not support given topology\n");
 }
+//! [getIntegration]
 template <Mesh_Topology topo> auto getIntegrationPoints(int order) {
   auto ip = getIntegration<topo>()->getAccurate(order)->getPoints();
   return ip;
@@ -130,10 +140,10 @@ template <Mesh_Topology topo> auto getIntegrationPoints(int order) {
 template <typename FieldElement>
 Kokkos::View<MeshField::Real **> getIntegrationPointLocalCoords(
     FieldElement &fes,
-    std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
+    std::vector<IntegrationPoint<FieldElement::MeshEntDim>> ip) {
   const auto numPtsPerElm = ip.size();
   const auto meshEntDim = fes.MeshEntDim;
-  const auto numParametricCoords = meshEntDim + 1;
+  const auto numParametricCoords = meshEntDim;
   Kokkos::View<MeshField::Real **> localCoords("localCoords", numPtsPerElm,
                                                numParametricCoords);
   auto hostLocalCoords = Kokkos::create_mirror_view(localCoords);
@@ -151,7 +161,7 @@ Kokkos::View<MeshField::Real **> getIntegrationPointLocalCoords(
 template <typename FieldElement>
 Kokkos::View<Real *> getIntegrationPointWeights(
     FieldElement &fes,
-    std::vector<IntegrationPoint<FieldElement::MeshEntDim + 1>> ip) {
+    std::vector<IntegrationPoint<FieldElement::MeshEntDim>> ip) {
   const auto numPtsPerElm = ip.size();
   const auto meshEntDim = fes.MeshEntDim;
   Kokkos::View<Real *> weights("weights", numPtsPerElm);
@@ -188,9 +198,12 @@ auto getJacobianDeterminants(FieldElement &fes,
  * - `post`: Called after the integration process ends.
  * - `atPoints`: Called for each integration point to perform user-defined
  *   computations.
+ * - `parallelReduce`: Called after `atPoints` to reduce process-local
+ *   integrations into a global mesh integration.
  *
  * To use this class, derive from it and implement the `atPoints` method.
- * Optionally, override `pre` and `post` for additional setup or cleanup.
+ * Optionally, override `parallelReduce`, `pre` and `post` for distributed
+ * memory support, additional setup, or cleanup.
  */
 class Integrator {
 public:
@@ -219,9 +232,18 @@ public:
    */
   virtual void atPoints(Kokkos::View<Real **> p, Kokkos::View<Real *> w,
                         Kokkos::View<Real *> dV) = 0;
+
+  /** \brief User callback: distributed memory accumulation.
+   *
+   * \details If needed, this function supports the use of
+   * inter-process communication (e.g., MPI) to reduce
+   * process-local integrations into a global
+   * mesh integration.
+   */
+  virtual void parallelReduce(){};
+
   /** \brief Run the Integrator over the local field elements.
-   * \param fes FieldElement
-   * FIXME make the sensible
+   *  \param fes FieldElement
    * */
   template <typename FieldElement> void process(FieldElement &fes) {
     constexpr auto topo = decltype(FieldElement::elm2dof)::getTopology();
@@ -231,9 +253,8 @@ public:
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords);
     atPoints(localCoords, weights, dV);
+    parallelReduce();
     post();
-    // TODO support distributed meshes by running a parallel reduction with user
-    // functor
   }
 
 protected:

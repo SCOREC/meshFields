@@ -115,7 +115,7 @@ public:
    * @return the size/extent
    */
   KOKKOS_INLINE_FUNCTION
-  auto size(int i) const { return slice.size(i); }
+  size_t size(int i) const { return slice.size(i); }
 
   /**
    * access the underlying field at the specified index
