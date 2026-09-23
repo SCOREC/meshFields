@@ -127,15 +127,15 @@ void testKokkosParallelFor() {
       rk5(i, j, k, l, m) = i + j + k + l + m;
       assert(rk5(i, j, k, l, m) == i + j + k + l + m);
     };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {a}, k1,
+    MeshField::parallel_for<Ctrlr>({0}, {a}, k1,
                             "testKokkosParallelFor(rank1)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0}, {a, b}, k2,
+    MeshField::parallel_for<Ctrlr>({0, 0}, {a, b}, k2,
                             "testKokkosParallelFor(rank2)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0}, {a, b, c}, k3,
+    MeshField::parallel_for<Ctrlr>({0, 0, 0}, {a, b, c}, k3,
                             "testKokkosParallelFor(rank3)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0, 0}, {a, b, c, d}, k4,
+    MeshField::parallel_for<Ctrlr>({0, 0, 0, 0}, {a, b, c, d}, k4,
                             "testKokkosParallelFor(rank4)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0, 0, 0}, {a, b, c, d, e},
+    MeshField::parallel_for<Ctrlr>({0, 0, 0, 0, 0}, {a, b, c, d, e},
                             k5, "testKokkosParallelFor(rank5)");
   }
 

@@ -4,6 +4,7 @@ project(meshfields VERSION 1.0.1 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
+include(CheckGit.cmake)
 
 option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 
@@ -76,6 +77,9 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/src/MeshField_Config.hpp.in"
   "${CMAKE_CURRENT_BINARY_DIR}/MeshField_Config.hpp")
 
+
+CheckGitSetup()
+target_sources(meshfields PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/MeshField_GetHash.cpp)
 if(MeshFields_USE_Cabana)
   target_link_libraries(meshfields INTERFACE Cabana::Core)
   target_compile_definitions(meshfields INTERFACE MESHFIELDS_ENABLE_CABANA)
@@ -212,12 +216,16 @@ meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
 meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
+meshfields_add_exe(IntegratorTest test/testIntegrator.cpp)
+meshfields_add_exe(BoxIntegratorTest test/testBoxIntegrator.cpp)
+
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
   meshfields_add_smoke_exe(CabanaTests test/testCabana.cpp)
   meshfields_add_exe(CabanaControllerLifetimeTest test/testCabanaControllerLifetime.cpp)
+  meshfields_add_exe(IntegratorPerformance test/testIntegratorPerformance.cpp)
   smoke_test_func(CabanaTests ./CabanaTests)
   test_func(ControllerPerformance ./ControllerPerformance)
   test_func(CabanaControllerLifetimeTest ./CabanaControllerLifetimeTest)
@@ -231,8 +239,8 @@ test_func(ElementJacobian1d ./ElementJacobian1d)
 test_func(ElementJacobian2d ./ElementJacobian2d)
 test_func(ElementJacobian3d ./ElementJacobian3d)
 test_func(CountIntegrator ./CountIntegrator)
-smoke_test_func(OmegahTriTests ./OmegahTriTests)
-test_func(OmegahTetTest ./OmegahTetTest)
+test_func(IntegratorTest ./IntegratorTest)
+test_func(BoxIntegratorTest ./BoxIntegratorTest)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)
@@ -240,7 +248,7 @@ else()
   will_fail_test_func(ExceptionTest ./ExceptionTest)
 endif()
 
-meshfields_add_exe(OmegahSprAdapt test/testSprThwaitesAdapt.cpp)
+meshfields_add_exe(OmegahSprAdapt test/testSprThwaitesAdapt.cpp) 
 test_func(OmegahSprAdapt ./OmegahSprAdapt
   ${CMAKE_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh/
   thwaitesAdapted #output prefix

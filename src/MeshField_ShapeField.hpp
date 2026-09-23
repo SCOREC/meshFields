@@ -72,12 +72,13 @@ template <typename Ctrlr, typename Field> struct FieldWithController {
  * @param mixins object(s) needed to construct the Accessor
  */
 //! [ShapeField]
-template <size_t numCompIn, typename Shape, typename... Mixins>
+template <size_t numCompIn, typename Shape, typename Controller, typename... Mixins>
 struct ShapeField : public Mixins... {
   Shape shape;
   static const size_t numComp = numCompIn;
   const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
+  using Ctrlr=Controller;
   // Mixins&&... binds only to rvalues/temporaries (braced-init-list call
   // sites like ShapeField(meshInfo, {vtxField}) are fine; passing a named
   // lvalue requires std::move). mixins is moved-from by std::forward below
@@ -224,8 +225,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     // clang-format off
     using LinearLagrangeShapeField = std::conditional_t<
         dim == 3,
-        ShapeField<numComp, LinearTetrahedronShape, LA>,
-        ShapeField<numComp, LinearTriangleShape, LA>>;
+        ShapeField<numComp, LinearTetrahedronShape, Ctrlr, LA>,
+        ShapeField<numComp, LinearTriangleShape, Ctrlr, LA>>;
     // clang-format on
     LinearLagrangeShapeField llsf(meshInfo, {vtxField});
     return FieldWithController<Ctrlr, LinearLagrangeShapeField>{kk_ctrl, llsf};
@@ -270,8 +271,8 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     // clang-format off
     using QuadraticLagrangeShapeField = std::conditional_t<
         dim == 3,
-        ShapeField<numComp, QuadraticTetrahedronShape, QA>,
-        ShapeField<numComp, QuadraticTriangleShape, QA>>;
+        ShapeField<numComp, QuadraticTetrahedronShape, Ctrlr, QA>,
+        ShapeField<numComp, QuadraticTriangleShape, Ctrlr, QA>>;
     // clang-format on
     QuadraticLagrangeShapeField qlsf(meshInfo, {vtxField, edgeField});
     return FieldWithController<Ctrlr, QuadraticLagrangeShapeField>{kk_ctrl,
@@ -338,7 +339,7 @@ auto CreateCoordinateField(const MeshInfo &meshInfo) {
   auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
   using LA = LinearAccessor<decltype(vtxField)>;
   using LinearLagrangeShapeField =
-      ShapeField<dim, LinearTriangleShape, LA>;
+      ShapeField<dim, LinearTriangleShape, Ctrlr, LA>;
   LinearLagrangeShapeField llsf(meshInfo, {vtxField});
   return FieldWithController<Ctrlr, LinearLagrangeShapeField>{kk_ctrl, llsf};
 };

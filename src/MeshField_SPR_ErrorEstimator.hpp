@@ -91,10 +91,11 @@ public:
   void atPoints(Kokkos::View<MeshField::Real **> p,
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
-
-    const size_t numPtsPerElem = p.extent(0) / estimation.mesh.nelems();
+    const size_t numPtsPerElem = p.extent(0);
+    const auto [shp, map] = Omegah::getTriangleElement<std::remove_reference_t<decltype(estimation.eps_star)>::Order>(estimation.mesh);
+    FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star, shp, map);
     auto eps_star_atPts =
-        omf.triangleLocalPointEval(p, numPtsPerElem, estimation.eps_star);
+        evaluateFixed(estimationField, p);
 
     r = 0;
     Kokkos::parallel_reduce(
@@ -104,7 +105,7 @@ public:
           const auto last = first + numPtsPerElem;
           for (auto pt = first; pt < last; pt++) {
             const auto vPt = eps_star_atPts(pt, 0);
-            const auto wPt = w(pt);
+            const auto wPt = w(pt % w.extent(0));
             const auto dVPt = dV(pt);
             r_local += (vPt * vPt) * wPt * dVPt;
           }
@@ -137,7 +138,7 @@ error_par_reduce_impl(EstimationT &estimation, EpsStarT eps_star_atPts,
         for (auto pt = first; pt < last; pt++) {
           const auto eps_star_Pt = eps_star_atPts(pt, 0);
           const auto diff = eps_elm - eps_star_Pt;
-          const auto wPt = w(pt);
+          const auto wPt = w(pt % w.extent(0));
           const auto dVPt = dV(pt);
           sum += (diff * diff) * wPt * dVPt;
         }
@@ -164,14 +165,16 @@ public:
   void atPoints(Kokkos::View<MeshField::Real **> p,
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
-    const size_t numPtsPerElem = p.extent(0) / estimation.mesh.nelems();
+    const size_t numPtsPerElem = p.extent(0);
     // FIXME eps isn't a ShapeField so we can't call
     //       omf.triangleLocalPointEval.  For now, just get
     //       the value from the element and assert that there is
     //       one integration point per element.
     assert(numPtsPerElem == 1);
+    const auto [shp, map] = Omegah::getTriangleElement<std::remove_reference_t<decltype(estimation.eps_star)>::Order>(estimation.mesh);
+    FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star, shp, map);
     auto eps_star_atPts =
-        omf.triangleLocalPointEval(p, numPtsPerElem, estimation.eps_star);
+        evaluateFixed(estimationField, p);
     double meshDim = estimation.mesh.dim();
     double orderP = estimation.recovered_order;
 
