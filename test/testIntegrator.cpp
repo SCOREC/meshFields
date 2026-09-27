@@ -153,7 +153,7 @@ int main(int argc, char **argv) {
         {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
 
     Omega_h::LOs tris_to_verts({0, 1, 2});
-    Omega_h::LOs tets_to_verts({3, 0, 1, 2});
+    Omega_h::LOs tets_to_verts({0, 1, 2, 3});
     Omega_h::Mesh mesh2D(&lib);
     Omega_h::Mesh mesh3D(&lib);
     Omega_h::build_from_elems_and_coords(&mesh2D, OMEGA_H_SIMPLEX, 2,
@@ -177,7 +177,7 @@ int main(int argc, char **argv) {
         {0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0});
 
     Omega_h::LOs tris_to_verts({0, 1, 2});
-    Omega_h::LOs tets_to_verts({3, 0, 1, 2});
+    Omega_h::LOs tets_to_verts({0, 1, 2, 3});
     Omega_h::Mesh mesh2D(&lib);
     Omega_h::Mesh mesh3D(&lib);
     Omega_h::build_from_elems_and_coords(&mesh2D, OMEGA_H_SIMPLEX, 2,
