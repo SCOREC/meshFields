@@ -82,8 +82,12 @@ struct IdentityMap {
  *
  * Evaluation:
  * @code
- * const auto c = elm.coefficients(ent);              // once per element
- * for (pt : points) elm.valueFromCoefficients(c, xi); // once per point
+ * const auto c = elm.coefficients(ent);                  // once per element
+ * const auto g = elm.geometry(ent);                      // if needed
+ * for (pt : points) {
+ *   elm.valueFromCoefficients(c, xi);                    // values
+ *   elm.gradientFromCoefficients(c, g, xi);              // gradients
+ * }
  * @endcode
  *
  * @tparam FieldElem a FieldElement over the field being evaluated
@@ -132,16 +136,11 @@ struct MappedElement {
       std::is_same_v<decltype(FieldElem::elm2dof),
                      decltype(GeomElem::elm2dof)>;
 
-  /** @brief storage for per-element data*/
-  struct Coefficients {
-    /** coefficients on the reference basis, from the DofTransformation */
-    decltype(std::declval<DofTransformation>().coefficients(
-        std::declval<FieldElem>(), std::declval<GeomElem>(), 0)) field;
-    /** the Jacobian for affine geometry, which needs fewer values than the
-     *  node coordinates; otherwise the node coordinates */
-    std::conditional_t<IsAffine, JacobianArray, typename GeomElem::NodeArray>
-        geometry;
-  };
+  /** @brief the field's coefficients on the reference basis */
+  using Coefficients = decltype(std::declval<DofTransformation>().coefficients(
+      std::declval<FieldElem>(), std::declval<GeomElem>(), 0));
+  using Geometry =
+      std::conditional_t<IsAffine, JacobianArray, typename GeomElem::NodeArray>;
 
   MappedElement(
       FieldElem const &fieldIn, GeomElem const &geomIn,
@@ -157,45 +156,50 @@ struct MappedElement {
   }
 
   KOKKOS_INLINE_FUNCTION Coefficients coefficients(int ent) const {
+    return dofTransformation.coefficients(field, geom, ent);
+  }
+
+  /**
+   * @brief the geometry of one element
+   */
+  KOKKOS_INLINE_FUNCTION Geometry geometry(int ent) const {
     if constexpr (IsAffine) {
-      return {dofTransformation.coefficients(field, geom, ent),
-              geom.jacobianFromNodeValues(geom.getNodeValues(ent),
-                                          Kokkos::Array<Real, MeshEntDim>{})};
+      return geom.jacobianFromNodeValues(geom.getNodeValues(ent),
+                                         Kokkos::Array<Real, MeshEntDim>{});
     } else {
-      return {dofTransformation.coefficients(field, geom, ent),
-              geom.getNodeValues(ent)};
+      return geom.getNodeValues(ent);
     }
   }
 
   /** @brief the physical value of the field at a parametric coordinate */
   KOKKOS_INLINE_FUNCTION ValArray valueFromCoefficients(
       Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
-    return mapType.value(field.valueFromCoefficients(c.field, localCoord));
+    return mapType.value(field.valueFromCoefficients(c, localCoord));
   }
 
   /** @brief the Jacobian of the geometry at a parametric coordinate */
-  KOKKOS_INLINE_FUNCTION JacobianArray jacobianFromCoefficients(
-      Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
+  KOKKOS_INLINE_FUNCTION JacobianArray jacobianFromGeometry(
+      Geometry const &g, Kokkos::Array<Real, MeshEntDim> localCoord) const {
     if constexpr (IsAffine) {
-      return c.geometry;
+      return g;
     } else {
-      return geom.jacobianFromNodeValues(c.geometry, localCoord);
+      return geom.jacobianFromNodeValues(g, localCoord);
     }
   }
 
   /** @brief the physical gradient of the field at a parametric coordinate */
-  KOKKOS_INLINE_FUNCTION GradArray gradientFromCoefficients(
-      Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
+  KOKKOS_INLINE_FUNCTION GradArray
+  gradientFromCoefficients(Coefficients const &c, Geometry const &g,
+                           Kokkos::Array<Real, MeshEntDim> localCoord) const {
     if constexpr (IsIsoparametric && !IsAffine) {
       // the field and the geometry share the shape function gradients
       const auto grads = field.shapeFn.getLocalGradients(localCoord);
-      return mapType.gradient(
-          field.localGradientFromShapeGradients(c.field, grads),
-          geom.jacobianFromShapeGradients(c.geometry, grads));
+      return mapType.gradient(field.localGradientFromShapeGradients(c, grads),
+                              geom.jacobianFromShapeGradients(g, grads));
     } else {
       return mapType.gradient(
-          field.localGradientFromCoefficients(c.field, localCoord),
-          jacobianFromCoefficients(c, localCoord));
+          field.localGradientFromCoefficients(c, localCoord),
+          jacobianFromGeometry(g, localCoord));
     }
   }
 

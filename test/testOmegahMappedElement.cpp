@@ -67,6 +67,7 @@ bool testFieldOnP1Geometry(Omega_h::Mesh &mesh, OmegahMeshField<dim> &omf) {
       "checkFieldOnP1Geometry", mesh.nelems(),
       KOKKOS_LAMBDA(const int ent, MeshField::LO &lerr) {
         const auto c = elm.coefficients(ent);
+        const auto geo = elm.geometry(ent);
         const auto cx = coordElm.coefficients(ent);
         for (int pt = 0; pt < numPts; ++pt) {
           const auto xi = point<dim>(pt);
@@ -75,7 +76,7 @@ bool testFieldOnP1Geometry(Omega_h::Mesh &mesh, OmegahMeshField<dim> &omf) {
           for (size_t d = 0; d < dim; ++d)
             x[d] = pos[d];
           const auto v = elm.valueFromCoefficients(c, xi);
-          const auto g = elm.gradientFromCoefficients(c, xi);
+          const auto g = elm.gradientFromCoefficients(c, geo, xi);
           const auto gf = func.grad(x);
           for (size_t ci = 0; ci < numComp; ++ci) {
             if (!(Kokkos::fabs(v[ci] - (ci + 1) * func(x)) <=
@@ -124,10 +125,11 @@ bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
       "checkFiniteDifference", mesh.nelems(),
       KOKKOS_LAMBDA(const int ent, MeshField::LO &lerr) {
         const auto c = elm.coefficients(ent);
+        const auto geo = elm.geometry(ent);
         const auto cx = coordElm.coefficients(ent);
         for (int pt = 0; pt < numPts; ++pt) {
           const auto xi = point<dim>(pt);
-          const auto g = elm.gradientFromCoefficients(c, xi);
+          const auto g = elm.gradientFromCoefficients(c, geo, xi);
           for (size_t k = 0; k < dim; ++k) {
             auto xp = xi;
             auto xm = xi;
