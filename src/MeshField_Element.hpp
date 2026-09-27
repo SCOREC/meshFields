@@ -274,7 +274,22 @@ struct FieldElement {
   template <typename Coefficients>
   KOKKOS_INLINE_FUNCTION LocalGradArray localGradientFromCoefficients(
       Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
-    const auto shapeGrads = shapeFn.getLocalGradients(localCoord);
+    return localGradientFromShapeGradients(
+        c, shapeFn.getLocalGradients(localCoord));
+  }
+
+  /**
+   * @brief
+   * localGradientFromCoefficients with the shape function gradients already
+   * evaluated, so they can be shared with a geometry that uses the same shape
+   *
+   * @param c coefficients from coefficients(ent)
+   * @param shapeGrads shapeFn.getLocalGradients at the parametric coordinate
+   * @return parametric gradients, indexed [direction * NumComponents + component]
+   */
+  template <typename Coefficients, typename ShapeGradients>
+  KOKKOS_INLINE_FUNCTION LocalGradArray localGradientFromShapeGradients(
+      Coefficients const &c, ShapeGradients const &shapeGrads) const {
     LocalGradArray g;
     for (size_t i = 0; i < MeshEntDim * NumComponents; ++i)
       g[i] = 0;
@@ -341,7 +356,21 @@ struct FieldElement {
    */
   KOKKOS_INLINE_FUNCTION JacobianArray jacobianFromNodeValues(
       NodeArray const &x, Kokkos::Array<Real, MeshEntDim> localCoord) const {
-    const auto grads = shapeFn.getLocalGradients(localCoord);
+    return jacobianFromShapeGradients(x, shapeFn.getLocalGradients(localCoord));
+  }
+
+  /**
+   * @brief
+   * jacobianFromNodeValues with the shape function gradients already
+   * evaluated, so they can be shared with a field that uses the same shape
+   *
+   * @param x node coordinates from getNodeValues
+   * @param grads shapeFn.getLocalGradients at the parametric coordinate
+   * @return the Jacobian, row-major with J[i][j] = dx_j/dxi_i
+   */
+  template <typename ShapeGradients>
+  KOKKOS_INLINE_FUNCTION JacobianArray jacobianFromShapeGradients(
+      NodeArray const &x, ShapeGradients const &grads) const {
     JacobianArray J;
     for (size_t i = 0; i < MeshEntDim * MeshEntDim; ++i)
       J[i] = 0;
