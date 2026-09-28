@@ -178,7 +178,7 @@ Kokkos::View<Real *> getIntegrationPointWeights(
 template <typename FieldElement>
 auto getJacobianDeterminants(FieldElement &fes,
                              Kokkos::View<Real **> localCoords) {
-  auto J = fes.getJacobiansFixed(localCoords);
+  auto J = fes.getJacobiansStaticLength(localCoords);
   auto dV = getJacobianDeterminants(fes, J);
   return dV;
 }
@@ -252,6 +252,10 @@ public:
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords);
+    // 3d determinants are signed
+    Kokkos::parallel_for(
+        "absJacobianDeterminants", dV.extent(0),
+        KOKKOS_LAMBDA(const int i) { dV(i) = Kokkos::fabs(dV(i)); });
     atPoints(localCoords, weights, dV);
     parallelReduce();
     post();

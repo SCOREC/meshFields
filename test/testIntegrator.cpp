@@ -34,7 +34,7 @@ public:
   void atPoints(Kokkos::View<MeshField::Real **> p,
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
-    const auto globalCoords = MeshField::evaluateFixed(fes, p);
+    const auto globalCoords = MeshField::evaluateStaticLength(fes, p);
     const int _m = m;
     const int _n = n;
     const int _l = l;

@@ -219,6 +219,7 @@ meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
 meshfields_add_exe(IntegratorTest test/testIntegrator.cpp)
 meshfields_add_exe(BoxIntegratorTest test/testBoxIntegrator.cpp)
 
+meshfields_add_exe(IntegratorMeasure test/testIntegratorMeasure.cpp)
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
@@ -241,6 +242,9 @@ test_func(ElementJacobian3d ./ElementJacobian3d)
 test_func(CountIntegrator ./CountIntegrator)
 test_func(IntegratorTest ./IntegratorTest)
 test_func(BoxIntegratorTest ./BoxIntegratorTest)
+smoke_test_func(OmegahTriTests ./OmegahTriTests)
+test_func(OmegahTetTest ./OmegahTetTest)
+test_func(IntegratorMeasure ./IntegratorMeasure)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)

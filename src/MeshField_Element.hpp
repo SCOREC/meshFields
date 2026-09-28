@@ -327,7 +327,7 @@ struct FieldElement {
     return Kokkos::View<Real *>("foo", J.extent(0));
   }
 
-  Kokkos::View<Real ***> getJacobiansFixed(Kokkos::View<Real **> localCoords) {
+  Kokkos::View<Real ***> getJacobiansStaticLength(Kokkos::View<Real **> localCoords) {
     if (Debug) {
       LO numErrors = 0;
       Kokkos::parallel_reduce(
@@ -527,7 +527,7 @@ struct FieldElement {
 
 template <typename FieldElement>
 Kokkos::View<Real *[FieldElement::NumComponents]>
-evaluateFixed(FieldElement &fes, Kokkos::View<Real **> localCoords) {
+evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
   if (Debug) {
     LO numErrors = 0;
     Kokkos::parallel_reduce(

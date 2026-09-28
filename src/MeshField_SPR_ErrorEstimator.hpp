@@ -95,7 +95,7 @@ public:
     const auto [shp, map] = Omegah::getTriangleElement<std::remove_reference_t<decltype(estimation.eps_star)>::Order>(estimation.mesh);
     FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star, shp, map);
     auto eps_star_atPts =
-        evaluateFixed(estimationField, p);
+        evaluateStaticLength(estimationField, p);
 
     r = 0;
     Kokkos::parallel_reduce(
@@ -174,7 +174,7 @@ public:
     const auto [shp, map] = Omegah::getTriangleElement<std::remove_reference_t<decltype(estimation.eps_star)>::Order>(estimation.mesh);
     FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star, shp, map);
     auto eps_star_atPts =
-        evaluateFixed(estimationField, p);
+        evaluateStaticLength(estimationField, p);
     double meshDim = estimation.mesh.dim();
     double orderP = estimation.recovered_order;
 
