@@ -259,6 +259,10 @@ public:
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords, ip.size());
+    // 3d determinants are signed
+    Kokkos::parallel_for(
+        "absJacobianDeterminants", dV.extent(0),
+        KOKKOS_LAMBDA(const int i) { dV(i) = Kokkos::fabs(dV(i)); });
     atPoints(localCoords, weights, dV);
     parallelReduce();
     post();
