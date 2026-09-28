@@ -22,6 +22,16 @@
 // detect floating point exceptions
 #include <fenv.h>
 
+// trap all floating point exceptions but FE_INEXACT where supported
+void enableFloatingPointExceptions() {
+#ifdef __GLIBC__
+  feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT);
+#else
+  std::cerr << "WARNING: feenableexcept is not available on this platform; "
+               "floating point exceptions will not be trapped\n";
+#endif
+}
+
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
@@ -143,9 +153,7 @@ void printTriCount(Mesh *mesh, std::string_view prefix) {
 }
 
 int main(int argc, char **argv) {
-  feenableexcept(
-      FE_ALL_EXCEPT &
-      ~FE_INEXACT); // Enable all floating point exceptions but FE_INEXACT
+  enableFloatingPointExceptions();
   auto lib = Library(&argc, &argv);
   if (argc != 6) {
     fprintf(stderr,
