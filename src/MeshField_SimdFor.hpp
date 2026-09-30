@@ -81,8 +81,7 @@ simd_for(Fn &kernel, const Kokkos::Array<int64_t, 4> &start,
 
 namespace MeshField {
 template <typename CabController, typename FunctorType, class IS, class IE>
-void simd_parallel_for(CabController,
-                       const std::initializer_list<IS> &start_init,
+void simd_parallel_for(const std::initializer_list<IS> &start_init,
                        const std::initializer_list<IE> &end_init,
                        FunctorType &vectorKernel, std::string tag) {
   static_assert(std::is_integral<IS>::value, "Integral required\n");
