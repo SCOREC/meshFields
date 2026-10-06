@@ -35,6 +35,20 @@ KOKKOS_INLINE_FUNCTION Real linear(Kokkos::Array<Real, dim> const &x) {
   return f;
 }
 
+// Create a list of two parametric coordinates for evaluation
+constexpr size_t numOffNodePts = 2;
+template <size_t dim> Kokkos::View<Real **> offNodeCoords(size_t numElems) {
+  Kokkos::View<Real **> lc("localCoords", numElems * numOffNodePts, dim);
+  Kokkos::parallel_for(
+      "setLocalCoords", numElems, KOKKOS_LAMBDA(const int ent) {
+        for (size_t d = 0; d < dim; ++d) {
+          lc(ent * numOffNodePts, d) = 1.0 / (dim + 1);
+          lc(ent * numOffNodePts + 1, d) = 0.1 * (d + 1);
+        }
+      });
+  return lc;
+}
+
 /*
  * Interpolate an analytic function, with numComp components
  */
@@ -63,18 +77,9 @@ bool testAnalytic(
         return val;
       });
 
-  // points away from the nodes: the centroid and an off-center point
-  constexpr size_t numPts = 2;
-  Kokkos::View<Real **> lc("localCoords", mesh.nelems() * numPts, dim);
-  Kokkos::parallel_for(
-      "setLocalCoords", mesh.nelems(), KOKKOS_LAMBDA(const int ent) {
-        for (size_t d = 0; d < dim; ++d) {
-          lc(ent * numPts, d) = 1.0 / (dim + 1);
-          lc(ent * numPts + 1, d) = 0.1 * (d + 1);
-        }
-      });
-  const auto values = MeshField::evaluate(elm, lc, numPts);
-  const auto x = MeshField::evaluate(coordElm, lc, numPts);
+  const auto lc = offNodeCoords<dim>(mesh.nelems());
+  const auto values = MeshField::evaluate(elm, lc, numOffNodePts);
+  const auto x = MeshField::evaluate(coordElm, lc, numOffNodePts);
   MeshField::LO numErrors = 0;
   Kokkos::parallel_reduce(
       "checkAnalytic", values.extent(0),
@@ -141,6 +146,36 @@ bool testOwnership(
   return pass;
 }
 
+/*
+ * Ensure that straight sided quadratic coordiante field recovers
+ * same values as linear coordinate field
+ */
+template <size_t dim, template <typename...> typename Controller>
+bool testCoordinateField(
+    Omega_h::Mesh &mesh,
+    MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
+  auto quadraticWithCtrlr = omf.template CreateLagrangeCoordinateField<2>();
+  auto quadratic = omf.CreateLagrangeElement(quadraticWithCtrlr.field);
+  auto linear = omf.CreateLagrangeElement(omf.getCoordField().field);
+  const auto lc = offNodeCoords<dim>(mesh.nelems());
+  const auto xq = MeshField::evaluate(quadratic, lc, numOffNodePts);
+  const auto xl = MeshField::evaluate(linear, lc, numOffNodePts);
+  MeshField::LO numErrors = 0;
+  Kokkos::parallel_reduce(
+      "checkCoordinateField", xq.extent(0),
+      KOKKOS_LAMBDA(const int pt, MeshField::LO &lerrors) {
+        for (size_t d = 0; d < dim; ++d)
+          if (Kokkos::fabs(xq(pt, d) - xl(pt, d)) > MeshField::Epsilon)
+            ++lerrors;
+      },
+      numErrors);
+  const bool pass = numErrors == 0;
+  std::cout << "testCoordinateField(dim " << dim << "): "
+            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
+            << "\n";
+  return pass;
+}
+
 template <size_t dim, template <typename...> typename Controller>
 int runTests(Omega_h::Mesh &mesh) {
   MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
@@ -150,6 +185,7 @@ int runTests(Omega_h::Mesh &mesh) {
   failed += !testAnalytic<dim, 1, 1>(mesh, omf);
   failed += !testAnalytic<dim, 2, 1>(mesh, omf);
   failed += !testAnalytic<dim, 2, 3>(mesh, omf);
+  failed += !testCoordinateField<dim>(mesh, omf);
   return failed;
 }
 
