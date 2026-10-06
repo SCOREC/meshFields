@@ -599,5 +599,89 @@ Kokkos::View<Real *> getJacobianDeterminants(FieldElement &fes, Matrices J) {
   return fes.getJacobianDeterminants(J);
 }
 
+/**
+ * @brief
+ * For each dof holder of a field, the element
+ * that owns it; see getDofHolderOwningEntities
+ */
+struct DofHolderOwningEntities {
+  static constexpr size_t NumTopologies = Pyramid + 1;
+  Kokkos::Array<LO, NumTopologies + 1> offset;
+  Kokkos::View<LO *> owner;
+
+  /** @brief the index of the element that owns the given dof holder */
+  KOKKOS_INLINE_FUNCTION LO operator()(Mesh_Topology topo, LO entity) const {
+    return owner(offset[topo] + entity);
+  }
+};
+
+/**
+ * @brief
+ * the owning entity of a dof that is shared, i.e., vertex or edge nodes
+ * is the shared entity with the lowest id
+ */
+template <typename FieldElement>
+DofHolderOwningEntities getDofHolderOwningEntities(FieldElement const &fes) {
+  constexpr size_t numNodes = decltype(fes.shapeFn)::numNodes;
+  constexpr size_t numTopologies = DofHolderOwningEntities::NumTopologies;
+  const auto &meshInfo = fes.field.meshInfo;
+  const LO numElements = fes.numMeshEnts;
+  DofHolderOwningEntities owners;
+  owners.offset[0] = 0;
+  for (size_t t = 0; t < numTopologies; ++t)
+    owners.offset[t + 1] =
+        owners.offset[t] + meshInfo.numEntities(static_cast<Mesh_Topology>(t));
+  owners.owner = Kokkos::View<LO *>(
+      Kokkos::view_alloc(Kokkos::WithoutInitializing, "dofHolderOwner"),
+      owners.offset[numTopologies]);
+  Kokkos::deep_copy(owners.owner, numElements);
+  const auto offset = owners.offset;
+  const auto owner = owners.owner;
+  Kokkos::parallel_for(
+      "getDofHolderOwningEntities", numElements, KOKKOS_LAMBDA(const int ent) {
+        for (auto topo : fes.elm2dof.getTopology()) {
+          for (size_t n = 0; n < numNodes; ++n) {
+            const auto map = fes.elm2dof(n, 0, ent, topo);
+            Kokkos::atomic_min(&owner(offset[map.topo] + map.entity), ent);
+          }
+        }
+      });
+  return owners;
+}
+
+/**
+ * @brief
+ * evaluates a source function at of the field element dof holder location
+ */
+template <typename FieldElement, typename Source>
+void interpolate(FieldElement &target, Source const &source) {
+  constexpr size_t numNodes = decltype(target.shapeFn)::numNodes;
+  constexpr size_t meshEntDim = FieldElement::MeshEntDim;
+  constexpr size_t numComp = FieldElement::NumComponents;
+  // we get a list of owners so that we only perform evaluation once
+  // per shared dof
+  const auto owners = getDofHolderOwningEntities(target);
+  Kokkos::parallel_for(
+      "interpolate", target.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
+        const auto nodeCoords = target.shapeFn.getNodeParametricCoords();
+        for (auto topo : target.elm2dof.getTopology()) {
+          for (size_t n = 0; n < numNodes; ++n) {
+            const auto holder = target.elm2dof(n, 0, ent, topo);
+            if (owners(holder.topo, holder.entity) != ent)
+              continue;
+            Kokkos::Array<Real, meshEntDim> xi;
+            for (size_t d = 0; d < meshEntDim; ++d)
+              xi[d] = nodeCoords[n * meshEntDim + d];
+            const auto val = source(ent, xi);
+            for (size_t c = 0; c < numComp; ++c) {
+              const auto map = target.elm2dof(n, c, ent, topo);
+              target.field(map.entity, map.node, map.component, map.topo) =
+                  val[c];
+            }
+          }
+        }
+      });
+}
+
 } // namespace MeshField
 #endif
