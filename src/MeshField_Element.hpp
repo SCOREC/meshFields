@@ -364,15 +364,8 @@ struct FieldElement {
         const auto val = getJacobian1d(ent);
         res(pt, 0, 0) = val;
       };
-      //if constexpr (checkController<decltype(FieldAccessor::meshField),
-      //                              KokkosController>::value) {
         MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
-      //} else {
-      //  MeshField::simd_parallel_for(field.meshField, {0, 0},
-      //                               {numMeshEnts, numPts}, jacobianFunc,
-      //                               "1dJacobian");
-      //}
       return res;
     } else if constexpr (MeshEntDim == 2 || MeshEntDim == 3) {
       const auto numPts = localCoords.extent(0);
@@ -402,15 +395,8 @@ struct FieldElement {
           }
         }
       };
-      //if constexpr (checkController<decltype(FieldAccessor::meshField),
-      //                              KokkosController>::value) {
         MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
-      //} else {
-      //  MeshField::simd_parallel_for(field.meshField, {0, 0},
-      //                               {numMeshEnts, numPts}, jacobianFunc,
-      //                               "2d3dJacobian");
-      //}
       return res;
     }
   }
@@ -562,15 +548,8 @@ evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
       res(ent * numPts + pt, i) = val[i];
     }
   };
-  //if constexpr (checkController<decltype(fes.field.meshField),
-  //                              KokkosController>::value) {
     MeshField::parallel_for<typename decltype(fes.field)::Ctrlr>({0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
                             "evaluate");
-  //} else {
-   // MeshField::simd_parallel_for(fes.field.meshField, {0, 0},
-   //                              {fes.numMeshEnts, numPts}, evaluateFunc,
-   //                              "evaluate");
-  //}
   return res;
 }
 
