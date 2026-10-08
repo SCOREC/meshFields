@@ -17,9 +17,9 @@ public:
                 Kokkos::View<MeshField::Real *> dV) override {
     MeshField::Real sum = 0;
     Kokkos::parallel_reduce(
-        "integrateMeasure", w.extent(0),
+        "integrateMeasure", dV.extent(0),
         KOKKOS_LAMBDA(const int i, MeshField::Real &lsum) {
-          lsum += w(i) * dV(i);
+          lsum += w(i % w.extent(0)) * dV(i);
         },
         sum);
     measure += sum;
