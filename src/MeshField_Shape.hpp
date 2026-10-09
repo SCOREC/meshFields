@@ -557,5 +557,107 @@ struct QuadraticTetrahedronShape {
   }
 };
 
+/**
+ * @brief Linear (P1) shape functions for 3D wedge (triangular prism) elements
+ *
+ * Tensor product of the linear triangle in (xi0, xi1) and the linear edge in
+ * zeta = xi2. Defines 6 nodes, all located at the wedge vertices.
+ * Parametric coordinate range: xi0, xi1 \f$\in\f$ [0, 1] with
+ * xi0 + xi1 \f$\le\f$ 1, and zeta \f$\in\f$ [-1, 1]
+ *
+ * Node ordering:
+ * - Nodes 0-2: triangle vertices on the zeta = -1 face, at
+ *   (xi0, xi1) = (0, 0), (1, 0), (0, 1)
+ * - Nodes 3-5: triangle vertices on the zeta = +1 face; node a+3 is joined to
+ *   node a by the edge along zeta
+ *
+ * Shape functions, with L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1 and a = 0, 1, 2:
+ * - \f$N_a     = L_a (1 - \zeta) / 2\f$
+ * - \f$N_{a+3} = L_a (1 + \zeta) / 2\f$
+ *
+ * Shape functions and ordering from:
+ * Zienkiewicz, Taylor, and Zhu
+ * 'The Finite Element Method: Its Basis and Fundamentals', 2013, Section 6.4,
+ * Fig. 6.16a: \f$N_a = \frac{1}{2} L_a (1 + \zeta_a \zeta)\f$
+ */
+struct LinearWedgeShape {
+  // clang-format off
+  static const size_t numNodes = 6;                         ///< Number of nodes (6 for linear wedge)
+  static const size_t meshEntDim = 3;                       ///< Mesh entity dimension (3D)
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};  ///< DOFs located at vertices
+  constexpr static size_t Order = 1;                        ///< Polynomial order (linear)
+  // clang-format on
+
+  /**
+   * @brief Get parametric coordinates of element nodes
+   * @return Array of node coordinates [node0_xi0, node0_xi1, node0_zeta, ...]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
+    // clang-format off
+    return {0,0,-1,   //node 0
+            1,0,-1,   //node 1
+            0,1,-1,   //node 2
+            0,0, 1,   //node 3
+            1,0, 1,   //node 4
+            0,1, 1};  //node 5
+    // clang-format on
+  }
+
+  /**
+   * @brief Evaluate shape functions at parametric coordinate
+   * @param xi Parametric coordinates (xi0, xi1, zeta) where xi0, xi1
+   *        \f$\in\f$ [0,1], xi0 + xi1 \f$\le\f$ 1 and zeta \f$\in\f$ [-1,1]
+   * @return Array of shape function values [N0, ..., N5]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
+    assert(greaterThanOrEqual(xi[0], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[1], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[2], -1.0, ParametricCoordTol));
+    assert(lessThanOrEqual(xi[2], 1.0, ParametricCoordTol));
+    const Real L0 = 1 - xi[0] - xi[1];
+    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
+    const Real down = (1 - xi[2]) / 2; // linear edge function of the -1 face
+    const Real up = (1 + xi[2]) / 2;   // linear edge function of the +1 face
+    // clang-format off
+    return {L0*down,     //node 0
+            xi[0]*down,  //node 1
+            xi[1]*down,  //node 2
+            L0*up,       //node 3
+            xi[0]*up,    //node 4
+            xi[1]*up};   //node 5
+    // clang-format on
+  }
+
+  /**
+   * @brief Get gradients of shape functions in parametric coordinates
+   * @param xi Parametric coordinates (xi0, xi1, zeta), see getValues
+   * @return Array of gradients [dN0/dxi0, dN0/dxi1, dN0/dzeta, dN1/dxi0, ...]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes>
+  getLocalGradients(Vector3 const &xi) const {
+    assert(greaterThanOrEqual(xi[0], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[1], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[2], -1.0, ParametricCoordTol));
+    assert(lessThanOrEqual(xi[2], 1.0, ParametricCoordTol));
+    const Real L0 = 1 - xi[0] - xi[1];
+    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
+    const Real L1 = xi[0];
+    const Real L2 = xi[1];
+    const Real down = (1 - xi[2]) / 2;
+    const Real up = (1 + xi[2]) / 2;
+    // clang-format off
+    return {-down, -down, -L0/2,  //node 0
+             down,     0, -L1/2,  //node 1
+                0,  down, -L2/2,  //node 2
+              -up,   -up,  L0/2,  //node 3
+               up,     0,  L1/2,  //node 4
+                0,    up,  L2/2}; //node 5
+    // clang-format on
+  }
+};
+
 } // namespace MeshField
 #endif
