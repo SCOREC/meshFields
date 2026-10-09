@@ -25,6 +25,7 @@ struct MeshInfo {
   int numHex;     // entDim = 3
   int numPrism;   // entDim = 3
   int numPyramid; // entDim = 3
+  int numWedge;   // entDim = 3
   int dim;
 };
 
