@@ -38,7 +38,7 @@ struct SetCoordFieldFunctor
   SetCoordFieldFunctor(Field& field, Coords& coords, int meshDim) : 
     field_(field), coords_(coords), meshDim_(meshDim) {}
   KOKKOS_INLINE_FUNCTION
-  void operator()(const int vtx) const {
+  void operator()(const size_t vtx) const {
     for (size_t d = 0; d < meshDim_; ++d)
       field_(vtx, 0, d, MeshField::Vertex) = coords_[vtx * meshDim_ + d];
   }
@@ -337,7 +337,7 @@ public:
     } else {
       const auto linear = CreateLagrangeElement(coordField.field);
       auto target = CreateLagrangeElement(field);
-      MeshField::interpolate(target, InterpolateElementFunctor<dim, decltype(linear)>(linear));
+      MeshField::setDofByInterpolation(target, InterpolateElementFunctor<dim, decltype(linear)>(linear));
     }
     return fieldWithCtrlr;
   }

@@ -651,10 +651,11 @@ DofHolderOwningEntities getDofHolderOwningEntities(FieldElement const &fes) {
 
 /**
  * @brief
- * evaluates a source function at of the field element dof holder location
+ * evaluates a source function at the target field element dof holder locations
+ * after this function runs, the target's field values will modified
  */
 template <typename FieldElement, typename Source>
-void interpolate(FieldElement &target, Source const &source) {
+void setDofByInterpolation(FieldElement &target, Source const &source) {
   constexpr size_t numNodes = decltype(target.shapeFn)::numNodes;
   constexpr size_t meshEntDim = FieldElement::MeshEntDim;
   constexpr size_t numComp = FieldElement::NumComponents;

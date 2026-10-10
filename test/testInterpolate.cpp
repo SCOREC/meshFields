@@ -68,7 +68,7 @@ bool testAnalytic(
   const auto f = KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
     return order == 1 ? linear<dim>(x) : quadratic<dim>(x);
   };
-  MeshField::interpolate(
+  MeshField::setDofByInterpolation(
       elm, KOKKOS_LAMBDA(const int ent, Kokkos::Array<Real, dim> const &xi) {
         const auto x = coordElm.getValue(ent, xi);
         Kokkos::Array<Real, numComp> val;
@@ -114,7 +114,7 @@ bool testOwnership(
   auto field = fieldWithCtrlr.field;
   const auto [shp, map] = getElement<dim, order>(mesh);
   MeshField::FieldElement elm(mesh.nelems(), field, shp, map);
-  MeshField::interpolate(
+  MeshField::setDofByInterpolation(
       elm, KOKKOS_LAMBDA(const int ent, Kokkos::Array<Real, dim> const &) {
         return Kokkos::Array<Real, 1>{static_cast<Real>(ent)};
       });
