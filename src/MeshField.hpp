@@ -31,30 +31,34 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh &mesh) {
   }
   return meshInfo;
 }
+// we use functors because cannot use auto return type with KOKKOS_LAMBDAS
+template <typename Field, typename Coords>
+struct SetCoordFieldFunctor
+{
+  SetCoordFieldFunctor(Field& field, Coords& coords, int meshDim) : 
+    field_(field), coords_(coords), meshDim_(meshDim) {}
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const size_t vtx) const {
+    for (size_t d = 0; d < meshDim_; ++d)
+      field_(vtx, 0, d, MeshField::Vertex) = coords_[vtx * meshDim_ + d];
+  }
+  Field field_;
+  Coords coords_;
+  int meshDim_;
+};
 
-template <typename ExecutionSpace, size_t dim,
-          template <typename...>
-          typename Controller = MeshField::KokkosController>
-decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
-    MeshField::MeshInfo()))
-createCoordinateField(const MeshField::MeshInfo &mesh_info,
-                      Omega_h::Reals coords) {
-  const auto meshDim = mesh_info.dim;
-  auto coordFieldWithCtrlr =
-      MeshField::CreateCoordinateField<ExecutionSpace, Controller, dim>(
-          mesh_info);
-  auto coordField = coordFieldWithCtrlr.field;
-  auto setCoordField = KOKKOS_LAMBDA(const int &i) {
-    coordField(i, 0, 0, MeshField::Vertex) = coords[i * meshDim];
-    coordField(i, 0, 1, MeshField::Vertex) = coords[i * meshDim + 1];
-    if constexpr (dim == 3) {
-      coordField(i, 0, 2, MeshField::Vertex) = coords[i * meshDim + 2];
-    }
-  };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh_info.numVtx},
-                          setCoordField, "setCoordField");
-  return coordFieldWithCtrlr;
-}
+template <int dim, typename Element>
+struct InterpolateElementFunctor
+{
+  InterpolateElementFunctor(const Element& element) : element_(element) {}
+
+  KOKKOS_INLINE_FUNCTION
+  auto operator()(const int ent, Kokkos::Array<MeshField::Real, dim> const& xi) const {
+        return element_.getValue(ent, xi);
+  }
+
+  const Element element_;
+};
 
 } // anonymous namespace
 
@@ -292,15 +296,14 @@ private:
   Omega_h::Mesh &mesh;
   const MeshField::MeshInfo meshInfo;
   using CoordField =
-      decltype(createCoordinateField<ExecutionSpace, dim, Controller>(
-          MeshField::MeshInfo(), Omega_h::Reals()));
+      decltype(MeshField::CreateCoordinateField<ExecutionSpace, Controller,
+                                                dim>(MeshField::MeshInfo()));
   CoordField coordField;
 
 public:
   OmegahMeshField(Omega_h::Mesh &mesh_in)
       : mesh(mesh_in), meshInfo(getMeshInfo(mesh)),
-        coordField(createCoordinateField<ExecutionSpace, dim, Controller>(
-            getMeshInfo(mesh_in), mesh_in.coords())) {
+        coordField(CreateLagrangeCoordinateField<1>()) {
     static_assert(dim == 1 || dim == 2 || dim == 3);
   }
 
@@ -311,7 +314,53 @@ public:
                                           order, dim, numComp>(meshInfo);
   }
 
+  /**
+   * @brief create a Lagrange coordinate field of the given order
+   *
+   * @details
+   * The linear field is set from the mesh coordinates.  Higher order fields
+   * are interpolated from the linear coordinate field, so the geometry is
+   * straight-sided until the non-vertex nodes are moved.
+   *
+   * @tparam order the order of the coordinate field
+   */
+  template <size_t order> auto CreateLagrangeCoordinateField() const {
+    auto fieldWithCtrlr = CreateLagrangeField<Real, order, dim>();
+    auto field = fieldWithCtrlr.field;
+    // note order 1 is called in the constructor to initialize the coordinate field
+    // it must be called before higher order coordinate fields are constructed
+    if constexpr (order == 1) {
+      const auto meshDim = meshInfo.dim;
+      const auto coords = mesh.coords();
+      MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx},
+                              SetCoordFieldFunctor(field, coords, meshDim), "setCoordField");
+    } else {
+      const auto linear = CreateLagrangeElement(coordField.field);
+      auto target = CreateLagrangeElement(field);
+      MeshField::setDofByInterpolation(target, InterpolateElementFunctor<dim, decltype(linear)>(linear));
+    }
+    return fieldWithCtrlr;
+  }
+
   auto getCoordField() { return coordField; }
+
+  /**
+   * @brief create a FieldElement over the mesh elements for a Lagrange field
+   *
+   */
+  template <typename Field>
+  auto CreateLagrangeElement(const Field &field) const {
+    static_assert(dim == 2 || dim == 3,
+                  "CreateLagrangeElement supports triangles and tetrahedra");
+    constexpr int order = Field::Order;
+    if constexpr (dim == 2) {
+      const auto [shp, map] = Omegah::getTriangleElement<order>(mesh);
+      return MeshField::FieldElement(meshInfo.numTri, field, shp, map);
+    } else {
+      const auto [shp, map] = Omegah::getTetrahedronElement<order>(mesh);
+      return MeshField::FieldElement(meshInfo.numTet, field, shp, map);
+    }
+  }
 
   // FIXME support 2d and 3d and fields with order>1
   template <typename Field> void writeVtk(Field &field) const {

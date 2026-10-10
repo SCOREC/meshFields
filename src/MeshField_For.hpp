@@ -7,7 +7,7 @@ namespace MeshField {
 template <typename ExecutionSpace, typename FunctorType, class IS, class IE>
 void parallel_for(ExecutionSpace, const std::initializer_list<IS> &start,
                   const std::initializer_list<IE> &end,
-                  FunctorType &vectorKernel, std::string tag) {
+                  const FunctorType &vectorKernel, std::string tag) {
   constexpr auto funcRank = MeshFieldUtil::function_traits<FunctorType>::arity;
   assert(funcRank >= 1);
   Kokkos::Array<int64_t, funcRank> a_start =
