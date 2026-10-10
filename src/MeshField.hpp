@@ -31,6 +31,34 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh &mesh) {
   }
   return meshInfo;
 }
+// we use functors because cannot use auto return type with KOKKOS_LAMBDAS
+template <typename Field, typename Coords>
+struct SetCoordFieldFunctor
+{
+  SetCoordFieldFunctor(Field& field, Coords& coords, int meshDim) : 
+    field_(field), coords_(coords), meshDim_(meshDim) {}
+  KOKKOS_INLINE_FUNCTION
+  void operator()(const int vtx) const {
+    for (size_t d = 0; d < meshDim_; ++d)
+      field_(vtx, 0, d, MeshField::Vertex) = coords_[vtx * meshDim_ + d];
+  }
+  Field field_;
+  Coords coords_;
+  int meshDim_;
+};
+
+template <int dim, typename Element>
+struct InterpolateElementFunctor
+{
+  InterpolateElementFunctor(const Element& element) : element_(element) {}
+
+  KOKKOS_INLINE_FUNCTION
+  auto operator()(const int ent, Kokkos::Array<MeshField::Real, dim> const& xi) const {
+        return element_.getValue(ent, xi);
+  }
+
+  const Element element_;
+};
 
 } // anonymous namespace
 
@@ -299,23 +327,17 @@ public:
   template <size_t order> auto CreateLagrangeCoordinateField() const {
     auto fieldWithCtrlr = CreateLagrangeField<Real, order, dim>();
     auto field = fieldWithCtrlr.field;
+    // note order 1 is called in the constructor to initialize the coordinate field
+    // it must be called before higher order coordinate fields are constructed
     if constexpr (order == 1) {
       const auto meshDim = meshInfo.dim;
       const auto coords = mesh.coords();
-      auto setCoordField = KOKKOS_LAMBDA(const int vtx) {
-        for (size_t d = 0; d < dim; ++d)
-          field(vtx, 0, d, MeshField::Vertex) = coords[vtx * meshDim + d];
-      };
       MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx},
-                              setCoordField, "setCoordField");
+                              SetCoordFieldFunctor(field, coords, meshDim), "setCoordField");
     } else {
       const auto linear = CreateLagrangeElement(coordField.field);
       auto target = CreateLagrangeElement(field);
-      MeshField::interpolate(
-          target,
-          KOKKOS_LAMBDA(const int ent, Kokkos::Array<Real, dim> const &xi) {
-            return linear.getValue(ent, xi);
-          });
+      MeshField::interpolate(target, InterpolateElementFunctor<dim, decltype(linear)>(linear));
     }
     return fieldWithCtrlr;
   }
