@@ -176,6 +176,66 @@ bool testCoordinateField(
   return pass;
 }
 
+// affine, so coordinate fields of any order reproduce it exactly
+template <size_t dim> struct Shear {
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, dim>
+  operator()(Kokkos::Array<Real, dim> x) const {
+    x[0] += 0.3 * x[1];
+    if constexpr (dim == 3) {
+      x[0] += 0.1 * x[2];
+      x[1] += 0.2 * x[2];
+    }
+    return x;
+  }
+};
+
+// quadratic, so quadratic coordinate fields reproduce it exactly
+template <size_t dim> struct Bend {
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, dim>
+  operator()(Kokkos::Array<Real, dim> x) const {
+    x[1] += 0.2 * x[0] * x[0];
+    return x;
+  }
+};
+
+/*
+ * Ensure that a coordinate field created with a map recovers the map applied
+ * to the linear coordinate field
+ */
+template <size_t dim, size_t order, typename CoordinateMap,
+          template <typename...> typename Controller>
+bool testCoordinateMap(
+    Omega_h::Mesh &mesh,
+    MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf,
+    CoordinateMap const &coordMap, std::string const &name) {
+  auto mappedWithCtrlr =
+      omf.template CreateLagrangeCoordinateField<order>(coordMap);
+  auto mapped = omf.CreateLagrangeElement(mappedWithCtrlr.field);
+  auto linear = omf.CreateLagrangeElement(omf.getCoordField().field);
+  const auto lc = offNodeCoords<dim>(mesh.nelems());
+  const auto xm = MeshField::evaluate(mapped, lc, numOffNodePts);
+  const auto xl = MeshField::evaluate(linear, lc, numOffNodePts);
+  MeshField::LO numErrors = 0;
+  Kokkos::parallel_reduce(
+      "checkCoordinateMap", xm.extent(0),
+      KOKKOS_LAMBDA(const int pt, MeshField::LO &lerrors) {
+        Kokkos::Array<Real, dim> x;
+        for (size_t d = 0; d < dim; ++d)
+          x[d] = xl(pt, d);
+        const auto expected = coordMap(x);
+        for (size_t d = 0; d < dim; ++d)
+          if (Kokkos::fabs(xm(pt, d) - expected[d]) > MeshField::Epsilon)
+            ++lerrors;
+      },
+      numErrors);
+  const bool pass = numErrors == 0;
+  std::cout << "testCoordinateMap(dim " << dim << ", order " << order << ", "
+            << name << "): "
+            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
+            << "\n";
+  return pass;
+}
+
 template <size_t dim, template <typename...> typename Controller>
 int runTests(Omega_h::Mesh &mesh) {
   MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
@@ -186,6 +246,9 @@ int runTests(Omega_h::Mesh &mesh) {
   failed += !testAnalytic<dim, 2, 1>(mesh, omf);
   failed += !testAnalytic<dim, 2, 3>(mesh, omf);
   failed += !testCoordinateField<dim>(mesh, omf);
+  failed += !testCoordinateMap<dim, 1>(mesh, omf, Shear<dim>(), "shear");
+  failed += !testCoordinateMap<dim, 2>(mesh, omf, Shear<dim>(), "shear");
+  failed += !testCoordinateMap<dim, 2>(mesh, omf, Bend<dim>(), "bend");
   return failed;
 }
 

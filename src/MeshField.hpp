@@ -32,32 +32,40 @@ MeshField::MeshInfo getMeshInfo(Omega_h::Mesh &mesh) {
   return meshInfo;
 }
 // we use functors because cannot use auto return type with KOKKOS_LAMBDAS
-template <typename Field, typename Coords>
+template <int dim, typename Field, typename Coords, typename CoordinateMap>
 struct SetCoordFieldFunctor
 {
-  SetCoordFieldFunctor(Field& field, Coords& coords, int meshDim) : 
-    field_(field), coords_(coords), meshDim_(meshDim) {}
+  SetCoordFieldFunctor(Field& field, Coords& coords, int meshDim,
+                       const CoordinateMap& map) :
+    field_(field), coords_(coords), meshDim_(meshDim), map_(map) {}
   KOKKOS_INLINE_FUNCTION
   void operator()(const size_t vtx) const {
+    Kokkos::Array<MeshField::Real, dim> x{};
     for (size_t d = 0; d < meshDim_; ++d)
-      field_(vtx, 0, d, MeshField::Vertex) = coords_[vtx * meshDim_ + d];
+      x[d] = coords_[vtx * meshDim_ + d];
+    const auto mapped = map_(x);
+    for (size_t d = 0; d < meshDim_; ++d)
+      field_(vtx, 0, d, MeshField::Vertex) = mapped[d];
   }
   Field field_;
   Coords coords_;
   int meshDim_;
+  const CoordinateMap map_;
 };
 
-template <int dim, typename Element>
+template <int dim, typename Element, typename CoordinateMap>
 struct InterpolateElementFunctor
 {
-  InterpolateElementFunctor(const Element& element) : element_(element) {}
+  InterpolateElementFunctor(const Element& element, const CoordinateMap& map)
+      : element_(element), map_(map) {}
 
   KOKKOS_INLINE_FUNCTION
   auto operator()(const int ent, Kokkos::Array<MeshField::Real, dim> const& xi) const {
-        return element_.getValue(ent, xi);
+        return map_(element_.getValue(ent, xi));
   }
 
   const Element element_;
+  const CoordinateMap map_;
 };
 
 } // anonymous namespace
@@ -288,6 +296,16 @@ template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
 
 } // namespace Omegah
 
+/**
+ * @brief the CoordinateMap that leaves the mesh geometry unchanged
+ */
+struct IdentityCoordinateMap {
+  template <typename Point>
+  KOKKOS_INLINE_FUNCTION Point operator()(Point const &x) const {
+    return x;
+  }
+};
+
 template <typename ExecutionSpace, size_t dim,
           template <typename...> typename Controller =
               MeshField::KokkosController>
@@ -318,13 +336,20 @@ public:
    * @brief create a Lagrange coordinate field of the given order
    *
    * @details
-   * The linear field is set from the mesh coordinates.  Higher order fields
-   * are interpolated from the linear coordinate field, so the geometry is
-   * straight-sided until the non-vertex nodes are moved.
+   * Each node is placed at map(x), where x is the node's position on the
+   * linear (straight-sided) mesh geometry.  The linear field is set from the
+   * mesh coordinates and higher order fields are interpolated from the
+   * linear coordinate field, so with the default IdentityCoordinateMap the
+   * geometry is the mesh's own and is straight-sided.  A nonlinear map gives
+   * curved geometry for orders above one.
    *
    * @tparam order the order of the coordinate field
+   * @param map a device callable taking and returning a
+   * Kokkos::Array<Real, dim> of physical coordinates
    */
-  template <size_t order> auto CreateLagrangeCoordinateField() const {
+  template <size_t order, typename CoordinateMap = IdentityCoordinateMap>
+  auto CreateLagrangeCoordinateField(
+      const CoordinateMap &map = CoordinateMap()) const {
     auto fieldWithCtrlr = CreateLagrangeField<Real, order, dim>();
     auto field = fieldWithCtrlr.field;
     // note order 1 is called in the constructor to initialize the coordinate field
@@ -332,12 +357,18 @@ public:
     if constexpr (order == 1) {
       const auto meshDim = meshInfo.dim;
       const auto coords = mesh.coords();
-      MeshField::parallel_for(ExecutionSpace(), {0}, {meshInfo.numVtx},
-                              SetCoordFieldFunctor(field, coords, meshDim), "setCoordField");
+      MeshField::parallel_for(
+          ExecutionSpace(), {0}, {meshInfo.numVtx},
+          SetCoordFieldFunctor<dim, decltype(field), decltype(coords),
+                               CoordinateMap>(field, coords, meshDim, map),
+          "setCoordField");
     } else {
       const auto linear = CreateLagrangeElement(coordField.field);
       auto target = CreateLagrangeElement(field);
-      MeshField::setDofByInterpolation(target, InterpolateElementFunctor<dim, decltype(linear)>(linear));
+      MeshField::setDofByInterpolation(
+          target,
+          InterpolateElementFunctor<dim, decltype(linear), CoordinateMap>(
+              linear, map));
     }
     return fieldWithCtrlr;
   }
