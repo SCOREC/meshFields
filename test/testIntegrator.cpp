@@ -26,6 +26,37 @@ struct MappedCoordinateElement {
   }
 };
 
+// count the integration points
+class CountIntegrator : public MeshField::Integrator {
+public:
+  CountIntegrator(int order) : MeshField::Integrator(order) {}
+  void atPoints(Kokkos::View<MeshField::Real **> p,
+                Kokkos::View<MeshField::Real *>,
+                Kokkos::View<MeshField::Real *>) override {
+    count += p.extent(0);
+  }
+  size_t count = 0;
+};
+
+/*
+ * Count the integration points of each order through an Element
+ */
+template <size_t dim, template <typename...> typename Controller,
+          typename Element, size_t order>
+void testCount(Omega_h::Mesh &mesh) {
+  MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
+  auto [storage, elm] = Element::make(omf, omf.getCoordField().field);
+  CountIntegrator integrator(order);
+  integrator.process(elm);
+  // one point per simplex for order 1, one per vertex for order 2
+  const size_t expected = mesh.nelems() * (order == 1 ? 1 : dim + 1);
+  if (!report("testCount(order " + std::to_string(order) + ", " +
+                  Element::name + ")",
+              integrator.count != expected))
+    std::cout << "  count " << integrator.count << " expected " << expected
+              << "\n";
+}
+
 /*
  * Integrate the measure of the mesh with a coordinate field of the given
  * order, created with coordMap, through an Element.
@@ -55,6 +86,8 @@ int main(int argc, char **argv) {
     t.forEachMesh([&]<size_t dim>(Omega_h::Mesh &mesh) {
       forEachType<CoordinateElement,
                   MappedCoordinateElement>([&]<typename Element>() {
+        testCount<dim, Controller, Element, 1>(mesh);
+        testCount<dim, Controller, Element, 2>(mesh);
         // the unit square and the 1x2x3 box
         const MeshField::Real volume = dim == 2 ? 1.0 : 6.0;
         testMeasure<dim, Controller, Element, 1>(mesh, volume, "linear");
