@@ -108,4 +108,20 @@ template <size_t dim> struct Bend {
   }
 };
 
+/**
+ * @brief CoordinateMap that bulges the top of the unit square into
+ * y = 1 + delta x(1 - x): y *= 1 + delta x(1 - x)
+ *
+ * The top edges are parabolas in their edge parameter, so quadratic
+ * coordinate fields reproduce the boundary, and the area, 1 + delta/6,
+ * exactly.
+ */
+template <size_t dim> struct Bulge {
+  MeshField::Real delta = 0.1;
+  KOKKOS_INLINE_FUNCTION Vec<dim> operator()(Vec<dim> x) const {
+    x[1] *= 1 + delta * x[0] * (1 - x[0]);
+    return x;
+  }
+};
+
 #endif

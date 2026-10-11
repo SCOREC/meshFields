@@ -1,10 +1,7 @@
-#include "MeshField.hpp"
-#include "MeshField_Integrate.hpp"
 #include "MeshField_MappedElement.hpp"
 #include "MeshField_TestFunctions.hpp"
-#include "Omega_h_build.hpp"
-#include <Kokkos_Core.hpp>
-#include <iostream>
+#include "MeshField_TestHarness.hpp"
+#include <string>
 #include <type_traits>
 
 // MappedElement tests on triangles and tetrahedra.  The meshes are sheared so
@@ -12,11 +9,12 @@
 //
 // 1. P1 and P2 fields on P1 geometry 
 // 2. finite differences on curved P2 geometry
-// 3. measure/Integrator with curved geometry 
+//
+// The measure through a MappedElement is tested in testIntegratorMeasure.
 
-using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-template <size_t dim>
-using OmegahMeshField = MeshField::OmegahMeshField<ExecutionSpace, dim>;
+template <size_t dim, template <typename...> typename Controller>
+using OmegahMeshField =
+    MeshField::OmegahMeshField<ExecutionSpace, dim, Controller>;
 
 constexpr int numPts = 3;
 
@@ -31,8 +29,10 @@ template <size_t dim> KOKKOS_INLINE_FUNCTION Vec<dim> point(int pt) {
 }
 
 // 1. a field on P1 geometry reproduces a polynomial of its order exactly
-template <size_t dim, size_t FieldOrder>
-bool testFieldOnP1Geometry(Omega_h::Mesh &mesh, OmegahMeshField<dim> &omf) {
+template <size_t dim, size_t FieldOrder,
+          template <typename...> typename Controller>
+bool testFieldOnP1Geometry(Omega_h::Mesh &mesh,
+                           OmegahMeshField<dim, Controller> &omf) {
   std::conditional_t<FieldOrder == 1, LinearFunction<dim>,
                      QuadraticFunction<dim>>
       func;
@@ -73,15 +73,16 @@ bool testFieldOnP1Geometry(Omega_h::Mesh &mesh, OmegahMeshField<dim> &omf) {
         }
       },
       errors);
-  std::cout << "testFieldOnP1Geometry(" << dim << "d, P" << FieldOrder
-            << " field): " << (errors ? "FAIL" : "pass") << "\n";
-  return errors == 0;
+  return report("testFieldOnP1Geometry(" + std::to_string(dim) + "d, P" +
+                    std::to_string(FieldOrder) + " field)",
+                errors);
 }
 
 // 2. physical gradients on curved geometry agree with central differences
-template <size_t dim, size_t FieldOrder>
+template <size_t dim, size_t FieldOrder,
+          template <typename...> typename Controller>
 bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
-                                        OmegahMeshField<dim> &omf) {
+                                        OmegahMeshField<dim, Controller> &omf) {
   QuadraticFunction<dim> func;
   // sheared, then curved by a smooth offset
   const MeshField::Real s = 0.03;
@@ -132,89 +133,22 @@ bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
         }
       },
       errors);
-  std::cout << "testCurvedGradientFiniteDifference(" << dim << "d, P"
-            << FieldOrder << " field): " << (errors ? "FAIL" : "pass") << "\n";
-  return errors == 0;
-}
-
-// compute the measure (3D volume, 2D area, 1D length)
-class MeasureIntegrator : public MeshField::Integrator {
-public:
-  MeasureIntegrator() : MeshField::Integrator(2) {}
-  void atPoints(Kokkos::View<MeshField::Real **>,
-                Kokkos::View<MeshField::Real *> w,
-                Kokkos::View<MeshField::Real *> dV) override {
-    MeshField::Real sum = 0;
-    Kokkos::parallel_reduce(
-        "integrateMeasure", w.extent(0),
-        KOKKOS_LAMBDA(const int i, MeshField::Real &lsum) {
-          lsum += w(i) * dV(i);
-        },
-        sum);
-    measure += sum;
-  }
-  MeshField::Real measure = 0;
-};
-
-// 3. measure of P2 geometry through an Integrator over a MappedElement
-template <size_t dim, typename CoordinateMap>
-bool testMeasure(OmegahMeshField<dim> &omf, CoordinateMap const &coordMap,
-                 MeshField::Real expected) {
-  auto cfWc = omf.template CreateLagrangeCoordinateField<2>(coordMap);
-  auto fieldWc = omf.template CreateLagrangeField<MeshField::Real, 1, 1>();
-  auto elm = omf.CreateLagrangeElement(fieldWc.field,
-                                       omf.CreateLagrangeElement(cfWc.field));
-  MeasureIntegrator integrator;
-  integrator.process(elm);
-  const bool pass =
-      std::abs(integrator.measure - expected) <= MeshField::Epsilon;
-  std::cout << "testMeasure(" << dim << "d): " << integrator.measure
-            << " expected " << expected << (pass ? " pass" : " FAIL") << "\n";
-  return pass;
-}
-
-template <size_t dim> int runTests(Omega_h::Mesh &mesh) {
-  OmegahMeshField<dim> omf(mesh);
-  int failed = 0;
-  failed += !testFieldOnP1Geometry<dim, 1>(mesh, omf);
-  failed += !testFieldOnP1Geometry<dim, 2>(mesh, omf);
-  failed += !testCurvedGradientFiniteDifference<dim, 1>(mesh, omf);
-  failed += !testCurvedGradientFiniteDifference<dim, 2>(mesh, omf);
-  if constexpr (dim == 2) {
-    // the unit square with its top bent into y = 1 + delta * x(1 - x); the
-    // top edges are parabolas, so P2 reproduces the boundary and the area
-    const MeshField::Real delta = 0.1;
-    failed += !testMeasure<dim>(
-        omf,
-        KOKKOS_LAMBDA(Vec<dim> x) {
-          x[1] *= 1 + delta * x[0] * (1 - x[0]);
-          return x;
-        },
-        1.0 + delta / 6.0);
-  } else {
-    failed += !testMeasure<dim>(omf, Shear<dim>(), 6.0); // 1x2x3 box
-  }
-  return failed;
+  return report("testCurvedGradientFiniteDifference(" + std::to_string(dim) +
+                    "d, P" + std::to_string(FieldOrder) + " field)",
+                errors);
 }
 
 int main(int argc, char **argv) {
-  Kokkos::initialize(argc, argv);
-  int failed = 0;
-  {
-    auto lib = Omega_h::Library(&argc, &argv);
-    MeshField::Debug = true;
-    auto tris = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0,
-                                   3, 3, 0);
-    auto tets = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 2.0, 3.0,
-                                   2, 2, 2);
-    failed += runTests<2>(tris);
-    failed += runTests<3>(tets);
-  }
-  Kokkos::finalize();
-  if (failed) {
-    std::cerr << failed << " test(s) failed\n";
-    return 1;
-  }
-  std::cout << "all tests passed\n";
-  return 0;
+  TestRunner t(argc, argv);
+  MeshField::Debug = true;
+  t.forEachController([&]<template <typename...> typename Controller>() {
+    t.forEachMesh([&]<size_t dim>(Omega_h::Mesh &mesh) {
+      OmegahMeshField<dim, Controller> omf(mesh);
+      testFieldOnP1Geometry<dim, 1, Controller>(mesh, omf);
+      testFieldOnP1Geometry<dim, 2, Controller>(mesh, omf);
+      testCurvedGradientFiniteDifference<dim, 1, Controller>(mesh, omf);
+      testCurvedGradientFiniteDifference<dim, 2, Controller>(mesh, omf);
+    });
+  });
+  return t.exitCode();
 }

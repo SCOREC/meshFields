@@ -1,15 +1,7 @@
-#include "KokkosController.hpp"
-#include "MeshField.hpp"
 #include "MeshField_TestFunctions.hpp"
-#ifdef MESHFIELDS_ENABLE_CABANA
-#include "CabanaController.hpp"
-#endif
-#include "Omega_h_build.hpp"
-#include <Kokkos_Core.hpp>
-#include <iostream>
+#include "MeshField_TestHarness.hpp"
 #include <string>
 
-using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
 
 template <size_t dim, size_t order> auto getElement(Omega_h::Mesh &mesh) {
@@ -75,12 +67,10 @@ bool testAnalytic(
             ++lerrors;
       },
       numErrors);
-  const bool pass = numErrors == 0;
-  std::cout << "testAnalytic(dim " << dim << ", order " << order << ", "
-            << numComp << " components): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
+  return report("testAnalytic(dim " + std::to_string(dim) + ", order " +
+                    std::to_string(order) + ", " + std::to_string(numComp) +
+                    " components)",
+                numErrors);
 }
 
 /*
@@ -121,11 +111,9 @@ bool testOwnership(
         lerrorsDim);
     numErrors += lerrorsDim;
   }
-  const bool pass = numErrors == 0;
-  std::cout << "testOwnership(dim " << dim << ", order " << order << "): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
+  return report("testOwnership(dim " + std::to_string(dim) + ", order " +
+                    std::to_string(order) + ")",
+                numErrors);
 }
 
 /*
@@ -151,11 +139,8 @@ bool testCoordinateField(
             ++lerrors;
       },
       numErrors);
-  const bool pass = numErrors == 0;
-  std::cout << "testCoordinateField(dim " << dim << "): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
+  return report("testCoordinateField(dim " + std::to_string(dim) + ")",
+                numErrors);
 }
 
 /*
@@ -188,51 +173,26 @@ bool testCoordinateMap(
             ++lerrors;
       },
       numErrors);
-  const bool pass = numErrors == 0;
-  std::cout << "testCoordinateMap(dim " << dim << ", order " << order << ", "
-            << name << "): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
-}
-
-template <size_t dim, template <typename...> typename Controller>
-int runTests(Omega_h::Mesh &mesh) {
-  MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
-  int failed = 0;
-  failed += !testOwnership<dim, 1>(mesh, omf);
-  failed += !testOwnership<dim, 2>(mesh, omf);
-  failed += !testAnalytic<dim, 1, 1>(mesh, omf);
-  failed += !testAnalytic<dim, 2, 1>(mesh, omf);
-  failed += !testAnalytic<dim, 2, 3>(mesh, omf);
-  failed += !testCoordinateField<dim>(mesh, omf);
-  failed += !testCoordinateMap<dim, 1>(mesh, omf, Shear<dim>(), "shear");
-  failed += !testCoordinateMap<dim, 2>(mesh, omf, Shear<dim>(), "shear");
-  failed += !testCoordinateMap<dim, 2>(mesh, omf, Bend<dim>(), "bend");
-  return failed;
+  return report("testCoordinateMap(dim " + std::to_string(dim) + ", order " +
+                    std::to_string(order) + ", " + name + ")",
+                numErrors);
 }
 
 int main(int argc, char **argv) {
-  Kokkos::initialize(argc, argv);
-  int failed = 0;
-  {
-    auto lib = Omega_h::Library(&argc, &argv);
-    auto tris = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0,
-                                   3, 3, 0);
-    auto tets = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 2.0, 3.0,
-                                   2, 2, 2);
-    failed += runTests<2, MeshField::KokkosController>(tris);
-    failed += runTests<3, MeshField::KokkosController>(tets);
-#ifdef MESHFIELDS_ENABLE_CABANA
-    failed += runTests<2, MeshField::CabanaController>(tris);
-    failed += runTests<3, MeshField::CabanaController>(tets);
-#endif
-  }
-  Kokkos::finalize();
-  if (failed) {
-    std::cerr << failed << " test(s) failed\n";
-    return 1;
-  }
-  std::cout << "all tests passed\n";
-  return 0;
+  TestRunner t(argc, argv);
+  t.forEachController([&]<template <typename...> typename Controller>() {
+    t.forEachMesh([&]<size_t dim>(Omega_h::Mesh &mesh) {
+      MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
+      testOwnership<dim, 1>(mesh, omf);
+      testOwnership<dim, 2>(mesh, omf);
+      testAnalytic<dim, 1, 1>(mesh, omf);
+      testAnalytic<dim, 2, 1>(mesh, omf);
+      testAnalytic<dim, 2, 3>(mesh, omf);
+      testCoordinateField<dim>(mesh, omf);
+      testCoordinateMap<dim, 1>(mesh, omf, Shear<dim>(), "shear");
+      testCoordinateMap<dim, 2>(mesh, omf, Shear<dim>(), "shear");
+      testCoordinateMap<dim, 2>(mesh, omf, Bend<dim>(), "bend");
+    });
+  });
+  return t.exitCode();
 }
