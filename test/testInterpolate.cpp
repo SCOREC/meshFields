@@ -1,5 +1,6 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
+#include "MeshField_TestFunctions.hpp"
 #ifdef MESHFIELDS_ENABLE_CABANA
 #include "CabanaController.hpp"
 #endif
@@ -17,22 +18,6 @@ template <size_t dim, size_t order> auto getElement(Omega_h::Mesh &mesh) {
   } else {
     return MeshField::Omegah::getTriangleElement<order>(mesh);
   }
-}
-
-template <size_t dim>
-KOKKOS_INLINE_FUNCTION Real quadratic(Kokkos::Array<Real, dim> const &x) {
-  Real f = 1;
-  for (size_t d = 0; d < dim; ++d)
-    f += (d + 1) * x[d] + x[d] * x[d];
-  return f;
-}
-
-template <size_t dim>
-KOKKOS_INLINE_FUNCTION Real linear(Kokkos::Array<Real, dim> const &x) {
-  Real f = 1;
-  for (size_t d = 0; d < dim; ++d)
-    f += (d + 1) * x[d];
-  return f;
 }
 
 // Create a list of two parametric coordinates for evaluation
@@ -66,7 +51,7 @@ bool testAnalytic(
   MeshField::FieldElement elm(mesh.nelems(), fieldWithCtrlr.field, shp, map);
 
   const auto f = KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
-    return order == 1 ? linear<dim>(x) : quadratic<dim>(x);
+    return order == 1 ? LinearFunction<dim>()(x) : QuadraticFunction<dim>()(x);
   };
   MeshField::setDofByInterpolation(
       elm, KOKKOS_LAMBDA(const int ent, Kokkos::Array<Real, dim> const &xi) {
@@ -175,28 +160,6 @@ bool testCoordinateField(
             << "\n";
   return pass;
 }
-
-// affine, so coordinate fields of any order reproduce it exactly
-template <size_t dim> struct Shear {
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, dim>
-  operator()(Kokkos::Array<Real, dim> x) const {
-    x[0] += 0.3 * x[1];
-    if constexpr (dim == 3) {
-      x[0] += 0.1 * x[2];
-      x[1] += 0.2 * x[2];
-    }
-    return x;
-  }
-};
-
-// quadratic, so quadratic coordinate fields reproduce it exactly
-template <size_t dim> struct Bend {
-  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, dim>
-  operator()(Kokkos::Array<Real, dim> x) const {
-    x[1] += 0.2 * x[0] * x[0];
-    return x;
-  }
-};
 
 /*
  * Ensure that a coordinate field created with a map recovers the map applied
