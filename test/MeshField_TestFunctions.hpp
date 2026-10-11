@@ -13,6 +13,7 @@ template <size_t dim> using Vec = Kokkos::Array<MeshField::Real, dim>;
 
 /** @brief f(x) = 1 + sum_d (d+1) x_d */
 template <size_t dim> struct LinearFunction {
+  static constexpr size_t degree = 1;
   KOKKOS_INLINE_FUNCTION MeshField::Real operator()(Vec<dim> const &x) const {
     MeshField::Real f = 1;
     for (size_t d = 0; d < dim; ++d)
@@ -34,6 +35,7 @@ template <size_t dim> struct LinearFunction {
  */
 template <size_t dim> struct QuadraticFunction {
   static_assert(dim >= 2, "the cross term needs at least two dimensions");
+  static constexpr size_t degree = 2;
   KOKKOS_INLINE_FUNCTION MeshField::Real operator()(Vec<dim> const &x) const {
     MeshField::Real f = 1 + x[0] * x[1];
     for (size_t d = 0; d < dim; ++d)

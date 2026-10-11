@@ -27,53 +27,6 @@ template <size_t dim> Kokkos::View<Real **> offNodeCoords(size_t numElems) {
 }
 
 /*
- * Interpolate an analytic function, with numComp components
- */
-template <size_t dim, size_t order, size_t numComp,
-          template <typename...> typename Controller>
-bool testAnalytic(
-    Omega_h::Mesh &mesh,
-    MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
-  const auto [coordShp, coordMap] = getElement<dim, 1>(mesh);
-  MeshField::FieldElement coordElm(mesh.nelems(), omf.getCoordField().field,
-                                   coordShp, coordMap);
-  auto fieldWithCtrlr =
-      omf.template CreateLagrangeField<Real, order, numComp>();
-  const auto [shp, map] = getElement<dim, order>(mesh);
-  MeshField::FieldElement elm(mesh.nelems(), fieldWithCtrlr.field, shp, map);
-
-  const auto f = KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
-    return order == 1 ? LinearFunction<dim>()(x) : QuadraticFunction<dim>()(x);
-  };
-  MeshField::MappedElement mappedElm(elm, coordElm);
-  MeshField::setDofByInterpolation(
-      mappedElm, KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
-        return valueScaledByComponent<numComp>(f, x);
-      });
-
-  const auto lc = offNodeCoords<dim>(mesh.nelems());
-  const auto values = MeshField::evaluate(elm, lc, numOffNodePts);
-  const auto x = MeshField::evaluate(coordElm, lc, numOffNodePts);
-  MeshField::LO numErrors = 0;
-  Kokkos::parallel_reduce(
-      "checkAnalytic", values.extent(0),
-      KOKKOS_LAMBDA(const int pt, MeshField::LO &lerrors) {
-        Kokkos::Array<Real, dim> xp;
-        for (size_t d = 0; d < dim; ++d)
-          xp[d] = x(pt, d);
-        const auto expected = valueScaledByComponent<numComp>(f, xp);
-        for (size_t c = 0; c < numComp; ++c)
-          if (Kokkos::fabs(values(pt, c) - expected[c]) > MeshField::Epsilon)
-            ++lerrors;
-      },
-      numErrors);
-  return report("testAnalytic(dim " + std::to_string(dim) + ", order " +
-                    std::to_string(order) + ", " + std::to_string(numComp) +
-                    " components)",
-                numErrors);
-}
-
-/*
  * Write source(ent, xi) = ent. If ownership is working, we should have the
  * neighboring element with the smallest id listed on every dof holder thats
  * is on a shared entity
@@ -185,9 +138,6 @@ int main(int argc, char **argv) {
       MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
       testOwnership<dim, 1>(mesh, omf);
       testOwnership<dim, 2>(mesh, omf);
-      testAnalytic<dim, 1, 1>(mesh, omf);
-      testAnalytic<dim, 2, 1>(mesh, omf);
-      testAnalytic<dim, 2, 3>(mesh, omf);
       testCoordinateField<dim>(mesh, omf);
       testCoordinateMap<dim, 1>(mesh, omf, Shear<dim>(), "shear");
       testCoordinateMap<dim, 2>(mesh, omf, Shear<dim>(), "shear");

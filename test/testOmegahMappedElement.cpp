@@ -2,15 +2,13 @@
 #include "MeshField_TestFunctions.hpp"
 #include "MeshField_TestHarness.hpp"
 #include <string>
-#include <type_traits>
 
-// MappedElement tests on triangles and tetrahedra.  The meshes are sheared so
-// the Jacobians are full matrices.
+// MappedElement physical gradients on curved P2 geometry, against central
+// differences, on triangles and tetrahedra.  The meshes are sheared so the
+// Jacobians are full matrices.
 //
-// 1. P1 and P2 fields on P1 geometry 
-// 2. finite differences on curved P2 geometry
-//
-// The measure through a MappedElement is tested in testIntegratorMeasure.
+// Values and gradients on affine geometry are tested in testReproduction, and
+// the measure in testIntegratorMeasure.
 
 template <size_t dim, template <typename...> typename Controller>
 using OmegahMeshField =
@@ -28,57 +26,7 @@ template <size_t dim> KOKKOS_INLINE_FUNCTION Vec<dim> point(int pt) {
   return xi;
 }
 
-// 1. a field on P1 geometry reproduces a polynomial of its order exactly
-template <size_t dim, size_t FieldOrder,
-          template <typename...> typename Controller>
-bool testFieldOnP1Geometry(Omega_h::Mesh &mesh,
-                           OmegahMeshField<dim, Controller> &omf) {
-  std::conditional_t<FieldOrder == 1, LinearFunction<dim>,
-                     QuadraticFunction<dim>>
-      func;
-  auto cf1Wc = omf.template CreateLagrangeCoordinateField<1>(Shear<dim>());
-  constexpr size_t numComp = 2;
-  auto fieldWc =
-      omf.template CreateLagrangeField<MeshField::Real, FieldOrder, numComp>();
-  auto geomElm = omf.CreateLagrangeElement(cf1Wc.field);
-  auto elm = omf.CreateLagrangeElement(fieldWc.field, geomElm);
-  MeshField::setDofByInterpolation(elm, KOKKOS_LAMBDA(Vec<dim> const &x) {
-    return valueScaledByComponent<numComp>(func, x);
-  });
-  auto coordElm = omf.CreateLagrangeElement(cf1Wc.field, geomElm);
-
-  MeshField::LO errors = 0;
-  Kokkos::parallel_reduce(
-      "checkFieldOnP1Geometry", mesh.nelems(),
-      KOKKOS_LAMBDA(const int ent, MeshField::LO &lerr) {
-        const auto c = elm.coefficients(ent);
-        const auto geo = elm.geometry(ent);
-        const auto cx = coordElm.coefficients(ent);
-        for (int pt = 0; pt < numPts; ++pt) {
-          const auto xi = point<dim>(pt);
-          const auto pos = coordElm.valueFromCoefficients(cx, xi);
-          Vec<dim> x;
-          for (size_t d = 0; d < dim; ++d)
-            x[d] = pos[d];
-          const auto v = elm.valueFromCoefficients(c, xi);
-          const auto g = elm.gradientFromCoefficients(c, geo, xi);
-          const auto expected = valueScaledByComponent<numComp>(func, x);
-          const auto expectedGrad = gradScaledByComponent<numComp>(func, x);
-          for (size_t i = 0; i < numComp; ++i)
-            if (!(Kokkos::fabs(v[i] - expected[i]) <= MeshField::Epsilon))
-              lerr++;
-          for (size_t i = 0; i < dim * numComp; ++i)
-            if (!(Kokkos::fabs(g[i] - expectedGrad[i]) <= MeshField::Epsilon))
-              lerr++;
-        }
-      },
-      errors);
-  return report("testFieldOnP1Geometry(" + std::to_string(dim) + "d, P" +
-                    std::to_string(FieldOrder) + " field)",
-                errors);
-}
-
-// 2. physical gradients on curved geometry agree with central differences
+// physical gradients on curved geometry agree with central differences
 template <size_t dim, size_t FieldOrder,
           template <typename...> typename Controller>
 bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
@@ -144,8 +92,6 @@ int main(int argc, char **argv) {
   t.forEachController([&]<template <typename...> typename Controller>() {
     t.forEachMesh([&]<size_t dim>(Omega_h::Mesh &mesh) {
       OmegahMeshField<dim, Controller> omf(mesh);
-      testFieldOnP1Geometry<dim, 1, Controller>(mesh, omf);
-      testFieldOnP1Geometry<dim, 2, Controller>(mesh, omf);
       testCurvedGradientFiniteDifference<dim, 1, Controller>(mesh, omf);
       testCurvedGradientFiniteDifference<dim, 2, Controller>(mesh, omf);
     });
