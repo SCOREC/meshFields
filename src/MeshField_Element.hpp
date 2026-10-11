@@ -173,16 +173,121 @@ struct FieldElement {
                     FieldAccessor::numComp>;
   static const size_t NumComponents = FieldAccessor::numComp;
 
+  /** @brief every dof of one element, indexed [node * NumComponents + comp] */
+  using DofArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    ShapeType::numNodes * NumComponents>;
+
+  /** @brief parametric gradients of every component at one point, indexed
+   *  [direction * NumComponents + comp] */
+  using LocalGradArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    MeshEntDim * NumComponents>;
+
+  /**
+   * @brief
+   * gather element's dofs into an array
+   *
+   *
+   * @param ent the mesh entity index
+   * @return the element's dofs, indexed [node * NumComponents + component]
+   */
+  KOKKOS_INLINE_FUNCTION DofArray gatherDofs(int ent) const {
+    assert(ent >= 0);
+    assert(static_cast<size_t>(ent) < numMeshEnts);
+    DofArray dofs;
+    for (auto topo : elm2dof.getTopology()) { // element topology
+      for (size_t ni = 0; ni < ShapeType::numNodes; ++ni) {
+        for (size_t ci = 0; ci < NumComponents; ++ci) {
+          const auto map = elm2dof(ni, ci, ent, topo);
+          dofs[ni * NumComponents + ci] =
+              field(map.entity, map.node, map.component, map.topo);
+        }
+      }
+    }
+    return dofs;
+  }
+
+  /**
+   * @brief
+   * the coefficients of one element on its reference basis
+   *
+   * @details
+   * The coefficients depend only on the element, not on the evaluation point,
+   * so compute them once per element and pass them to valueFromCoefficients
+   * and localGradientFromCoefficients for each point.  For a FieldElement the
+   * stored dofs are the coefficients; elements whose dofs must be transformed
+   * to the reference element (e.g., the Bell element) override this.
+   *
+   * @param ent the mesh entity index
+   * @return coefficients, indexed [node * NumComponents + component]
+   */
+  KOKKOS_INLINE_FUNCTION DofArray coefficients(int ent) const {
+    return gatherDofs(ent);
+  }
+
+  /**
+   * @brief
+   * contract an element's coefficients with the basis at a parametric
+   * coordinate
+   *
+   * @details
+   * heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
+   *
+   * @param c coefficients from coefficients(ent)
+   * @param localCoord the parametric coordinate
+   * @return the field value
+   */
+  template <typename Coefficients>
+  KOKKOS_INLINE_FUNCTION ValArray valueFromCoefficients(
+      Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
+    const auto shapeValues = shapeFn.getValues(localCoord);
+    ValArray v;
+    for (size_t ci = 0; ci < NumComponents; ++ci)
+      v[ci] = 0;
+    for (size_t ni = 0; ni < ShapeType::numNodes; ++ni)
+      for (size_t ci = 0; ci < NumComponents; ++ci)
+        v[ci] += c[ni * NumComponents + ci] * shapeValues[ni];
+    return v;
+  }
+
+  /**
+   * @brief
+   * contract an element's coefficients with the basis gradients at a
+   * parametric coordinate
+   *
+   * @details
+   * The result is the gradient with respect to the parametric coordinates,
+   * not the physical coordinates; mapping it to the physical element requires
+   * the geometry's Jacobian.
+   *
+   * @param c coefficients from coefficients(ent)
+   * @param localCoord the parametric coordinate
+   * @return parametric gradients, indexed [direction * NumComponents + component]
+   */
+  template <typename Coefficients>
+  KOKKOS_INLINE_FUNCTION LocalGradArray localGradientFromCoefficients(
+      Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
+    const auto shapeGrads = shapeFn.getLocalGradients(localCoord);
+    LocalGradArray g;
+    for (size_t i = 0; i < MeshEntDim * NumComponents; ++i)
+      g[i] = 0;
+    for (size_t ni = 0; ni < ShapeType::numNodes; ++ni)
+      for (size_t d = 0; d < MeshEntDim; ++d)
+        for (size_t ci = 0; ci < NumComponents; ++ci)
+          g[d * NumComponents + ci] +=
+              c[ni * NumComponents + ci] * shapeGrads[ni * MeshEntDim + d];
+    return g;
+  }
+
   /**
    * @brief
    * evaluate the field in the specified element at the specified
    * parametric/local/area coordinate
    *
-   * @todo add expression in documetation for summation of shape function *
-   * field values
-   *
    * @details
-   * heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
+   * Prefer coefficients and valueFromCoefficients when evaluating an element
+   * at more than one point.
    *
    * @param ent the mesh entity index
    * @param localCoord the parametric coordinate
@@ -190,23 +295,7 @@ struct FieldElement {
    */
   KOKKOS_INLINE_FUNCTION ValArray
   getValue(int ent, Kokkos::Array<Real, MeshEntDim> localCoord) const {
-    assert(ent >= 0);
-    assert(static_cast<size_t>(ent) < numMeshEnts);
-    ValArray c;
-    const auto shapeValues = shapeFn.getValues(localCoord);
-    for (size_t ci = 0; ci < NumComponents; ++ci)
-      c[ci] = 0;
-    for (auto topo : elm2dof.getTopology()) { // element topology
-      for (size_t ni = 0; ni < shapeFn.numNodes; ++ni) {
-        for (size_t ci = 0; ci < NumComponents; ++ci) {
-          auto map = elm2dof(ni, ci, ent, topo);
-          const auto fval =
-              field(map.entity, map.node, map.component, map.topo);
-          c[ci] += fval * shapeValues[ni];
-        }
-      }
-    }
-    return c;
+    return valueFromCoefficients(coefficients(ent), localCoord);
   }
 
   using NodeArray =
@@ -516,11 +605,12 @@ evaluate(FieldElement &fes, Kokkos::View<Real **> localCoords,
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
         Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
+        const auto c = fes.coefficients(ent);
         // TODO use nested parallel for?
         for (auto pt = offsets(ent); pt < offsets(ent + 1); pt++) {
           for (size_t i = 0; i < localCoords.extent(1); i++) // better way?
             lc[i] = localCoords(pt, i);
-          const auto val = fes.getValue(ent, lc);
+          const auto val = fes.valueFromCoefficients(c, lc);
           for (size_t i = 0; i < numComponents; i++)
             res(pt, i) = val[i];
         }
