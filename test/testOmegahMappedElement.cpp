@@ -30,21 +30,6 @@ template <size_t dim> KOKKOS_INLINE_FUNCTION Vec<dim> point(int pt) {
   return xi;
 }
 
-// set component c of the field element elm to (c+1)*func at its nodes, with
-// the node positions from the coordinate element coordElm
-template <size_t dim, typename Func, typename FieldElem, typename CoordElem>
-void interpolate(FieldElem &elm, CoordElem const &coordElm, Func const &func) {
-  constexpr size_t numComp = FieldElem::NumComponents;
-  MeshField::setDofByInterpolation(
-      elm, KOKKOS_LAMBDA(const int ent, Vec<dim> const &xi) {
-        const auto f = func(coordElm.getValue(ent, xi));
-        Kokkos::Array<MeshField::Real, numComp> val;
-        for (size_t c = 0; c < numComp; ++c)
-          val[c] = (c + 1) * f;
-        return val;
-      });
-}
-
 // 1. a field on P1 geometry reproduces a polynomial of its order exactly
 template <size_t dim, size_t FieldOrder>
 bool testFieldOnP1Geometry(Omega_h::Mesh &mesh, OmegahMeshField<dim> &omf) {
@@ -56,10 +41,10 @@ bool testFieldOnP1Geometry(Omega_h::Mesh &mesh, OmegahMeshField<dim> &omf) {
   auto fieldWc =
       omf.template CreateLagrangeField<MeshField::Real, FieldOrder, numComp>();
   auto geomElm = omf.CreateLagrangeElement(cf1Wc.field);
-  auto fieldElm = omf.CreateLagrangeElement(fieldWc.field);
-  interpolate<dim>(fieldElm, geomElm, func);
-
   auto elm = omf.CreateLagrangeElement(fieldWc.field, geomElm);
+  MeshField::setDofByInterpolation(elm, KOKKOS_LAMBDA(Vec<dim> const &x) {
+    return valueScaledByComponent<numComp>(func, x);
+  });
   auto coordElm = omf.CreateLagrangeElement(cf1Wc.field, geomElm);
 
   MeshField::LO errors = 0;
@@ -77,16 +62,14 @@ bool testFieldOnP1Geometry(Omega_h::Mesh &mesh, OmegahMeshField<dim> &omf) {
             x[d] = pos[d];
           const auto v = elm.valueFromCoefficients(c, xi);
           const auto g = elm.gradientFromCoefficients(c, geo, xi);
-          const auto gf = func.grad(x);
-          for (size_t ci = 0; ci < numComp; ++ci) {
-            if (!(Kokkos::fabs(v[ci] - (ci + 1) * func(x)) <=
-                  MeshField::Epsilon))
+          const auto expected = valueScaledByComponent<numComp>(func, x);
+          const auto expectedGrad = gradScaledByComponent<numComp>(func, x);
+          for (size_t i = 0; i < numComp; ++i)
+            if (!(Kokkos::fabs(v[i] - expected[i]) <= MeshField::Epsilon))
               lerr++;
-            for (size_t d = 0; d < dim; ++d)
-              if (!(Kokkos::fabs(g[d * numComp + ci] - (ci + 1) * gf[d]) <=
-                    MeshField::Epsilon))
-                lerr++;
-          }
+          for (size_t i = 0; i < dim * numComp; ++i)
+            if (!(Kokkos::fabs(g[i] - expectedGrad[i]) <= MeshField::Epsilon))
+              lerr++;
         }
       },
       errors);
@@ -113,10 +96,10 @@ bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
   auto fieldWc =
       omf.template CreateLagrangeField<MeshField::Real, FieldOrder, 1>();
   auto geomElm = omf.CreateLagrangeElement(cfWc.field);
-  auto fieldElm = omf.CreateLagrangeElement(fieldWc.field);
-  interpolate<dim>(fieldElm, geomElm, func);
-
   auto elm = omf.CreateLagrangeElement(fieldWc.field, geomElm);
+  MeshField::setDofByInterpolation(elm, KOKKOS_LAMBDA(Vec<dim> const &x) {
+    return valueScaledByComponent<1>(func, x);
+  });
   auto coordElm = omf.CreateLagrangeElement(cfWc.field, geomElm);
 
   const MeshField::Real h = 1e-5;

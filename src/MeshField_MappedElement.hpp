@@ -227,6 +227,43 @@ struct MappedElement {
   }
 };
 
+/**
+ * @brief
+ * evaluates a source function at the dof holder locations of the target's
+ * field, in reference space
+ */
+template <typename FieldElem, typename GeomElem, typename DofTransformation,
+          typename MapType, typename Source>
+  requires std::is_invocable_v<Source const &, int,
+                               Kokkos::Array<Real, FieldElem::MeshEntDim> const &>
+void setDofByInterpolation(
+    MappedElement<FieldElem, GeomElem, DofTransformation, MapType> &target,
+    Source const &source) {
+  setDofByInterpolation(target.field, source);
+}
+
+/**
+ * @brief
+ * evaluates a function at the dof holder locations of the target's field, in
+ * physical space
+ *
+ */
+template <typename FieldElem, typename GeomElem, typename DofTransformation,
+          typename MapType, typename Function>
+  requires std::is_invocable_v<Function const &,
+                               Kokkos::Array<Real, GeomElem::NumComponents> const &>
+void setDofByInterpolation(
+    MappedElement<FieldElem, GeomElem, DofTransformation, MapType> &target,
+    Function const &f) {
+  const auto geom = target.geom;
+  setDofByInterpolation(
+      target.field,
+      KOKKOS_LAMBDA(const int ent,
+                    Kokkos::Array<Real, FieldElem::MeshEntDim> const &xi) {
+        return f(geom.getValue(ent, xi));
+      });
+}
+
 } // namespace MeshField
 
 #endif

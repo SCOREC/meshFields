@@ -809,6 +809,9 @@ DofHolderOwningEntities getDofHolderOwningEntities(FieldElement const &fes) {
  * @brief
  * evaluates a source function at the target field element dof holder locations
  * after this function runs, the target's field values will modified
+ *
+ * @details
+ * Reference space interpolation. To interpolate in physical space see MappedElement overload.
  */
 template <typename FieldElement, typename Source>
 void setDofByInterpolation(FieldElement &target, Source const &source) {
