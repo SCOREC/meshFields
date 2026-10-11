@@ -4,14 +4,6 @@
 
 using MeshField::Real;
 
-template <size_t dim, size_t order> auto getElement(Omega_h::Mesh &mesh) {
-  if constexpr (dim == 3) {
-    return MeshField::Omegah::getTetrahedronElement<order>(mesh);
-  } else {
-    return MeshField::Omegah::getTriangleElement<order>(mesh);
-  }
-}
-
 // Create a list of two parametric coordinates for evaluation
 constexpr size_t numOffNodePts = 2;
 template <size_t dim> Kokkos::View<Real **> offNodeCoords(size_t numElems) {
@@ -37,8 +29,7 @@ bool testOwnership(
     MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
   auto fieldWithCtrlr = omf.template CreateLagrangeField<Real, order, 1>();
   auto field = fieldWithCtrlr.field;
-  const auto [shp, map] = getElement<dim, order>(mesh);
-  MeshField::FieldElement elm(mesh.nelems(), field, shp, map);
+  auto elm = omf.CreateLagrangeElement(field);
   MeshField::setDofByInterpolation(
       elm, KOKKOS_LAMBDA(const int ent, Kokkos::Array<Real, dim> const &) {
         return Kokkos::Array<Real, 1>{static_cast<Real>(ent)};
@@ -64,36 +55,7 @@ bool testOwnership(
         lerrorsDim);
     numErrors += lerrorsDim;
   }
-  return report("testOwnership(dim " + std::to_string(dim) + ", order " +
-                    std::to_string(order) + ")",
-                numErrors);
-}
-
-/*
- * Ensure that straight sided quadratic coordiante field recovers
- * same values as linear coordinate field
- */
-template <size_t dim, template <typename...> typename Controller>
-bool testCoordinateField(
-    Omega_h::Mesh &mesh,
-    MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
-  auto quadraticWithCtrlr = omf.template CreateLagrangeCoordinateField<2>();
-  auto quadratic = omf.CreateLagrangeElement(quadraticWithCtrlr.field);
-  auto linear = omf.CreateLagrangeElement(omf.getCoordField().field);
-  const auto lc = offNodeCoords<dim>(mesh.nelems());
-  const auto xq = MeshField::evaluate(quadratic, lc, numOffNodePts);
-  const auto xl = MeshField::evaluate(linear, lc, numOffNodePts);
-  MeshField::LO numErrors = 0;
-  Kokkos::parallel_reduce(
-      "checkCoordinateField", xq.extent(0),
-      KOKKOS_LAMBDA(const int pt, MeshField::LO &lerrors) {
-        for (size_t d = 0; d < dim; ++d)
-          if (Kokkos::fabs(xq(pt, d) - xl(pt, d)) > MeshField::Epsilon)
-            ++lerrors;
-      },
-      numErrors);
-  return report("testCoordinateField(dim " + std::to_string(dim) + ")",
-                numErrors);
+  return report("testOwnership(P" + std::to_string(order) + ")", numErrors);
 }
 
 /*
@@ -126,9 +88,9 @@ bool testCoordinateMap(
             ++lerrors;
       },
       numErrors);
-  return report("testCoordinateMap(dim " + std::to_string(dim) + ", order " +
-                    std::to_string(order) + ", " + name + ")",
-                numErrors);
+  return report(
+      "testCoordinateMap(P" + std::to_string(order) + ", " + name + ")",
+      numErrors);
 }
 
 int main(int argc, char **argv) {
@@ -138,7 +100,8 @@ int main(int argc, char **argv) {
       MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
       testOwnership<dim, 1>(mesh, omf);
       testOwnership<dim, 2>(mesh, omf);
-      testCoordinateField<dim>(mesh, omf);
+      testCoordinateMap<dim, 2>(mesh, omf, MeshField::IdentityCoordinateMap(),
+                                "identity");
       testCoordinateMap<dim, 1>(mesh, omf, Shear<dim>(), "shear");
       testCoordinateMap<dim, 2>(mesh, omf, Shear<dim>(), "shear");
       testCoordinateMap<dim, 2>(mesh, omf, Bend<dim>(), "bend");

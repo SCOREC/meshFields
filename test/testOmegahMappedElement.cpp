@@ -81,8 +81,8 @@ bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
         }
       },
       errors);
-  return report("testCurvedGradientFiniteDifference(" + std::to_string(dim) +
-                    "d, P" + std::to_string(FieldOrder) + " field)",
+  return report("testCurvedGradientFiniteDifference(P" +
+                    std::to_string(FieldOrder) + ")",
                 errors);
 }
 
