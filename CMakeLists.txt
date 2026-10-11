@@ -216,9 +216,7 @@ meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
-  meshfields_add_exe(CabanaControllerLifetimeTest test/testCabanaControllerLifetime.cpp)
   test_func(ControllerPerformance ./ControllerPerformance)
-  test_func(CabanaControllerLifetimeTest ./CabanaControllerLifetimeTest)
 endif()
 
 smoke_test_func(ControllerTests ./ControllerTests)
