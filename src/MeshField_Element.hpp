@@ -247,11 +247,26 @@ struct FieldElement {
   template <typename Coefficients>
   KOKKOS_INLINE_FUNCTION ValArray valueFromCoefficients(
       Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
-    const auto shapeValues = shapeFn.getValues(localCoord);
+    return valueFromShapeValues(c, shapeFn.getValues(localCoord));
+  }
+
+  /**
+   * @brief
+   * valueFromCoefficients with the basis values already evaluated
+   *
+   * @param c coefficients, indexed [node * NumComponents + component]
+   * @param shapeValues the basis values at the parametric coordinate
+   * @return the field value
+   */
+  template <typename Coefficients, typename ShapeValues>
+  KOKKOS_INLINE_FUNCTION ValArray
+  valueFromShapeValues(Coefficients const &c,
+                       ShapeValues const &shapeValues) const {
+    constexpr size_t numNodes = ShapeValues::size();
     ValArray v;
     for (size_t ci = 0; ci < NumComponents; ++ci)
       v[ci] = 0;
-    for (size_t ni = 0; ni < ShapeType::numNodes; ++ni)
+    for (size_t ni = 0; ni < numNodes; ++ni)
       for (size_t ci = 0; ci < NumComponents; ++ci)
         v[ci] += c[ni * NumComponents + ci] * shapeValues[ni];
     return v;
@@ -280,20 +295,22 @@ struct FieldElement {
 
   /**
    * @brief
-   * localGradientFromCoefficients with the shape function gradients already
+   * localGradientFromCoefficients with the basis gradients already
    * evaluated, so they can be shared with a geometry that uses the same shape
    *
-   * @param c coefficients from coefficients(ent)
-   * @param shapeGrads shapeFn.getLocalGradients at the parametric coordinate
+   * @param c coefficients, indexed [node * NumComponents + component]
+   * @param shapeGrads the basis gradients at the parametric coordinate,
+   * indexed [node * MeshEntDim + direction]
    * @return parametric gradients, indexed [direction * NumComponents + component]
    */
   template <typename Coefficients, typename ShapeGradients>
   KOKKOS_INLINE_FUNCTION LocalGradArray localGradientFromShapeGradients(
       Coefficients const &c, ShapeGradients const &shapeGrads) const {
+    constexpr size_t numNodes = ShapeGradients::size() / MeshEntDim;
     LocalGradArray g;
     for (size_t i = 0; i < MeshEntDim * NumComponents; ++i)
       g[i] = 0;
-    for (size_t ni = 0; ni < ShapeType::numNodes; ++ni)
+    for (size_t ni = 0; ni < numNodes; ++ni)
       for (size_t d = 0; d < MeshEntDim; ++d)
         for (size_t ci = 0; ci < NumComponents; ++ci)
           g[d * NumComponents + ci] +=

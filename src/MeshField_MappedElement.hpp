@@ -28,7 +28,17 @@
 
 namespace MeshField {
 
+/**
+ * @brief IdentityTransformation for elements like Lagrange
+ * where coefficients are same as reference element coefficients
+ */
 struct IdentityDofTransformation {
+  template <typename FieldElem>
+  KOKKOS_INLINE_FUNCTION auto referenceShape(FieldElem const &field) const {
+    return field.shapeFn;
+  }
+
+  /** @brief the stored dofs */
   template <typename FieldElem, typename GeomElem>
   KOKKOS_INLINE_FUNCTION auto coefficients(FieldElem const &field,
                                            GeomElem const &, int ent) const {
@@ -126,13 +136,13 @@ struct MappedElement {
   /** @brief the Jacobian, J[i][j] = dx_j/dxi_i */
   using JacobianArray = typename GeomElem::JacobianArray;
 
-  /** @brief the geometry map is affine, so the Jacobian is constant over
-   *  each element */
+  using ReferenceShape =
+      decltype(std::declval<DofTransformation>().referenceShape(
+          std::declval<FieldElem>()));
+
   static constexpr bool IsAffine = decltype(GeomElem::shapeFn)::Order == 1;
-  /** @brief the field and geometry use the same shape functions and dof map */
   static constexpr bool IsIsoparametric =
-      std::is_same_v<decltype(FieldElem::shapeFn),
-                     decltype(GeomElem::shapeFn)> &&
+      std::is_same_v<ReferenceShape, decltype(GeomElem::shapeFn)> &&
       std::is_same_v<decltype(FieldElem::elm2dof),
                      decltype(GeomElem::elm2dof)>;
 
@@ -174,7 +184,8 @@ struct MappedElement {
   /** @brief the physical value of the field at a parametric coordinate */
   KOKKOS_INLINE_FUNCTION ValArray valueFromCoefficients(
       Coefficients const &c, Kokkos::Array<Real, MeshEntDim> localCoord) const {
-    return mapType.value(field.valueFromCoefficients(c, localCoord));
+    return mapType.value(field.valueFromShapeValues(
+        c, dofTransformation.referenceShape(field).getValues(localCoord)));
   }
 
   /** @brief the Jacobian of the geometry at a parametric coordinate */
@@ -191,15 +202,15 @@ struct MappedElement {
   KOKKOS_INLINE_FUNCTION GradArray
   gradientFromCoefficients(Coefficients const &c, Geometry const &g,
                            Kokkos::Array<Real, MeshEntDim> localCoord) const {
+    const auto grads =
+        dofTransformation.referenceShape(field).getLocalGradients(localCoord);
+    const auto localGrad = field.localGradientFromShapeGradients(c, grads);
     if constexpr (IsIsoparametric && !IsAffine) {
       // the field and the geometry share the shape function gradients
-      const auto grads = field.shapeFn.getLocalGradients(localCoord);
-      return mapType.gradient(field.localGradientFromShapeGradients(c, grads),
+      return mapType.gradient(localGrad,
                               geom.jacobianFromShapeGradients(g, grads));
     } else {
-      return mapType.gradient(
-          field.localGradientFromCoefficients(c, localCoord),
-          jacobianFromGeometry(g, localCoord));
+      return mapType.gradient(localGrad, jacobianFromGeometry(g, localCoord));
     }
   }
 
