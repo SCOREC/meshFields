@@ -28,6 +28,7 @@ set(MESHFIELD_HEADERS
   src/MeshField_Element.hpp
   src/MeshField_LinearAlgebra.hpp
   src/MeshField_MappedElement.hpp
+  src/MeshField_Bell.hpp
   src/MeshField_Integrate.hpp
   src/MeshField_Shape.hpp
   src/MeshField_ShapeField.hpp
@@ -212,6 +213,7 @@ meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
 meshfields_add_exe(Integrator test/testIntegrator.cpp)
 meshfields_add_exe(Interpolate test/testInterpolate.cpp)
 meshfields_add_exe(OmegahMappedElement test/testOmegahMappedElement.cpp)
+meshfields_add_exe(BellElement test/testBellElement.cpp)
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
@@ -227,6 +229,7 @@ test_func(Reproduction ./Reproduction)
 test_func(Integrator ./Integrator)
 test_func(Interpolate ./Interpolate)
 test_func(OmegahMappedElement ./OmegahMappedElement)
+test_func(BellElement ./BellElement)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)
