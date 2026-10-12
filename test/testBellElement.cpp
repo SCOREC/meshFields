@@ -1,7 +1,11 @@
 #include "MeshField_Bell.hpp"
 #include "MeshField_MappedElement.hpp"
 #include "MeshField_TestHarness.hpp"
+#include <cmath>
+#include <cstdint>
+#include <iostream>
 #include <string>
+#include <vector>
 
 // Tests for the Bell element.
 //
@@ -18,6 +22,12 @@
 //    moments vanish).
 // 3. reproduction: the Bell space contains the quartics, so a quartic with
 //    exact dofs is reproduced in value and gradient; x^5 is not.
+// 4. C1 continuity on an Omega_h mesh with warped vertex coordinates and
+//    random dofs: along every interior edge, the value and gradient from the
+//    two adjacent triangles agree.
+// 5. convergence of interpolation on refined warped meshes: for
+//    f = sin(pi x) sin(2 pi y) with exact vertex dofs, the maximum error at
+//    interior points converges at rate 5 for values and 4 for gradients.
 
 using MeshField::LO;
 using MeshField::Real;
@@ -35,6 +45,22 @@ KOKKOS_INLINE_FUNCTION int refEdge(int e, int i) {
   return edges[e][i];
 }
 
+// TODO: replace this with Edge integration in MeshFields
+// 5 point Gauss-Legendre rule on [-1, 1]; exact to degree 9
+constexpr int numGaussPts = 5;
+KOKKOS_INLINE_FUNCTION Real gaussPt(int q) {
+  constexpr Real pts[numGaussPts] = {-0.9061798459386640, -0.5384693101056831,
+                                     0.0, 0.5384693101056831,
+                                     0.9061798459386640};
+  return pts[q];
+}
+KOKKOS_INLINE_FUNCTION Real gaussWt(int q) {
+  constexpr Real wts[numGaussPts] = {0.2369268850561891, 0.4786286704993665,
+                                     0.5688888888888889, 0.4786286704993665,
+                                     0.2369268850561891};
+  return wts[q];
+}
+
 KOKKOS_INLINE_FUNCTION Real legendre4(Real u) {
   return (35 * u * u * u * u - 30 * u * u + 3) / 8;
 }
@@ -45,25 +71,17 @@ KOKKOS_INLINE_FUNCTION Real legendre4(Real u) {
 template <typename GradAt>
 KOKKOS_INLINE_FUNCTION Real edgeNormalMoment(int e, const Real T[2],
                                              GradAt gradAt) {
-  // 5 point Gauss-Legendre rule on [-1, 1]; exact to degree 9
-  constexpr int numGaussPts = 5;
-  constexpr Real gaussPts[numGaussPts] = {
-      -0.9061798459386640, -0.5384693101056831, 0.0, 0.5384693101056831,
-      0.9061798459386640};
-  constexpr Real gaussWts[numGaussPts] = {
-      0.2369268850561891, 0.4786286704993665, 0.5688888888888889,
-      0.4786286704993665, 0.2369268850561891};
   const int a = refEdge(e, 0), b = refEdge(e, 1);
   const Real len = Kokkos::sqrt(T[0] * T[0] + T[1] * T[1]);
   const Real n[2] = {T[1] / len, -T[0] / len};
   Real moment = 0;
   for (int q = 0; q < numGaussPts; ++q) {
-    const Real u = gaussPts[q];
+    const Real u = gaussPt(q);
     const Real s = (u + 1) / 2;
     const auto g =
         gradAt(Vector2{refVert(a, 0) + s * (refVert(b, 0) - refVert(a, 0)),
                        refVert(a, 1) + s * (refVert(b, 1) - refVert(a, 1))});
-    moment += gaussWts[q] / 2 * legendre4(u) * (n[0] * g[0] + n[1] * g[1]);
+    moment += gaussWt(q) / 2 * legendre4(u) * (n[0] * g[0] + n[1] * g[1]);
   }
   return moment;
 }
@@ -403,6 +421,176 @@ void testReproduction(Triangle const &tri) {
               << quinticErr << "\n";
 }
 
+// ---------------------------------------------------------------------------
+// Omega_h meshes
+
+// modify the coordinates so the triangles have different shapes
+struct Warp {
+  KOKKOS_INLINE_FUNCTION Vector2 operator()(Vector2 x) const {
+    return {x[0] + 0.05 * Kokkos::sin(2 * M_PI * x[1]),
+            x[1] + 0.04 * Kokkos::sin(2 * M_PI * x[0])};
+  }
+};
+
+// 4. value and gradient agree across interior edges
+template <template <typename...> typename Controller>
+void testContinuity(Omega_h::Library &lib) {
+  auto mesh =
+      Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0);
+  MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> omf(mesh);
+  auto cfWc = omf.template CreateLagrangeCoordinateField<1>(Warp());
+  auto bellWc = omf.template CreateBellField<1>();
+  auto bf = bellWc.field;
+  Kokkos::parallel_for(
+      "randomDofs", mesh.nverts(), KOKKOS_LAMBDA(const int v) {
+        for (int k = 0; k < 6; ++k) {
+          uint64_t h = (uint64_t(v) * 6 + k + 1) * 0x9E3779B97F4A7C15ULL;
+          h ^= h >> 29;
+          bf(v, k, 0, MeshField::Vertex) = double(h % 2000) / 1000 - 1;
+        }
+      });
+  const auto elm = omf.CreateBellElement(
+      bellWc.field, omf.CreateLagrangeElement(cfWc.field));
+  const MeshField::Omegah::LinearTriangleToVertexField triVerts(mesh);
+  const auto edgeVerts = mesh.ask_verts_of(Omega_h::EDGE);
+  const auto edgeFaces = mesh.ask_up(Omega_h::EDGE, Omega_h::FACE);
+  const auto e2f = edgeFaces.a2ab;
+  const auto faces = edgeFaces.ab2b;
+  LO numInterior = 0;
+  LO errors = 0;
+  Kokkos::parallel_reduce(
+      "checkContinuity", mesh.nedges(),
+      KOKKOS_LAMBDA(const int e, LO &lerr, LO &linterior) {
+        if (e2f[e + 1] - e2f[e] != 2)
+          return;
+        linterior++;
+        const int va = edgeVerts[e * 2], vb = edgeVerts[e * 2 + 1];
+        for (int q = 1; q <= 3; ++q) {
+          const Real s = 0.25 * q;
+          Real v[2];
+          Real g[2][2];
+          for (int side = 0; side < 2; ++side) {
+            const int f = faces[e2f[e] + side];
+            // barycentric coordinates of the point in the element's ordering
+            Real L[3] = {0, 0, 0};
+            for (int k = 0; k < 3; ++k) {
+              const auto vtx = triVerts(k, 0, f, MeshField::Triangle).entity;
+              if (vtx == va)
+                L[k] = 1 - s;
+              if (vtx == vb)
+                L[k] = s;
+            }
+            const Vector2 xi{L[1], L[2]};
+            const auto c = elm.coefficients(f);
+            const auto geo = elm.geometry(f);
+            const auto grad = elm.gradientFromCoefficients(c, geo, xi);
+            v[side] = elm.valueFromCoefficients(c, xi)[0];
+            g[side][0] = grad[0];
+            g[side][1] = grad[1];
+          }
+          if (!(Kokkos::fabs(v[0] - v[1]) <= MeshField::Epsilon) ||
+              !(Kokkos::fabs(g[0][0] - g[1][0]) <= 1e-10) ||
+              !(Kokkos::fabs(g[0][1] - g[1][1]) <= 1e-10)) {
+            Kokkos::printf("edge %d s %.2f: value %.3e grad %.3e %.3e\n", e, s,
+                           v[0] - v[1], g[0][0] - g[1][0], g[0][1] - g[1][1]);
+            lerr++;
+          }
+        }
+      },
+      errors, numInterior);
+  // a mesh without interior edges would check nothing
+  report("testContinuity(" + std::to_string(numInterior) + " interior edges)",
+         errors + (numInterior == 0));
+}
+
+struct SinSin { // sin(pi x) sin(2 pi y)
+  KOKKOS_INLINE_FUNCTION Real value(Real x, Real y) const {
+    return Kokkos::sin(M_PI * x) * Kokkos::sin(2 * M_PI * y);
+  }
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 2> grad(Real x, Real y) const {
+    return {M_PI * Kokkos::cos(M_PI * x) * Kokkos::sin(2 * M_PI * y),
+            2 * M_PI * Kokkos::sin(M_PI * x) * Kokkos::cos(2 * M_PI * y)};
+  }
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> hess(Real x, Real y) const {
+    const Real sx = Kokkos::sin(M_PI * x), cx = Kokkos::cos(M_PI * x);
+    const Real sy = Kokkos::sin(2 * M_PI * y), cy = Kokkos::cos(2 * M_PI * y);
+    return {-M_PI * M_PI * sx * sy, 2 * M_PI * M_PI * cx * cy,
+            -4 * M_PI * M_PI * sx * sy};
+  }
+};
+
+// maximum interpolation errors in value and gradient on an n x n mesh
+template <template <typename...> typename Controller>
+Kokkos::Array<Real, 2> interpolationError(Omega_h::Library &lib, int n) {
+  auto mesh =
+      Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n, 0);
+  MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> omf(mesh);
+  auto cfWc = omf.template CreateLagrangeCoordinateField<1>(Warp());
+  auto cf = cfWc.field;
+  auto bellWc = omf.template CreateBellField<1>();
+  auto bf = bellWc.field;
+  const SinSin f;
+  Kokkos::parallel_for(
+      "interpolate", mesh.nverts(), KOKKOS_LAMBDA(const int v) {
+        const Real x = cf(v, 0, 0, MeshField::Vertex);
+        const Real y = cf(v, 0, 1, MeshField::Vertex);
+        const auto g = f.grad(x, y);
+        const auto h = f.hess(x, y);
+        bf(v, 0, 0, MeshField::Vertex) = f.value(x, y);
+        bf(v, 1, 0, MeshField::Vertex) = g[0];
+        bf(v, 2, 0, MeshField::Vertex) = g[1];
+        bf(v, 3, 0, MeshField::Vertex) = h[0];
+        bf(v, 4, 0, MeshField::Vertex) = h[1];
+        bf(v, 5, 0, MeshField::Vertex) = h[2];
+      });
+  const auto geomElm = omf.CreateLagrangeElement(cf);
+  const auto elm = omf.CreateBellElement(bellWc.field, geomElm);
+  Real valueErr = 0, gradErr = 0;
+  Kokkos::parallel_reduce(
+      "interpolationError", mesh.nfaces(),
+      KOKKOS_LAMBDA(const int ent, Real &lv, Real &lg) {
+        const auto c = elm.coefficients(ent);
+        const auto geo = elm.geometry(ent);
+        const auto cx = geomElm.coefficients(ent);
+        // Duffy-mapped tensor Gauss points in the triangle
+        for (int i = 0; i < numGaussPts; ++i) {
+          for (int j = 0; j < numGaussPts; ++j) {
+            const Real u = (gaussPt(i) + 1) / 2;
+            const Real w = (gaussPt(j) + 1) / 2;
+            const Vector2 xi{u, w * (1 - u)};
+            const auto x = geomElm.valueFromCoefficients(cx, xi);
+            const auto g = elm.gradientFromCoefficients(c, geo, xi);
+            const auto gf = f.grad(x[0], x[1]);
+            lv = Kokkos::max(lv,
+                             Kokkos::fabs(elm.valueFromCoefficients(c, xi)[0] -
+                                          f.value(x[0], x[1])));
+            lg = Kokkos::max(lg, Kokkos::sqrt((g[0] - gf[0]) * (g[0] - gf[0]) +
+                                              (g[1] - gf[1]) * (g[1] - gf[1])));
+          }
+        }
+      },
+      Kokkos::Max<Real>(valueErr), Kokkos::Max<Real>(gradErr));
+  return {valueErr, gradErr};
+}
+
+// 5. interpolation converges at rates 5 (values) and 4 (gradients)
+template <template <typename...> typename Controller>
+void testConvergence(Omega_h::Library &lib) {
+  std::vector<Kokkos::Array<Real, 2>> err;
+  const int sizes[] = {4, 8, 16, 32};
+  for (int n : sizes)
+    err.push_back(interpolationError<Controller>(lib, n));
+  Real valueRate = 0, gradRate = 0;
+  for (size_t i = 1; i < err.size(); ++i) {
+    valueRate = std::log2(err[i - 1][0] / err[i][0]);
+    gradRate = std::log2(err[i - 1][1] / err[i][1]);
+    std::cout << "  n=" << sizes[i] << ": value error " << err[i][0]
+              << " (rate " << valueRate << "), gradient error " << err[i][1]
+              << " (rate " << gradRate << ")\n";
+  }
+  report("testConvergence", !(valueRate >= 4.7 && gradRate >= 3.7));
+}
+
 int main(int argc, char **argv) {
   TestRunner t(argc, argv);
   testReferenceDuality();
@@ -421,6 +609,8 @@ int main(int argc, char **argv) {
       testPhysicalDuality<Controller>(tri);
       testReproduction<Controller>(tri);
     }
+    testContinuity<Controller>(t.library());
+    testConvergence<Controller>(t.library());
   });
   return t.exitCode();
 }
