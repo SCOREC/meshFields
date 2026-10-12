@@ -87,6 +87,32 @@ struct BellReferenceShape {
     return g;
   }
 
+  /**
+   * @brief Evaluate the basis function Hessians at a parametric coordinate
+   * @param xi parametric coordinates on the reference triangle
+   * @return Hessians indexed [function * 3 + (xx, xy, yy)]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, 3 * numNodes> getLocalHessians(Vector2 const &xi) const {
+    Kokkos::Array<Real, numNodes> mxx, mxy, myy;
+    for (size_t j = 0; j < numNodes; ++j) {
+      const auto [a, b] = exponents(j);
+      mxx[j] = a * (a - 1) * power(xi[0], a - 2) * power(xi[1], b);
+      mxy[j] = a * b * power(xi[0], a - 1) * power(xi[1], b - 1);
+      myy[j] = b * (b - 1) * power(xi[0], a) * power(xi[1], b - 2);
+    }
+    const auto hxx = contract(mxx);
+    const auto hxy = contract(mxy);
+    const auto hyy = contract(myy);
+    Kokkos::Array<Real, 3 * numNodes> h;
+    for (size_t k = 0; k < numNodes; ++k) {
+      h[k * 3] = hxx[k];
+      h[k * 3 + 1] = hxy[k];
+      h[k * 3 + 2] = hyy[k];
+    }
+    return h;
+  }
+
 private:
   struct Exponents {
     int a;

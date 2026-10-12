@@ -190,6 +190,14 @@ struct FieldElement {
       Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
                     MeshEntDim * NumComponents>;
 
+  /** @brief the number of entries of a packed symmetric Hessian:
+   *  (xx, xy, yy) in 2d, (xx, xy, xz, yy, yz, zz) in 3d */
+  static constexpr size_t NumHessianEntries = MeshEntDim * (MeshEntDim + 1) / 2;
+
+  using LocalHessArray =
+      Kokkos::Array<typename baseType<typename FieldAccessor::BaseType>::type,
+                    NumHessianEntries * NumComponents>;
+
   /**
    * @brief
    * gather element's dofs into an array
@@ -316,6 +324,30 @@ struct FieldElement {
           g[d * NumComponents + ci] +=
               c[ni * NumComponents + ci] * shapeGrads[ni * MeshEntDim + d];
     return g;
+  }
+
+  /**
+   * @brief
+   * contract an element's coefficients with basis Hessians
+   *
+   * @param c coefficients, indexed [node * NumComponents + component]
+   * @param shapeHessians the packed symmetric basis Hessians
+   * @return parametric Hessians, indexed [entry * NumComponents + component]
+   */
+  template <typename Coefficients, typename ShapeHessians>
+  KOKKOS_INLINE_FUNCTION LocalHessArray localHessianFromShapeHessians(
+      Coefficients const &c, ShapeHessians const &shapeHessians) const {
+    constexpr size_t numNodes = ShapeHessians::size() / NumHessianEntries;
+    LocalHessArray h;
+    for (size_t i = 0; i < NumHessianEntries * NumComponents; ++i)
+      h[i] = 0;
+    for (size_t ni = 0; ni < numNodes; ++ni)
+      for (size_t e = 0; e < NumHessianEntries; ++e)
+        for (size_t ci = 0; ci < NumComponents; ++ci)
+          h[e * NumComponents + ci] +=
+              c[ni * NumComponents + ci] *
+              shapeHessians[ni * NumHessianEntries + e];
+    return h;
   }
 
   /**

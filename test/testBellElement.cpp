@@ -12,22 +12,23 @@
 // 1. reference duality: the 21 functionals of the extended Bell reference
 //    element (vertex values, gradients, and Hessians, and the edge moments of
 //    the normal derivative against the degree 4 Legendre polynomial) applied
-//    to the 21 reference basis functions give the identity.  Hessians are
-//    computed by Richardson-extrapolated central differences of the
-//    gradients, which is exact for these polynomials up to rounding.
+//    to the 21 reference basis functions give the identity.
 // 2. physical duality, on single triangles of several shapes: setting stored
 //    dof i to 1 and the rest to 0 gives the i-th physical basis function,
 //    whose physical dofs (vertex values, gradients, and Hessians) are e_i and
 //    whose normal derivative is cubic on every edge (its physical edge
 //    moments vanish).
 // 3. reproduction: the Bell space contains the quartics, so a quartic with
-//    exact dofs is reproduced in value and gradient; x^5 is not.
+//    exact dofs is reproduced in value, gradient, and Hessian; x^5 is not.
 // 4. C1 continuity on an Omega_h mesh with warped vertex coordinates and
 //    random dofs: along every interior edge, the value and gradient from the
 //    two adjacent triangles agree.
 // 5. convergence of interpolation on refined warped meshes: for
 //    f = sin(pi x) sin(2 pi y) with exact vertex dofs, the maximum error at
-//    interior points converges at rate 5 for values and 4 for gradients.
+//    interior points converges at rate 5 for values, 4 for gradients, and 3
+//    for Hessians.
+// 6. IdentityMap::hessian maps the packed Hessians of two components,
+//    indexed [entry * numComp + component], to H_x = J^{-1} H_xi J^{-T}.
 
 using MeshField::LO;
 using MeshField::Real;
@@ -90,7 +91,6 @@ KOKKOS_INLINE_FUNCTION Real edgeNormalMoment(int e, const Real T[2],
 // edge moments
 KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 21> applyFunctionals(int k) {
   const MeshField::BellReferenceShape shape;
-  const Real h = 1e-3; // difference step for the Hessian
   Kokkos::Array<Real, 21> f;
   for (int v = 0; v < 3; ++v) {
     const Vector2 x{refVert(v, 0), refVert(v, 1)};
@@ -98,22 +98,10 @@ KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 21> applyFunctionals(int k) {
     f[v * 6] = shape.getValues(x)[k];
     f[v * 6 + 1] = grad[k * 2];
     f[v * 6 + 2] = grad[k * 2 + 1];
-    // central differences of the gradient with steps h and 2h, combined to
-    // cancel the h^2 error term; exact for the quartic gradients here
-    const auto d = [&](int dir, int comp, Real step) {
-      Vector2 p = x, m = x;
-      p[dir] += step;
-      m[dir] -= step;
-      return (shape.getLocalGradients(p)[k * 2 + comp] -
-              shape.getLocalGradients(m)[k * 2 + comp]) /
-             (2 * step);
-    };
-    const auto hess = [&](int dir, int comp) {
-      return (4 * d(dir, comp, h) - d(dir, comp, 2 * h)) / 3;
-    };
-    f[v * 6 + 3] = hess(0, 0);
-    f[v * 6 + 4] = hess(1, 0);
-    f[v * 6 + 5] = hess(1, 1);
+    const auto hess = shape.getLocalHessians(x);
+    f[v * 6 + 3] = hess[k * 3];
+    f[v * 6 + 4] = hess[k * 3 + 1];
+    f[v * 6 + 5] = hess[k * 3 + 2];
   }
   for (int e = 0; e < 3; ++e) {
     const int a = refEdge(e, 0), b = refEdge(e, 1);
@@ -135,8 +123,7 @@ void testReferenceDuality() {
       KOKKOS_LAMBDA(const int k, LO &lerr) {
         const auto f = applyFunctionals(k);
         for (int i = 0; i < 21; ++i) {
-          const bool hessian = i < 18 && i % 6 >= 3;
-          const Real tol = hessian ? 1e-8 : MeshField::Epsilon;
+          const Real tol = MeshField::Epsilon;
           const Real expected = i == k ? 1.0 : 0.0;
           if (!(Kokkos::fabs(f[i] - expected) <= tol)) {
             Kokkos::printf("functional %d of basis function %d: %.3e\n", i, k,
@@ -261,33 +248,6 @@ template <template <typename...> typename Controller> struct SingleTriangle {
   }
 };
 
-// physical Hessian at xi from Richardson-extrapolated central differences of
-// the physical gradient along xi: d(grad)/dxi_i = sum_k J[i][k] d(grad)/dx_k,
-// so H = J^{-1} (d grad / d xi)
-template <typename Elm, typename C, typename G>
-KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3>
-physicalHessian(Elm const &elm, C const &c, G const &geo, Vector2 xi) {
-  const Real h = 1e-3;
-  const auto d = [&](int dir, int comp, Real step) {
-    Vector2 p = xi, m = xi;
-    p[dir] += step;
-    m[dir] -= step;
-    return (elm.gradientFromCoefficients(c, geo, p)[comp] -
-            elm.gradientFromCoefficients(c, geo, m)[comp]) /
-           (2 * step);
-  };
-  Real dG[2][2]; // dG[i][j] = d grad_j / d xi_i
-  for (int i = 0; i < 2; ++i)
-    for (int j = 0; j < 2; ++j)
-      dG[i][j] = (4 * d(i, j, h) - d(i, j, 2 * h)) / 3;
-  const auto Jinv = MeshField::invert<2>(geo);
-  Real H[2][2];
-  for (int i = 0; i < 2; ++i)
-    for (int j = 0; j < 2; ++j)
-      H[i][j] = Jinv[i * 2] * dG[0][j] + Jinv[i * 2 + 1] * dG[1][j];
-  return {H[0][0], H[0][1], H[1][1]};
-}
-
 // 2. physical duality and cubic normal derivatives
 template <template <typename...> typename Controller>
 void testPhysicalDuality(Triangle const &tri) {
@@ -307,7 +267,7 @@ void testPhysicalDuality(Triangle const &tri) {
           for (int v = 0; v < 3; ++v) {
             const Vector2 xi{refVert(v, 0), refVert(v, 1)};
             const auto g = elm.gradientFromCoefficients(c, geo, xi);
-            const auto H = physicalHessian(elm, c, geo, xi);
+            const auto H = elm.hessianFromCoefficients(c, geo, xi);
             f[v * 6] = elm.valueFromCoefficients(c, xi)[0];
             f[v * 6 + 1] = g[0];
             f[v * 6 + 2] = g[1];
@@ -316,7 +276,7 @@ void testPhysicalDuality(Triangle const &tri) {
             f[v * 6 + 5] = H[2];
           }
           for (int j = 0; j < 18; ++j) {
-            const Real tol = j % 6 >= 3 ? 1e-7 : MeshField::Epsilon;
+            const Real tol = MeshField::Epsilon;
             if (!(Kokkos::fabs(f[j] - (i == j ? 1.0 : 0.0)) <= tol)) {
               Kokkos::printf("basis %d dof %d: %.3e\n", i, j, f[j]);
               lerr++;
@@ -375,7 +335,7 @@ struct Quintic { // x^5
   }
 };
 
-// the largest error in value and gradient at interior points
+// the largest error in value, gradient, and Hessian at interior points
 template <template <typename...> typename Controller, typename Func>
 Real maxReproductionError(SingleTriangle<Controller> &st, Func f) {
   st.setDofs(f);
@@ -397,7 +357,11 @@ Real maxReproductionError(SingleTriangle<Controller> &st, Func f) {
           const Real y =
               l0 * t.xy[0][1] + xi[0] * t.xy[1][1] + xi[1] * t.xy[2][1];
           const auto g = elm.gradientFromCoefficients(c, geo, xi);
+          const auto H = elm.hessianFromCoefficients(c, geo, xi);
           const auto gf = f.grad(x, y);
+          const auto Hf = f.hess(x, y);
+          for (int k = 0; k < 3; ++k)
+            lerr = Kokkos::max(lerr, Kokkos::fabs(H[k] - Hf[k]));
           lerr = Kokkos::max(lerr,
                              Kokkos::fabs(elm.valueFromCoefficients(c, xi)[0] -
                                           f.value(x, y)));
@@ -519,9 +483,10 @@ struct SinSin { // sin(pi x) sin(2 pi y)
   }
 };
 
-// maximum interpolation errors in value and gradient on an n x n mesh
+// maximum interpolation errors in value, gradient, and Hessian on an n x n
+// mesh
 template <template <typename...> typename Controller>
-Kokkos::Array<Real, 2> interpolationError(Omega_h::Library &lib, int n) {
+Kokkos::Array<Real, 3> interpolationError(Omega_h::Library &lib, int n) {
   auto mesh =
       Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, n, n, 0);
   MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> omf(mesh);
@@ -545,10 +510,10 @@ Kokkos::Array<Real, 2> interpolationError(Omega_h::Library &lib, int n) {
       });
   const auto geomElm = omf.CreateLagrangeElement(cf);
   const auto elm = omf.CreateBellElement(bellWc.field, geomElm);
-  Real valueErr = 0, gradErr = 0;
+  Real valueErr = 0, gradErr = 0, hessErr = 0;
   Kokkos::parallel_reduce(
       "interpolationError", mesh.nfaces(),
-      KOKKOS_LAMBDA(const int ent, Real &lv, Real &lg) {
+      KOKKOS_LAMBDA(const int ent, Real &lv, Real &lg, Real &lh) {
         const auto c = elm.coefficients(ent);
         const auto geo = elm.geometry(ent);
         const auto cx = geomElm.coefficients(ent);
@@ -566,34 +531,74 @@ Kokkos::Array<Real, 2> interpolationError(Omega_h::Library &lib, int n) {
                                           f.value(x[0], x[1])));
             lg = Kokkos::max(lg, Kokkos::sqrt((g[0] - gf[0]) * (g[0] - gf[0]) +
                                               (g[1] - gf[1]) * (g[1] - gf[1])));
+            const auto H = elm.hessianFromCoefficients(c, geo, xi);
+            const auto Hf = f.hess(x[0], x[1]);
+            for (int k = 0; k < 3; ++k)
+              lh = Kokkos::max(lh, Kokkos::fabs(H[k] - Hf[k]));
           }
         }
       },
-      Kokkos::Max<Real>(valueErr), Kokkos::Max<Real>(gradErr));
-  return {valueErr, gradErr};
+      Kokkos::Max<Real>(valueErr), Kokkos::Max<Real>(gradErr),
+      Kokkos::Max<Real>(hessErr));
+  return {valueErr, gradErr, hessErr};
 }
 
-// 5. interpolation converges at rates 5 (values) and 4 (gradients)
+// 5. interpolation converges at rates 5 (values), 4 (gradients), and 3
+// (Hessians)
 template <template <typename...> typename Controller>
 void testConvergence(Omega_h::Library &lib) {
-  std::vector<Kokkos::Array<Real, 2>> err;
+  std::vector<Kokkos::Array<Real, 3>> err;
   const int sizes[] = {4, 8, 16, 32};
   for (int n : sizes)
     err.push_back(interpolationError<Controller>(lib, n));
-  Real valueRate = 0, gradRate = 0;
+  Real valueRate = 0, gradRate = 0, hessRate = 0;
   for (size_t i = 1; i < err.size(); ++i) {
     valueRate = std::log2(err[i - 1][0] / err[i][0]);
     gradRate = std::log2(err[i - 1][1] / err[i][1]);
+    hessRate = std::log2(err[i - 1][2] / err[i][2]);
     std::cout << "  n=" << sizes[i] << ": value error " << err[i][0]
               << " (rate " << valueRate << "), gradient error " << err[i][1]
-              << " (rate " << gradRate << ")\n";
+              << " (rate " << gradRate << "), Hessian error " << err[i][2]
+              << " (rate " << hessRate << ")\n";
   }
-  report("testConvergence", !(valueRate >= 4.7 && gradRate >= 3.7));
+  report("testConvergence",
+         !(valueRate >= 4.7 && gradRate >= 3.7 && hessRate >= 2.7));
+}
+
+// 6. physical Hessians of two components from J H_x J^T
+void testHessianMap() {
+  constexpr int numComp = 2;
+  const Kokkos::Array<Real, 4> J = {2.0, 0.5, -0.3, 1.5};
+  // physical Hessians (xx, xy, yy) of each component
+  const Real Hx[numComp][3] = {{1.0, -2.0, 3.0}, {-4.0, 0.5, 2.5}};
+  // H_xi = J H_x J^T, packed entry-major
+  Kokkos::Array<Real, 3 * numComp> refHess;
+  for (int c = 0; c < numComp; ++c) {
+    const Real H[2][2] = {{Hx[c][0], Hx[c][1]}, {Hx[c][1], Hx[c][2]}};
+    Real JHJt[2][2];
+    for (int i = 0; i < 2; ++i)
+      for (int k = 0; k < 2; ++k) {
+        JHJt[i][k] = 0;
+        for (int j = 0; j < 2; ++j)
+          for (int l = 0; l < 2; ++l)
+            JHJt[i][k] += J[i * 2 + j] * H[j][l] * J[k * 2 + l];
+      }
+    refHess[0 * numComp + c] = JHJt[0][0];
+    refHess[1 * numComp + c] = JHJt[0][1];
+    refHess[2 * numComp + c] = JHJt[1][1];
+  }
+  const auto h = MeshField::IdentityMap{}.hessian(refHess, J);
+  LO errors = 0;
+  for (int c = 0; c < numComp; ++c)
+    for (int e = 0; e < 3; ++e)
+      errors += !(std::fabs(h[e * numComp + c] - Hx[c][e]) <= 1e-13);
+  report("testHessianMap", errors);
 }
 
 int main(int argc, char **argv) {
   TestRunner t(argc, argv);
   testReferenceDuality();
+  testHessianMap();
   const Real c30 = Kokkos::cos(M_PI / 6), s30 = Kokkos::sin(M_PI / 6);
   const Triangle triangles[] = {
       {{{{0, 0}, {1, 0}, {0, 1}}}, "reference"},
