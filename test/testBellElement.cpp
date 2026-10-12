@@ -29,6 +29,10 @@
 //    for Hessians.
 // 6. IdentityMap::hessian maps the packed Hessians of two components,
 //    indexed [entry * numComp + component], to H_x = J^{-1} H_xi J^{-T}.
+// 7. evaluate() on the 3x3 box mesh, as in PR #99's test: 2x+y and x^2+2y
+//    with exact dofs are reproduced at the centroid, an interior point, a
+//    vertex, and all vertices of every triangle, for fields with 1-3
+//    components (component c holds (c+1)*f).
 
 using MeshField::LO;
 using MeshField::Real;
@@ -565,6 +569,105 @@ void testConvergence(Omega_h::Library &lib) {
          !(valueRate >= 4.7 && gradRate >= 3.7 && hessRate >= 2.7));
 }
 
+struct Linear2xy { // 2x + y
+  KOKKOS_INLINE_FUNCTION Real value(Real x, Real y) const { return 2 * x + y; }
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 2> grad(Real, Real) const {
+    return {2, 1};
+  }
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> hess(Real, Real) const {
+    return {0, 0, 0};
+  }
+};
+
+struct QuadraticX2y { // x^2 + 2y
+  KOKKOS_INLINE_FUNCTION Real value(Real x, Real y) const {
+    return x * x + 2 * y;
+  }
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 2> grad(Real x, Real) const {
+    return {2 * x, 2};
+  }
+  KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> hess(Real, Real) const {
+    return {2, 0, 0};
+  }
+};
+
+// 7. evaluate() reproduces f at every point of each point set
+template <template <typename...> typename Controller, size_t numComp,
+          typename Func>
+void testMeshEvaluate(Omega_h::Mesh &mesh, Func f, std::string const &name) {
+  MeshField::OmegahMeshField<ExecutionSpace, 2, Controller> omf(mesh);
+  auto cfWc = omf.template CreateLagrangeCoordinateField<1>();
+  auto bellWc = omf.template CreateBellField<numComp>();
+  auto cf = cfWc.field;
+  auto bf = bellWc.field;
+  Kokkos::parallel_for(
+      "setDofs", mesh.nverts(), KOKKOS_LAMBDA(const int v) {
+        const Real x = cf(v, 0, 0, MeshField::Vertex);
+        const Real y = cf(v, 0, 1, MeshField::Vertex);
+        const auto g = f.grad(x, y);
+        const auto h = f.hess(x, y);
+        for (size_t c = 0; c < numComp; ++c) {
+          const Real s = c + 1;
+          bf(v, 0, c, MeshField::Vertex) = s * f.value(x, y);
+          bf(v, 1, c, MeshField::Vertex) = s * g[0];
+          bf(v, 2, c, MeshField::Vertex) = s * g[1];
+          bf(v, 3, c, MeshField::Vertex) = s * h[0];
+          bf(v, 4, c, MeshField::Vertex) = s * h[1];
+          bf(v, 5, c, MeshField::Vertex) = s * h[2];
+        }
+      });
+  auto geomElm = omf.CreateLagrangeElement(cf);
+  auto elm = omf.CreateBellElement(bf, geomElm);
+
+  struct PointSet {
+    std::vector<Vector2> xi;
+    std::string name;
+  };
+  const std::vector<PointSet> pointSets = {
+      {{{1.0 / 3, 1.0 / 3}}, "centroid"},
+      {{{0.1, 0.4}}, "interior"},
+      {{{0, 0}}, "vertex"},
+      {{{0, 0}, {1, 0}, {0, 1}}, "all vertices"}};
+  const size_t numElms = mesh.nfaces();
+  for (auto const &ps : pointSets) {
+    const size_t numPts = ps.xi.size();
+    Kokkos::View<Real **> lc("localCoords", numElms * numPts, 2);
+    auto lc_h = Kokkos::create_mirror_view(lc);
+    for (size_t e = 0; e < numElms; ++e)
+      for (size_t p = 0; p < numPts; ++p)
+        for (int d = 0; d < 2; ++d)
+          lc_h(e * numPts + p, d) = ps.xi[p][d];
+    Kokkos::deep_copy(lc, lc_h);
+    const auto vals = MeshField::evaluate(elm, lc, numPts);
+    // positions from the coordinate element directly, independent of
+    // evaluate(), so an error in evaluate() cannot cancel out
+    LO errors = 0;
+    Kokkos::parallel_reduce(
+        "checkMeshEvaluate", numElms,
+        KOKKOS_LAMBDA(const int e, LO &lerr) {
+          const auto cx = geomElm.coefficients(e);
+          for (size_t p = 0; p < numPts; ++p) {
+            const int i = e * numPts + p;
+            const auto x =
+                geomElm.valueFromCoefficients(cx, Vector2{lc(i, 0), lc(i, 1)});
+            const Real expected = f.value(x[0], x[1]);
+            for (size_t c = 0; c < numComp; ++c) {
+              if (!(Kokkos::fabs(vals(i, c) - (c + 1) * expected) <=
+                    MeshField::Epsilon)) {
+                Kokkos::printf("point %d component %zu: %.15f expected %.15f\n",
+                               i, c, vals(i, c), (c + 1) * expected);
+                lerr++;
+              }
+            }
+          }
+        },
+        errors);
+    report("testMeshEvaluate(" + name + ", " + std::to_string(numComp) +
+               " components, " + ps.name + ")",
+           errors);
+  }
+}
+
 // 6. physical Hessians of two components from J H_x J^T
 void testHessianMap() {
   constexpr int numComp = 2;
@@ -608,7 +711,10 @@ int main(int argc, char **argv) {
          {3 * c30 - 0.5 * s30, 3 * s30 + 0.5 * c30},
          {c30 - 2 * s30, s30 + 2 * c30}}},
        "rotated skewed"},
-      {{{{0, 0}, {0, 1}, {1, 0}}}, "clockwise"}};
+      {{{{0, 0}, {0, 1}, {1, 0}}}, "clockwise"},
+      // the two triangles of PR #99's single triangle tests
+      {{{{0, 0}, {4, 0}, {0, 3}}}, "PR #99 right"},
+      {{{{1, 1}, {5, 1}, {2, 4}}}, "PR #99 general"}};
   t.forEachController([&]<template <typename...> typename Controller>() {
     for (auto const &tri : triangles) {
       testPhysicalDuality<Controller>(tri);
@@ -616,6 +722,14 @@ int main(int argc, char **argv) {
     }
     testContinuity<Controller>(t.library());
     testConvergence<Controller>(t.library());
+    t.forEachMesh([&]<size_t dim>(Omega_h::Mesh &mesh) {
+      if constexpr (dim == 2) {
+        testMeshEvaluate<Controller, 1>(mesh, Linear2xy(), "2x+y");
+        testMeshEvaluate<Controller, 1>(mesh, QuadraticX2y(), "x^2+2y");
+        testMeshEvaluate<Controller, 2>(mesh, Linear2xy(), "2x+y");
+        testMeshEvaluate<Controller, 3>(mesh, QuadraticX2y(), "x^2+2y");
+      }
+    });
   });
   return t.exitCode();
 }
