@@ -558,27 +558,31 @@ struct QuadraticTetrahedronShape {
 };
 
 /**
- * @brief Linear (P1) shape functions for 3D wedge (triangular prism) elements
+ * @brief Linear shape functions for 3D wedge (triangular prism) elements
  *
- * Tensor product of the linear triangle in (xi0, xi1) and the linear edge in
- * zeta = xi2. Defines 6 nodes, all located at the wedge vertices.
+ * Defines linear basis functions for a wedge element with 6 nodes: the tensor product 
+ * of the linear (P1) triangle in (xi0, xi1) and the linear edge in
+ * zeta = xi2. 
  * Parametric coordinate range: xi0, xi1 \f$\in\f$ [0, 1] with
  * xi0 + xi1 \f$\le\f$ 1, and zeta \f$\in\f$ [-1, 1]
  *
- * Node ordering:
- * - Nodes 0-2: triangle vertices on the zeta = -1 face, at
- *   (xi0, xi1) = (0, 0), (1, 0), (0, 1)
- * - Nodes 3-5: triangle vertices on the zeta = +1 face; node a+3 is joined to
- *   node a by the edge along zeta
+ * Node ordering (node a+3 is joined to node a by an edge along \zeta):
+ * - Node 0 at (0, 0 , -1)
+ * - Node 1 at (1, 0 , -1)
+ * - Node 2 at (0, 1 , -1)
+ * - Node 3 at (0, 0 , 1)
+ * - Node 4 at (1, 0 , 1)
+ * - Node 5 at (0, 1 , 1)
  *
- * Shape functions, with L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1 and a = 0, 1, 2:
+ * Shape functions use barycentric coordinates L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1 of the triangle and, for a = 0, 1, 2:
  * - \f$N_a     = L_a (1 - \zeta) / 2\f$
  * - \f$N_{a+3} = L_a (1 + \zeta) / 2\f$
  *
  * Shape functions and ordering from:
  * Zienkiewicz, Taylor, and Zhu
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013, Section 6.4,
- * Fig. 6.16a: \f$N_a = \frac{1}{2} L_a (1 + \zeta_a \zeta)\f$
+ * Fig. 6.16a: \f$N_a = \frac{1}{2} L_a (1 + \zeta_a \zeta)\f$, with 
+ * \f$\zeta_a = -1\f$ for nodes 0-2 and \f$+1\f$ for nodes 3-5 
  */
 struct LinearWedgeShape {
   // clang-format off
@@ -608,7 +612,9 @@ struct LinearWedgeShape {
    * @brief Evaluate shape functions at parametric coordinate
    * @param xi Parametric coordinates (xi0, xi1, zeta) where xi0, xi1
    *        \f$\in\f$ [0,1], xi0 + xi1 \f$\le\f$ 1 and zeta \f$\in\f$ [-1,1]
-   * @return Array of shape function values [N0, ..., N5]
+   * @return Array of shape function values [N0, ..., N5] where 
+   * N_a = L_a ( 1 - \zeta)/2 and N_{a+3} = L_a (1+\zeta)/2 for a = 0,1,2
+   * with L0 = 1 - x0 - xi1, L1 = xi0 and L2 = xi1
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
