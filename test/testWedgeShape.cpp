@@ -4,8 +4,8 @@
 #include <iostream>
 
 // Checks of MeshField::LinearWedgeShape. The checks run inside Kokkos kernels
-// so the shape functions are exercised in the default execution space (e.g.,
-// on a GPU), and failures are counted explicitly so the test also fails in
+// so the shape functions are exercised in the default execution space 
+// and failures are counted explicitly so the test also fails in
 // builds where assert() is disabled.
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;

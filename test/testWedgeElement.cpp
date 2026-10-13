@@ -3,11 +3,10 @@
 #include "MeshField_Field.hpp"
 #include "MeshField_For.hpp"
 #include "MeshField_ShapeField.hpp"
+#include <Omega_h_vector.hpp>
 #include <Kokkos_Core.hpp>
 #include <array>
-#include <cmath>
 #include <iostream>
-#include <string>
 
 // Checks MeshField::LinearWedgeShape inside a MeshField::FieldElement: field
 // evaluation (MeshField::evaluate) and the Jacobian (MeshField::getJacobians,
@@ -17,12 +16,16 @@
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
-using Vec3 = std::array<Real, 3>;
+using Vec3 = Omega_h::Vector<3>;
 
-namespace {
 
 constexpr int numWedges = 2;
 constexpr int numNodes = MeshField::LinearWedgeShape::numNodes;
+
+bool isClose(Real a, Real b) { 
+	return Omega_h::are_close(a, b, 1e-12, 1e-12);
+}
+
 
 // Each wedge has its own six vertices: node n of wedge w is vertex 6*w + n.
 // Nodes 0-2 are the zeta = -1 triangle and nodes 3-5 the zeta = +1 triangle,
@@ -63,23 +66,14 @@ const Vec3 localPts[] = {
 constexpr int numPts = sizeof(localPts) / sizeof(localPts[0]);
 constexpr int centroidPt = 6;
 
-Vec3 add(Vec3 a, Vec3 b) { return {a[0] + b[0], a[1] + b[1], a[2] + b[2]}; }
-Vec3 sub(Vec3 a, Vec3 b) { return {a[0] - b[0], a[1] - b[1], a[2] - b[2]}; }
-Vec3 scale(Real s, Vec3 a) { return {s * a[0], s * a[1], s * a[2]}; }
-Vec3 cross(Vec3 a, Vec3 b) {
-  return {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2],
-          a[0] * b[1] - a[1] * b[0]};
-}
-Real dot(Vec3 a, Vec3 b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
-
 // x(xi) = sum_a L_a(xi0, xi1) [ (1-zeta)/2 B_a + (1+zeta)/2 T_a ] with B_a the
 // bottom (nodes 0-2) and T_a the top (nodes 3-5) vertex coordinates
 Vec3 expectedX(const Vec3 (&nodes)[numNodes], Vec3 xi) {
   const Real L[3] = {1 - xi[0] - xi[1], xi[0], xi[1]};
-  Vec3 x = {0, 0, 0};
+  Vec3 x = Omega_h::zero_vector<3>();
   for (int a = 0; a < 3; ++a) {
-    x = add(x, scale(L[a] * (1 - xi[2]) / 2, nodes[a]));
-    x = add(x, scale(L[a] * (1 + xi[2]) / 2, nodes[a + 3]));
+    x += L[a] * (1 - xi[2]) / 2 *  nodes[a];
+    x +=  L[a] * (1 + xi[2]) / 2 * nodes[a + 3];
   }
   return x;
 }
@@ -93,21 +87,18 @@ std::array<Vec3, 3> expectedJ(const Vec3 (&nodes)[numNodes], Vec3 xi) {
   const Real down = (1 - xi[2]) / 2;
   const Real up = (1 + xi[2]) / 2;
   const Real L[3] = {1 - xi[0] - xi[1], xi[0], xi[1]};
-  const Vec3 dXi0 = add(scale(down, sub(nodes[1], nodes[0])),
-                        scale(up, sub(nodes[4], nodes[3])));
-  const Vec3 dXi1 = add(scale(down, sub(nodes[2], nodes[0])),
-                        scale(up, sub(nodes[5], nodes[3])));
-  Vec3 dZeta = {0, 0, 0};
-  for (int a = 0; a < 3; ++a)
-    dZeta = add(dZeta, scale(L[a] / 2, sub(nodes[a + 3], nodes[a])));
+  const Vec3 dXi0 = down * (nodes[1] - nodes[0]) + up * (nodes[4] - nodes[3]);
+  const Vec3 dXi1 = down * (nodes[2] - nodes[0]) + up * (nodes[5] - nodes[3]);
+  Vec3 dZeta = Omega_h::zero_vector<3>();
+  for (int a = 0; a < 3; ++a){
+    dZeta += L[a] / 2 * (nodes[a + 3] - nodes[a]);
+  }
   return {dXi0, dXi1, dZeta};
 }
 
-bool isClose(Real a, Real b) {
-  return std::fabs(a - b) <= 1e-12 * (1 + std::fabs(b));
-}
 
-template <typename CoordField> void setVtxCoords(CoordField field) {
+template <typename CoordField> 
+void setVtxCoords(CoordField field) {
   const int numVtx = numWedges * numNodes;
   Kokkos::View<Real *[3], Kokkos::HostSpace> coords_h("coords_h", numVtx);
   for (int w = 0; w < numWedges; ++w)
@@ -123,7 +114,6 @@ template <typename CoordField> void setVtxCoords(CoordField field) {
                           "setCoordField");
 }
 
-} // namespace
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
@@ -168,9 +158,9 @@ int main(int argc, char **argv) {
         if (p < numNodes)
           xExpected = nodes[p];
         if (p == centroidPt) {
-          xExpected = {0, 0, 0};
+          xExpected = Omega_h::zero_vector<3>();
           for (int n = 0; n < numNodes; ++n)
-            xExpected = add(xExpected, scale(1.0 / numNodes, nodes[n]));
+            xExpected += nodes[n]/numNodes ;
         }
         for (int d = 0; d < 3; ++d)
           evalFailed += !isClose(x_h(row, d), xExpected[d]);
@@ -179,7 +169,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < 3; ++i)
           for (int j = 0; j < 3; ++j)
             jacFailed += !isClose(J_h(row, i, j), jExpected[i][j]);
-        Real detExpected = dot(jExpected[0], cross(jExpected[1], jExpected[2]));
+        Real detExpected = Omega_h::inner_product(jExpected[0] * Omega_h:: cross(jExpected[1], jExpected[2]));
         if (w == 0)
           detExpected = 2.0 * 3.0 * 4.0 / 2.0; // right prism: a*b*h/2 = 12
         detFailed += !isClose(detJ_h(row), detExpected);
