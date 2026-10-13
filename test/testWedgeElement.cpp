@@ -129,10 +129,7 @@ int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   int numFailed = 0;
   {
-    MeshField::MeshInfo meshInfo{};
-    meshInfo.numVtx = numWedges * numNodes;
-    meshInfo.numWedge = numWedges;
-    meshInfo.dim = 3;
+    const MeshField::MeshInfo meshInfo{.numVtx = numWedges * numNodes, .numWedge = numWedges, .dim = 3};
     auto coordField = MeshField::CreateCoordinateField<
         ExecutionSpace, MeshField::KokkosController, 3>(meshInfo);
     setVtxCoords(coordField.field);

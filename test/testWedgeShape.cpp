@@ -1,4 +1,4 @@
-#include <Kokkos_Core.hpp> // before MeshField_Shape.hpp, which uses Kokkos
+#include <Kokkos_Core.hpp> 
 #include <MeshField_Defines.hpp>
 #include <MeshField_Shape.hpp>
 #include <iostream>
