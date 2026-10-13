@@ -12,7 +12,6 @@ using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
 using Shape = MeshField::LinearWedgeShape;
 
-namespace {
 
 KOKKOS_INLINE_FUNCTION bool isClose(Real a, Real b, Real tol) {
   return Kokkos::fabs(a - b) <= tol;
@@ -114,7 +113,6 @@ int checkInteriorPoints() {
   return numFailed;
 }
 
-} // namespace
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
