@@ -1,0 +1,374 @@
+#ifndef MESHFIELD_BELL_HPP
+#define MESHFIELD_BELL_HPP
+
+#include <Kokkos_Core.hpp>
+#include <MeshField_Defines.hpp>
+#include <MeshField_Fail.hpp>
+#include <MeshField_Shape.hpp>
+#include <MeshField_ShapeField.hpp>
+#include <type_traits>
+
+/**
+ * @file MeshField_Bell.hpp
+ * @brief The Bell element: C1 quintic triangles with value, gradient, and
+ * Hessian degrees of freedom at each vertex.
+ *
+ * The Bell space is the quintic polynomials on a triangle whose normal
+ * derivative is cubic on every edge.  It is not preserved by affine maps, so
+ * it is mapped as described by R.C. Kirby, "A general approach to transforming
+ * finite elements", SMAI J. Comput. Math. 4 (2018) 197-224, section 4.2: from
+ * a reference element for the full quintic space whose dual basis adds one
+ * constraint functional per edge.
+ */
+
+namespace MeshField {
+
+/**
+ * @brief The reference basis for the Bell element: the nodal basis of the full
+ * quintic space on the reference triangle (0,0), (1,0), (0,1).
+ *
+ * @details
+ * The 21 basis functions are dual to
+ *  - for each vertex: the value, the gradient (x, y), and the Hessian
+ *    (xx, xy, yy), in that order (functions 0-17);
+ *  - for each edge e0 = (v1, v2), e1 = (v0, v2), e2 = (v0, v1): the moment of
+ *    the normal derivative against the degree 4 Legendre polynomial along the
+ *    edge (functions 18-20).
+ *
+ * A quintic has a cubic normal derivative on an edge when its edge
+ * moment vanishes, so functions 0-17 are the Bell basis on the reference
+ * triangle.  Functions 18-20 are needed to map the Bell basis to other
+ * triangles.  This matches FIAT's Bell element (FIAT/bell.py in
+ * https://github.com/firedrakeproject/fiat).
+ *
+ * The coefficients are generated with SymPy (https://www.sympy.org) by
+ * tools/generate_bell_reference_basis.py
+ */
+struct BellReferenceShape {
+  static const size_t numNodes = 21;
+  static const size_t meshEntDim = 2;
+  constexpr static size_t Order = 5;
+
+  /**
+   * @brief Evaluate the basis functions at a parametric coordinate
+   * @param xi parametric coordinates (x, y) on the reference triangle
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
+    Kokkos::Array<Real, numNodes> m;
+    for (size_t j = 0; j < numNodes; ++j) {
+      const auto [a, b] = exponents(j);
+      m[j] = power(xi[0], a) * power(xi[1], b);
+    }
+    return contract(m);
+  }
+
+  /**
+   * @brief Evaluate the basis function gradients at a parametric coordinate
+   * @param xi parametric coordinates (x, y) on the reference triangle
+   * @return gradients indexed [function * meshEntDim + direction]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes>
+  getLocalGradients(Vector2 const &xi) const {
+    Kokkos::Array<Real, numNodes> mx, my;
+    for (size_t j = 0; j < numNodes; ++j) {
+      const auto [a, b] = exponents(j);
+      mx[j] = a * power(xi[0], a - 1) * power(xi[1], b);
+      my[j] = b * power(xi[0], a) * power(xi[1], b - 1);
+    }
+    const auto gx = contract(mx);
+    const auto gy = contract(my);
+    Kokkos::Array<Real, meshEntDim * numNodes> g;
+    for (size_t k = 0; k < numNodes; ++k) {
+      g[k * meshEntDim] = gx[k];
+      g[k * meshEntDim + 1] = gy[k];
+    }
+    return g;
+  }
+
+  /**
+   * @brief Evaluate the basis function Hessians at a parametric coordinate
+   * @param xi parametric coordinates on the reference triangle
+   * @return Hessians indexed [function * 3 + (xx, xy, yy)]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, 3 * numNodes> getLocalHessians(Vector2 const &xi) const {
+    Kokkos::Array<Real, numNodes> mxx, mxy, myy;
+    for (size_t j = 0; j < numNodes; ++j) {
+      const auto [a, b] = exponents(j);
+      mxx[j] = a * (a - 1) * power(xi[0], a - 2) * power(xi[1], b);
+      mxy[j] = a * b * power(xi[0], a - 1) * power(xi[1], b - 1);
+      myy[j] = b * (b - 1) * power(xi[0], a) * power(xi[1], b - 2);
+    }
+    const auto hxx = contract(mxx);
+    const auto hxy = contract(mxy);
+    const auto hyy = contract(myy);
+    Kokkos::Array<Real, 3 * numNodes> h;
+    for (size_t k = 0; k < numNodes; ++k) {
+      h[k * 3] = hxx[k];
+      h[k * 3 + 1] = hxy[k];
+      h[k * 3 + 2] = hyy[k];
+    }
+    return h;
+  }
+
+private:
+  struct Exponents {
+    int a;
+    int b;
+  };
+
+  /** @brief exponents (a, b) of monomial j = x^a y^b, ordered by total degree
+   *  and then by decreasing power of x */
+  KOKKOS_INLINE_FUNCTION static Exponents exponents(size_t j) {
+    int degree = 0;
+    while (static_cast<size_t>((degree + 1) * (degree + 2) / 2) <= j)
+      ++degree;
+    const int b = static_cast<int>(j) - degree * (degree + 1) / 2;
+    return {degree - b, b};
+  }
+
+  /** @brief x^n, zero for n < 0 */
+  KOKKOS_INLINE_FUNCTION static Real power(Real x, int n) {
+    if (n < 0)
+      return 0;
+    Real p = 1;
+    for (int i = 0; i < n; ++i)
+      p *= x;
+    return p;
+  }
+
+  /**
+   * @brief out[k] = sum_j coefficients[k][j] * m[j], for monomial values (or
+   * derivatives) m
+   *
+   * @details
+   * The table is a local constexpr array so that it is available in device
+   * code.  Generated by tools/generate_bell_reference_basis.py; do not edit.
+   */
+  KOKKOS_INLINE_FUNCTION static Kokkos::Array<Real, numNodes>
+  contract(Kokkos::Array<Real, numNodes> const &m) {
+    // clang-format off
+    constexpr Real coefficients[21][21] = {
+        {1, 0, 0, 0, 0, 0, -10, 0, 0, -10, 15, 0, -30, 0, 15, -6, 0, 30, 30, 0, -6},
+        {0, 1, 0, 0, 0, 0, -6, 0, -3, 0, 8, 0, -6, 2, 0, -3, 0, 9, 6, 0, 0},
+        {0, 0, 1, 0, 0, 0, 0, -3, 0, -6, 0, 2, -6, 0, 8, 0, 0, 6, 9, 0, -3},
+        {0, 0, 0, 0.5, 0, 0, -1.5, 0, 0, 0, 1.5, 0, -1.5, 0, 0, -0.5, 0, 1.5, 1, 0, 0},
+        {0, 0, 0, 0, 1, 0, 0, -2, -2, 0, 0, 1, 2, 1, 0, 0, 0, 0, 0, 0, 0},
+        {0, 0, 0, 0, 0, 0.5, 0, 0, 0, -1.5, 0, 0, -1.5, 0, 1.5, 0, 0, 1, 1.5, 0, -0.5},
+        {0, 0, 0, 0, 0, 0, 10, 0, 0, 0, -15, 0, 15, 0, 0, 6, 0, -15, -15, 0, 0},
+        {0, 0, 0, 0, 0, 0, -4, 0, 0, 0, 7, 0, -7.5, 0, 0, -3, 0, 7.5, 7.5, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -2, -1.5, 0, 0, 0, 0, 1.5, -1.5, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0.5, 0, 0, 0, -1, 0, 1.25, 0, 0, 0.5, 0, -1.25, -1.25, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 1, 0.5, 0, 0, 0, 0, -0.5, 0.5, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0.25, -0.25, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 15, 0, -15, 0, 0, -15, -15, 0, 6},
+        {0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, -1.5, -2, 0, 0, 0, -1.5, 1.5, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, -4, 0, 0, -7.5, 0, 7, 0, 0, 7.5, 7.5, 0, -3},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.25, 0, 0, 0, 0, -0.25, 0.25, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0.5, 1, 0, 0, 0, 0.5, -0.5, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0, 0, 1.25, 0, -1, 0, 0, -1.25, -1.25, 0, 0.5},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -445.47727214752496, 0, 0, 0, 0, 445.47727214752496, 445.47727214752496, 0, 0},
+        {0, 0, 0, 0, 0, 0, 0, 0, 630, 0, 0, 0, -1260, -1260, 0, 0, 0, 630, 1260, 630, 0},
+        {0, 0, 0, 0, 0, 0, 0, -630, 0, 0, 0, 1260, 1260, 0, 0, 0, -630, -1260, -630, 0, 0}
+    };
+    // clang-format on
+    Kokkos::Array<Real, numNodes> out;
+    for (size_t k = 0; k < numNodes; ++k) {
+      Real sum = 0;
+      for (size_t j = 0; j < numNodes; ++j)
+        sum += coefficients[k][j] * m[j];
+      out[k] = sum;
+    }
+    return out;
+  }
+};
+
+/**
+ * @brief BellDofs are values, gradients (x,y,z), hessians (xx, xy, xz)
+ */
+struct BellTriangleShape {
+  static const size_t numNodes = 18;
+  static const size_t meshEntDim = 2;
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};
+  constexpr static size_t Order = 5;
+  /** @brief nodes (dofs per component) at each vertex */
+  static const size_t nodesPerVertex = 6;
+};
+
+/**
+ * @brief The DofTransformation for the Bell element: the 18 stored physical
+ * dofs to coefficients on BellReferenceShape.
+ *
+ * @details
+ * Kirby 2018, section 4.2 (see MeshField_Bell.hpp).  The coefficients are the
+ * reference dofs of the pulled-back function u o F.  With J[i][j] =
+ * dx_j/dxi_i, constant for affine geometry, at each vertex
+ *  - the value is unchanged,
+ *  - the gradient is J grad u, and
+ *  - the Hessian is J H J^T,
+ * and for each reference edge e from vertex a to vertex b, with physical edge
+ * vector T = x_b - x_a and reference unit normal n_e,
+ *
+ *   lambda_e = ((J^T n_e) . T / |T|^2) I_e,
+ *   I_e = (u_b - u_a - T . (grad u_a + grad u_b) / 2
+ *          + T^T (H_b - H_a) T / 12) / 21.
+ *
+ * I_e is the moment of the tangential derivative against the degree 4
+ * Legendre polynomial along the edge, which is exact for quintics (Kirby
+ * eq. 4.9); the normal derivative moment vanishes for Bell functions.  This is
+ * the transpose of the matrix FInAT builds in Bell.basis_transformation
+ * (finat/bell.py in https://github.com/firedrakeproject/fiat).
+ *
+ * Note: these are unscaled which may lead to ill-conditioning in some caes.
+ *
+ */
+struct BellDofTransformation {
+  /** @brief quintic basis on the reference triangle */
+  template <typename FieldElem>
+  KOKKOS_INLINE_FUNCTION auto referenceShape(FieldElem const &) const {
+    return BellReferenceShape{};
+  }
+
+  template <typename FieldElem, typename GeomElem>
+  KOKKOS_INLINE_FUNCTION auto
+  coefficients(FieldElem const &field, GeomElem const &geom, int ent) const {
+    static_assert(
+        std::is_same_v<decltype(FieldElem::shapeFn), BellTriangleShape>,
+        "BellDofTransformation needs a field with BellTriangleShape");
+    static_assert(decltype(GeomElem::shapeFn)::Order == 1,
+                  "the Bell transformation requires linear (affine) geometry");
+    constexpr size_t numComp = FieldElem::NumComponents;
+    constexpr size_t nv = BellTriangleShape::nodesPerVertex;
+    const auto d = field.coefficients(ent);
+    const auto x = geom.getNodeValues(ent);
+    const auto J = geom.jacobianFromNodeValues(x, Kokkos::Array<Real, 2>{});
+
+    // reference vertices and edges (a, b), matching BellReferenceShape
+    constexpr Real refVerts[3][2] = {{0, 0}, {1, 0}, {0, 1}};
+    constexpr int edges[3][2] = {{1, 2}, {0, 2}, {0, 1}};
+    // for each edge: (J^T n_e) . T / |T|^2 and T
+    Real edgeScale[3];
+    Real T[3][2];
+    for (int e = 0; e < 3; ++e) {
+      const int a = edges[e][0];
+      const int b = edges[e][1];
+      const Real that[2] = {refVerts[b][0] - refVerts[a][0],
+                            refVerts[b][1] - refVerts[a][1]};
+      const Real len = Kokkos::sqrt(that[0] * that[0] + that[1] * that[1]);
+      const Real nhat[2] = {that[1] / len, -that[0] / len};
+      T[e][0] = x[b * 2] - x[a * 2];
+      T[e][1] = x[b * 2 + 1] - x[a * 2 + 1];
+      const Real w[2] = {J[0] * nhat[0] + J[2] * nhat[1],
+                         J[1] * nhat[0] + J[3] * nhat[1]};
+      edgeScale[e] = (w[0] * T[e][0] + w[1] * T[e][1]) /
+                     (T[e][0] * T[e][0] + T[e][1] * T[e][1]);
+    }
+
+    Kokkos::Array<Real, BellReferenceShape::numNodes * numComp> c;
+    for (size_t ci = 0; ci < numComp; ++ci) {
+      const auto dof = [&](int v, int k) {
+        return d[(v * nv + k) * numComp + ci];
+      };
+      for (int v = 0; v < 3; ++v) {
+        const Real g[2] = {dof(v, 1), dof(v, 2)};
+        const Real H[2][2] = {{dof(v, 3), dof(v, 4)}, {dof(v, 4), dof(v, 5)}};
+        // J H J^T
+        Real JH[2][2];
+        for (int i = 0; i < 2; ++i)
+          for (int l = 0; l < 2; ++l)
+            JH[i][l] = J[i * 2] * H[0][l] + J[i * 2 + 1] * H[1][l];
+        const auto JHJt = [&](int i, int k) {
+          return JH[i][0] * J[k * 2] + JH[i][1] * J[k * 2 + 1];
+        };
+        c[(v * nv) * numComp + ci] = dof(v, 0);
+        c[(v * nv + 1) * numComp + ci] = J[0] * g[0] + J[1] * g[1];
+        c[(v * nv + 2) * numComp + ci] = J[2] * g[0] + J[3] * g[1];
+        c[(v * nv + 3) * numComp + ci] = JHJt(0, 0);
+        c[(v * nv + 4) * numComp + ci] = JHJt(0, 1);
+        c[(v * nv + 5) * numComp + ci] = JHJt(1, 1);
+      }
+      for (int e = 0; e < 3; ++e) {
+        const int a = edges[e][0];
+        const int b = edges[e][1];
+        const auto Tg = [&](int v) {
+          return T[e][0] * dof(v, 1) + T[e][1] * dof(v, 2);
+        };
+        const auto THT = [&](int v) {
+          return T[e][0] * T[e][0] * dof(v, 3) +
+                 2 * T[e][0] * T[e][1] * dof(v, 4) +
+                 T[e][1] * T[e][1] * dof(v, 5);
+        };
+        const Real I = (dof(b, 0) - dof(a, 0) - (Tg(a) + Tg(b)) / 2 +
+                        (THT(b) - THT(a)) / 12) /
+                       21;
+        c[(18 + e) * numComp + ci] = edgeScale[e] * I;
+      }
+    }
+    return c;
+  }
+};
+
+/**
+ * @brief Create a Bell field on a triangle mesh
+ *
+ * @details
+ * node is 0 for the value, 1-2 for the gradient (x, y), and 3-5 for the
+ * Hessian (xx, xy, yy).
+ *
+ * @tparam DataType the datatype for field entries
+ * @tparam numComp the number of physical components
+ * @param meshInfo on-process mesh metadata
+ * @return the field and its controller
+ * of the field
+ */
+template <
+    typename ExecutionSpace,
+    template <typename...> typename Controller = MeshField::KokkosController,
+    typename DataType, size_t numComp>
+auto CreateBellField(const MeshInfo &meshInfo) {
+  static_assert(std::is_same_v<Real4, DataType> ||
+                    std::is_same_v<Real8, DataType>,
+                "CreateBellField only supports single and double precision "
+                "floating point fields\n");
+  if (meshInfo.numVtx <= 0) {
+    fail("mesh has no vertices\n");
+  }
+  if (meshInfo.dim != 2) {
+    fail("Bell fields need a 2d mesh\n");
+  }
+  using MemorySpace = typename ExecutionSpace::memory_space;
+  constexpr size_t nodes = BellTriangleShape::nodesPerVertex;
+#ifdef MESHFIELDS_ENABLE_CABANA
+  using Ctrlr = std::conditional_t<
+      std::is_same_v<
+          Controller<ExecutionSpace, MemorySpace, DataType>,
+          MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
+      Controller<ExecutionSpace, MemorySpace, DataType[nodes][numComp]>,
+      Controller<MemorySpace, ExecutionSpace, DataType ***>>;
+  auto createController = [](auto numVtx) {
+    if constexpr (std::is_same_v<
+                      Controller<ExecutionSpace, MemorySpace, DataType>,
+                      MeshField::CabanaController<ExecutionSpace, MemorySpace,
+                                                  DataType>>) {
+      return Ctrlr({numVtx});
+    } else {
+      return Ctrlr({/*field 0*/ numVtx, nodes, numComp});
+    }
+  };
+  Ctrlr kk_ctrl = createController(meshInfo.numVtx);
+#else
+  using Ctrlr = Controller<MemorySpace, ExecutionSpace, DataType ***>;
+  Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, nodes, numComp});
+#endif
+  auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+  using LA = LinearAccessor<decltype(vtxField)>;
+  using BellShapeField = ShapeField<numComp, BellTriangleShape, LA>;
+  BellShapeField bsf(meshInfo, {vtxField});
+  return FieldWithController<Ctrlr, BellShapeField>{kk_ctrl, bsf};
+}
+
+} // namespace MeshField
+
+#endif

@@ -26,6 +26,9 @@ set(MESHFIELD_HEADERS
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
   src/MeshField_Element.hpp
+  src/MeshField_LinearAlgebra.hpp
+  src/MeshField_MappedElement.hpp
+  src/MeshField_Bell.hpp
   src/MeshField_Integrate.hpp
   src/MeshField_Shape.hpp
   src/MeshField_ShapeField.hpp
@@ -201,42 +204,32 @@ function(meshfields_add_exe EXE_NAME EXE_SRC)
   endif()
 endfunction()
 
-meshfields_add_smoke_exe(KokkosTests test/testKokkos.cpp)
+meshfields_add_smoke_exe(ControllerTests test/testController.cpp)
 meshfields_add_exe(SerializationTests test/testSerialize.cpp)
-meshfields_add_exe(ElementTests test/testElement.cpp)
 meshfields_add_exe(ControllerLifetimeTest test/testControllerLifetime.cpp)
-meshfields_add_exe(ElementJacobian1d test/testElementJacobian1d.cpp)
-meshfields_add_exe(ElementJacobian2d test/testElementJacobian2d.cpp)
-meshfields_add_exe(ElementJacobian3d test/testElementJacobian3d.cpp)
-meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
-meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
+meshfields_add_exe(ElementJacobian test/testElementJacobian.cpp)
+meshfields_add_exe(Reproduction test/testReproduction.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
-meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
-meshfields_add_exe(IntegratorMeasure test/testIntegratorMeasure.cpp)
+meshfields_add_exe(Integrator test/testIntegrator.cpp)
 meshfields_add_exe(Interpolate test/testInterpolate.cpp)
+meshfields_add_exe(OmegahMappedElement test/testOmegahMappedElement.cpp)
+meshfields_add_exe(BellElement test/testBellElement.cpp)
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
   meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
-  meshfields_add_smoke_exe(CabanaTests test/testCabana.cpp)
-  meshfields_add_exe(CabanaControllerLifetimeTest test/testCabanaControllerLifetime.cpp)
-  smoke_test_func(CabanaTests ./CabanaTests)
   test_func(ControllerPerformance ./ControllerPerformance)
-  test_func(CabanaControllerLifetimeTest ./CabanaControllerLifetimeTest)
 endif()
 
-smoke_test_func(KokkosTests ./KokkosTests)
+smoke_test_func(ControllerTests ./ControllerTests)
 test_func(SerializationTests ./SerializationTests)
-test_func(ElementTests ./ElementTests)
 test_func(ControllerLifetimeTest ./ControllerLifetimeTest)
-test_func(ElementJacobian1d ./ElementJacobian1d)
-test_func(ElementJacobian2d ./ElementJacobian2d)
-test_func(ElementJacobian3d ./ElementJacobian3d)
-test_func(CountIntegrator ./CountIntegrator)
-smoke_test_func(OmegahTriTests ./OmegahTriTests)
-test_func(OmegahTetTest ./OmegahTetTest)
-test_func(IntegratorMeasure ./IntegratorMeasure)
+test_func(ElementJacobian ./ElementJacobian)
+test_func(Reproduction ./Reproduction)
+test_func(Integrator ./Integrator)
 test_func(Interpolate ./Interpolate)
+test_func(OmegahMappedElement ./OmegahMappedElement)
+test_func(BellElement ./BellElement)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)

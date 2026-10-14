@@ -2,9 +2,11 @@
 #define MESHFIELD_MESHFIELD_HPP
 
 #include "KokkosController.hpp"
+#include "MeshField_Bell.hpp"
 #include "MeshField_Element.hpp"
 #include "MeshField_Fail.hpp"
 #include "MeshField_For.hpp"
+#include "MeshField_MappedElement.hpp"
 #include "MeshField_ShapeField.hpp"
 #include "Omega_h_file.hpp"    //move
 #include "Omega_h_mesh.hpp"    //move
@@ -50,21 +52,6 @@ struct SetCoordFieldFunctor
   Field field_;
   Coords coords_;
   int meshDim_;
-  const CoordinateMap map_;
-};
-
-template <int dim, typename Element, typename CoordinateMap>
-struct InterpolateElementFunctor
-{
-  InterpolateElementFunctor(const Element& element, const CoordinateMap& map)
-      : element_(element), map_(map) {}
-
-  KOKKOS_INLINE_FUNCTION
-  auto operator()(const int ent, Kokkos::Array<MeshField::Real, dim> const& xi) const {
-        return map_(element_.getValue(ent, xi));
-  }
-
-  const Element element_;
   const CoordinateMap map_;
 };
 
@@ -294,6 +281,28 @@ template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
   }
 }
 
+/**
+ * @brief Bell field dofs of a triangle
+ */
+struct BellTriangleToVertexField {
+  LinearTriangleToVertexField vertices;
+  BellTriangleToVertexField(Omega_h::Mesh &mesh) : vertices(mesh) {}
+
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
+    return {MeshField::Triangle};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO triNodeIdx, MeshField::LO triCompIdx,
+             MeshField::LO tri, MeshField::Mesh_Topology topo) const {
+    constexpr MeshField::LO nv = MeshField::BellTriangleShape::nodesPerVertex;
+    auto map = vertices(triNodeIdx / nv, triCompIdx, tri, topo);
+    map.node = triNodeIdx % nv;
+    return map;
+  }
+};
+
 } // namespace Omegah
 
 /**
@@ -364,11 +373,8 @@ public:
           "setCoordField");
     } else {
       const auto linear = CreateLagrangeElement(coordField.field);
-      auto target = CreateLagrangeElement(field);
-      MeshField::setDofByInterpolation(
-          target,
-          InterpolateElementFunctor<dim, decltype(linear), CoordinateMap>(
-              linear, map));
+      auto target = CreateLagrangeElement(field, linear);
+      MeshField::setDofByInterpolation(target, map);
     }
     return fieldWithCtrlr;
   }
@@ -378,6 +384,10 @@ public:
   /**
    * @brief create a FieldElement over the mesh elements for a Lagrange field
    *
+   * @details
+   * The shape and dof map are chosen from the field's order.
+   *
+   * @param coordinate field used to create the element
    */
   template <typename Field>
   auto CreateLagrangeElement(const Field &field) const {
@@ -391,6 +401,51 @@ public:
       const auto [shp, map] = Omegah::getTetrahedronElement<order>(mesh);
       return MeshField::FieldElement(meshInfo.numTet, field, shp, map);
     }
+  }
+
+  /**
+   * @brief create a MappedElement for a field on the given geometry
+   *
+   * @param field the Lagrange field to evaluate
+   * @param geomElem the geometry element: CreateLagrangeElement of a
+   * coordinate field
+   */
+  template <typename ShapeField, typename GeomElem>
+  auto CreateLagrangeElement(const ShapeField &field,
+                             const GeomElem &geomElem) const {
+    return MeshField::MappedElement(CreateLagrangeElement(field), geomElem);
+  }
+
+  /**
+   * @brief create a Bell field
+   * @tparam numComp the number of physical components
+   */
+  template <size_t numComp> auto CreateBellField() const {
+    static_assert(dim == 2, "Bell fields need a 2d mesh");
+    return MeshField::CreateBellField<ExecutionSpace, Controller, Real,
+                                      numComp>(meshInfo);
+  }
+
+  /**
+   * @brief create a Bell FieldElement over triangles
+   */
+  template <typename Field> auto CreateBellElement(const Field &field) const {
+    static_assert(dim == 2, "Bell fields need a 2d mesh");
+    return MeshField::FieldElement(meshInfo.numTri, field,
+                                   MeshField::BellTriangleShape(),
+                                   Omegah::BellTriangleToVertexField(mesh));
+  }
+
+  /**
+   * @brief create a MappedElement for a Bell field
+   *
+   * @param field the Bell field to evaluate
+   * @param geomElem the geometry element
+   */
+  template <typename Field, typename GeomElem>
+  auto CreateBellElement(const Field &field, const GeomElem &geomElem) const {
+    return MeshField::MappedElement(CreateBellElement(field), geomElem,
+                                    MeshField::BellDofTransformation());
   }
 
   // FIXME support 2d and 3d and fields with order>1
