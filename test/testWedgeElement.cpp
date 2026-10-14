@@ -68,7 +68,7 @@ constexpr int centroidPt = 6;
 
 // x(xi) = sum_a L_a(xi0, xi1) [ (1-zeta)/2 B_a + (1+zeta)/2 T_a ] with B_a the
 // bottom (nodes 0-2) and T_a the top (nodes 3-5) vertex coordinates
-Vec3 expectedX(const std::array<Vec3, numNodes>& nodes, Vec3 xi) {
+Vec3 expectedX(const Vec3 (&nodes)[numNodes], Vec3 xi) {
   const Real L[3] = {1 - xi[0] - xi[1], xi[0], xi[1]};
   Vec3 x = Omega_h::zero_vector<3>();
   for (int a = 0; a < 3; ++a) {
@@ -84,7 +84,7 @@ Vec3 expectedX(const std::array<Vec3, numNodes>& nodes, Vec3 xi) {
 //   dx/dxi0  = (1-zeta)/2 (B1 - B0) + (1+zeta)/2 (T1 - T0)
 //   dx/dxi1  = (1-zeta)/2 (B2 - B0) + (1+zeta)/2 (T2 - T0)
 //   dx/dzeta = 1/2 sum_a L_a (T_a - B_a)
-std::array<Vec3, 3> expectedJ(const std::array<Vec3, numNodes>& nodes, Vec3 xi) {
+std::array<Vec3, 3> expectedJ(const Vec3 (&nodes)[numNodes], Vec3 xi) {
   const Real down = (1 - xi[2]) / 2;
   const Real up = (1 + xi[2]) / 2;
   const Real L[3] = {1 - xi[0] - xi[1], xi[0], xi[1]};
@@ -170,7 +170,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < 3; ++i)
           for (int j = 0; j < 3; ++j)
             jacFailed += !isClose(J_h(row, i, j), jExpected[i][j]);
-        Real detExpected = Omega_h::inner_product(jExpected[0] * Omega_h:: cross(jExpected[1], jExpected[2]));
+        Real detExpected = jExpected[0] * Omega_h:: cross(jExpected[1], jExpected[2]);
         if (w == 0)
           detExpected = 2.0 * 3.0 * 4.0 / 2.0; // right prism: a*b*h/2 = 12
         detFailed += !isClose(detJ_h(row), detExpected);
