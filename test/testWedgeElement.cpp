@@ -76,6 +76,7 @@ Vec3 expectedX(const std::array<Vec3, numNodes>& nodes, Vec3 xi) {
     x +=  L[a] * (1 + xi[2]) / 2 * nodes[a + 3];
   }
   return x;
+
 }
 
 // rows of the MeshField Jacobian, J(i,j) = dx_j/dxi_i, from differentiating
@@ -83,7 +84,7 @@ Vec3 expectedX(const std::array<Vec3, numNodes>& nodes, Vec3 xi) {
 //   dx/dxi0  = (1-zeta)/2 (B1 - B0) + (1+zeta)/2 (T1 - T0)
 //   dx/dxi1  = (1-zeta)/2 (B2 - B0) + (1+zeta)/2 (T2 - T0)
 //   dx/dzeta = 1/2 sum_a L_a (T_a - B_a)
-std::array<Vec3, 3> expectedJ(const Vec3 (&nodes)[numNodes], Vec3 xi) {
+std::array<Vec3, 3> expectedJ(const std::array<Vec3, numNodes>& nodes, Vec3 xi) {
   const Real down = (1 - xi[2]) / 2;
   const Real up = (1 + xi[2]) / 2;
   const Real L[3] = {1 - xi[0] - xi[1], xi[0], xi[1]};
@@ -176,6 +177,7 @@ int main(int argc, char **argv) {
       }
       std::cout << "LinearWedgeShape FieldElement, " << wedgeNames[w]
                 << ": evaluate failures " << evalFailed
+
                 << ", Jacobian failures " << jacFailed << ", det J failures "
                 << detFailed << "\n";
       numFailed += evalFailed + jacFailed + detFailed;
