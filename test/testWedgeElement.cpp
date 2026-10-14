@@ -68,7 +68,7 @@ constexpr int centroidPt = 6;
 
 // x(xi) = sum_a L_a(xi0, xi1) [ (1-zeta)/2 B_a + (1+zeta)/2 T_a ] with B_a the
 // bottom (nodes 0-2) and T_a the top (nodes 3-5) vertex coordinates
-Vec3 expectedX(const Vec3 (&nodes)[numNodes], Vec3 xi) {
+Vec3 expectedX(const std::array<Vec3, numNodes>& nodes, Vec3 xi) {
   const Real L[3] = {1 - xi[0] - xi[1], xi[0], xi[1]};
   Vec3 x = Omega_h::zero_vector<3>();
   for (int a = 0; a < 3; ++a) {

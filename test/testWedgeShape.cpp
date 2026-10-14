@@ -97,6 +97,8 @@ int checkInteriorPoints() {
           failed += !isClose(gInterp[d], gExact[d], tol);
         }
 
+		// gradient check with finite difference evaluation 
+
         const Real h = 1e-6;
         for (int d = 0; d < 3; ++d) {
           auto xp = xi;
