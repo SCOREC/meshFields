@@ -665,5 +665,168 @@ struct LinearWedgeShape {
   }
 };
 
+
+/**
+ * @brief Linear in the triangle and cubic in the zeta direction shape functions for 3D tensor product wedge elements
+ *
+ * Defines shape functions for a wedge element with 12 nodes: the tensor product 
+ * of the linear triangle basis in (xi0, xi1) and the cubic lagrange basis in
+ * zeta = xi2. 
+ *
+ * Parametric coordinate range: xi0, xi1 \f$\in\f$ [0, 1] with
+ * xi0, xi1 \f$\ge\f$ 0, xi0 + xi1 \f$\le\f$ 1, and zeta \f$\in\f$ [-1, 1]
+ *
+ * Node ordering (nodes 0-5 as in LinearWedgeShape):
+ * - Node 0-2: triangle vertices at zeta = -1  
+ * - Node 3-5: triangle vertices at zeta = +1 (node a + 3 is directly above node a)
+ * - Nodes 6 + 2a and 7+2a , a = 0, 1, 2 : on the vertical edge through vertex a,
+ *   at zeta = -1/3 and zeta = +1/3
+ *
+ * Barycentric coordinates of the triangle: L0 = 1 - xi0 - xi1, L1 = xi0, L2 = xi1.
+ * Cubic Lagrange functions in zeta on the stations -1, -1/3, 1/3, 1:
+ * \f[
+ *   \ell_0 = -\tfrac{9}{16}(\zeta+\tfrac{1}{3})(\zeta-\tfrac{1}{3})(\zeta-1), \qquad
+ *   \ell_1 = \tfrac{27}{16}(\zeta+1)(\zeta-\tfrac{1}{3})(\zeta-1),
+ * \f]
+ * \f[
+ *   \ell_2 = -\tfrac{27}{16}(\zeta+1)(\zeta+\tfrac{1}{3})(\zeta-1), \qquad
+ *   \ell_3 = \tfrac{9}{16}(\zeta+1)(\zeta+\tfrac{1}{3})(\zeta-\tfrac{1}{3}).
+ * \f]
+ * Shape functions, for a = 0, 1, 2:
+ * - \f$N_a = L_a \, \ell_0\f$ and \f$N_{a+3} = L_a \, \ell_3\f$
+ * - \f$N_{6+2a} = L_a \, \ell_1\f$ and \f$N_{7+2a} = L_a \, \ell_2\f$
+ *
+ */
+
+struct LinearCubicWedgeShape {
+  // clang-format off
+  static const size_t numNodes = 12;                               ///< Number of nodes (12 for linear-cubic wedge)
+  static const size_t meshEntDim = 3;                             ///< Mesh entity dimension (3D)
+  constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge};  ///< DOFs at vertices and edges
+  constexpr static size_t NumDofHolders[2] = {6, 3};               ///< 6 vertices, 3 edges
+  constexpr static size_t DofsPerHolder[2] = {1, 2};              ///< 1 DOF per vertex, 2 DOF per edge 
+  constexpr static size_t Order = 3;                              ///< Polynomial order (cubic)
+  // clang-format on
+
+  /**
+   * @brief Get parametric coordinates of element nodes
+   * @return Array of node coordinates [node0_xi0, node0_xi1, node0_zeta, ...]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
+    // clang-format off
+    return {
+			// nodes at vertices 
+			0,0,-1,   //node 0
+            1,0,-1,   //node 1
+            0,1,-1,   //node 2
+            0,0, 1,   //node 3
+            1,0, 1,   //node 4
+            0,1, 1,   //node 5
+  			
+			// nodes at two stations of edges at -1/3 and +1/3
+			0, 0, -1.0/3, // node 6 
+			0, 0, 1.0/3,  // node 7
+			1, 0, -1.0/3, // node 8
+			1, 0, 1.0/3, // node 9
+			0, 1, -1.0/3, // node 10
+			0, 1, 1.0/3  // node 11
+	};
+    // clang-format on
+  }
+
+  /**
+   * @brief Evaluate shape functions at parametric coordinate
+   * @param xi Parametric coordinates (xi0, xi1, zeta) where xi0, xi1
+   *        \f$\ge\f$ 0, xi0 + xi1 \f$\le\f$ 1 and zeta \f$\in\f$ [-1,1]
+   * @return Array of shape function values [N0, ..., N11] where, for a = 0, 1, 2,
+   *   \f$N_a = L_a \, \ell_0(\zeta)\f$, \f$N_{a+3} = L_a \, \ell_3(\zeta)\f$,
+   *   \f$N_{6+2a} = L_a \, \ell_1(\zeta)\f$ and \f$N_{7+2a} = L_a \, \ell_2(\zeta)\f$,
+   *   with L0 = 1 - xi0 - xi1, L1 = xi0, L2 = xi1 and the cubic Lagrange
+   *   functions \f$\ell_0, \dots, \ell_3\f$ defined in the class description
+  */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
+    assert(greaterThanOrEqual(xi[0], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[1], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[2], -1.0, ParametricCoordTol));
+    assert(lessThanOrEqual(xi[2], 1.0, ParametricCoordTol));
+    const Real L0 = 1 - xi[0] - xi[1];
+    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
+	const Real L1 = xi[0];
+    const Real L2 = xi[1];
+   
+	const Real l0 = -1.0/16 * (3 * xi[2] + 1) * (3 * xi[2] - 1) * (xi[2] - 1); //cubic edge function at -1 station
+    const Real l1 = 9.0/16 * (xi[2] + 1) * (3 * xi[2] - 1) * (xi[2] - 1);      // cubic edge function at -1/3 station
+    const Real l2 = -9.0/16 * (xi[2] + 1) * (3 * xi[2] + 1) * (xi[2] - 1);      // cubic edge function at +1/3 station
+    const Real l3 = 1.0/16 * (xi[2] + 1) * (3 * xi[2] + 1) * (3 * xi[2] - 1);   // cubic edge function at +1 station
+
+    // clang-format off
+    return {L0 * l0,     
+            L1 * l0,
+			L2 * l0,
+			L0 * l3,
+			L1 * l3,
+			L2 * l3,
+			L0 * l1,
+			L0 * l2,
+			L1 * l1,
+			L1 * l2,
+			L2 * l1,
+			L2 * l2
+	};   
+    // clang-format on
+  }
+
+  /**
+   * @brief Get gradients of shape functions in parametric coordinates
+   * @param xi Parametric coordinates (xi0, xi1, zeta), see getValues
+   * @return Array of gradients [dN0/dxi0, dN0/dxi1, dN0/dzeta, dN1/dxi0, ...]
+   */
+  KOKKOS_INLINE_FUNCTION
+  Kokkos::Array<Real, meshEntDim * numNodes>
+  getLocalGradients(Vector3 const &xi) const {
+    assert(greaterThanOrEqual(xi[0], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[1], 0.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(xi[2], -1.0, ParametricCoordTol));
+    assert(lessThanOrEqual(xi[2], 1.0, ParametricCoordTol));
+    const Real L0 = 1 - xi[0] - xi[1];
+    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
+    const Real L1 = xi[0];
+    const Real L2 = xi[1];
+
+	const Real l0 = -1.0/16 * (3 * xi[2] + 1) * (3 * xi[2] - 1) * (xi[2] - 1); //cubic edge function at -1 station
+    const Real dl0 = 1.0/16 * (-27 * xi[2] * xi[2] + 18 * xi[2] + 1); //derivative of cubic edge function at -1 station
+
+    const Real l1 = 9.0/16 * (xi[2] + 1) * (3 * xi[2] - 1) * (xi[2] - 1); // cubic edge function at -1/3 station
+    const Real dl1 = 1.0/16 * (81 * xi[2] * xi[2] - 18 * xi[2] -27);// derivative of cubic edge function at -1/3 station
+
+    const Real l2 = -9.0/16 * (xi[2] + 1) * (3 * xi[2] + 1) * (xi[2] - 1); // cubic edge function at +1/3 station
+    const Real dl2 = 1.0/16 * (-81 * xi[2] * xi[2] - 18 * xi[2] + 27); // derivative of cubic edge function at +1/3 station
+
+    const Real l3 = 1.0/16 * (xi[2] + 1) * (3 * xi[2] + 1) * (3 * xi[2] - 1); // cubic edge function at +1 station
+    const Real dl3 = 1.0/16 * (27 * xi[2] * xi[2] + 18 * xi[2] - 1); // derivative of cubic edge function at +1 station
+
+
+    // clang-format off
+    return {-l0, -l0, L0 * dl0,  //node 0
+             l0,  0,  L1 * dl0,  //node 1
+              0,  l0, L2 * dl0,  //node 2
+            -l3, -l3, L0 * dl3,  //node 3
+             l3,  0,  L1 * dl3,  //node 4
+              0,  l3, L2 * dl3, //node 5
+	 // nodes at two stations of edges at -1/3 and +1/3
+	          -l1, -l1, L0 * dl1, // node 6
+			  -l2, -l2, L0 * dl2, // node 7
+			  l1, 0 , L1 * dl1, // node 8 
+			  l2, 0 , L1 * dl2, // node 9 
+			   0, l1, L2 * dl1, // node 10 
+			   0, l2 , L2 * dl2  // node 11
+			};
+    // clang-format on
+  }
+};
+
 } // namespace MeshField
 #endif
