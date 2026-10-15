@@ -217,7 +217,6 @@ meshfields_add_exe(CubicWedgeShapeTest test/testCubicWedgeShape.cpp)
 meshfields_add_exe(CubicWedgeElementTest test/testCubicWedgeElement.cpp)
 meshfields_add_exe(LinearWedgeShapeTest test/testLinearWedgeShape.cpp)
 meshfields_add_exe(LinearWedgeElementTest test/testLinearWedgeElement.cpp)
->>>>>>> linear-wedge
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
