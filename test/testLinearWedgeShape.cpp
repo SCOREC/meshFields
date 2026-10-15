@@ -1,17 +1,16 @@
-#include <Kokkos_Core.hpp> 
+#include <Kokkos_Core.hpp>
 #include <MeshField_Defines.hpp>
 #include <MeshField_Shape.hpp>
 #include <iostream>
 
 // Checks of MeshField::LinearWedgeShape. The checks run inside Kokkos kernels
-// so the shape functions are exercised in the default execution space 
-// and failures are counted explicitly so the test also fails in
-// builds where assert() is disabled.
+// so the shape functions are exercised in the default execution space, and
+// failures are counted explicitly so the test also fails in builds where
+// assert() is disabled.
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
 using Shape = MeshField::LinearWedgeShape;
-
 
 KOKKOS_INLINE_FUNCTION bool isClose(Real a, Real b, Real tol) {
   return Kokkos::fabs(a - b) <= tol;
@@ -46,10 +45,8 @@ int checkKroneckerDelta() {
   return numFailed;
 }
 
-// At interior points: the values sum to one, the gradients sum to zero, the
-// basis reproduces f and its gradient exactly, and the analytic gradients
-// match central finite differences of the values.
-int checkInteriorPoints() {
+// Interior points, spanning the zeta range.
+Kokkos::View<Real *[3], ExecutionSpace> makeInteriorPoints() {
   // clang-format off
   const Real pts[][3] = {{1. / 3, 1. / 3,  0.0},
                          {0.2,    0.3,    -0.4},
@@ -57,13 +54,22 @@ int checkInteriorPoints() {
                          {0.05,   0.9,     0.95},
                          {0.45,   0.45,   -0.95}};
   // clang-format on
-  const int numPts = sizeof(pts) / sizeof(pts[0]);
+  const int numPts = static_cast<int>(sizeof(pts) / sizeof(pts[0]));
   Kokkos::View<Real *[3], ExecutionSpace> pts_d("wedgePts", numPts);
   auto pts_h = Kokkos::create_mirror_view(pts_d);
   for (int i = 0; i < numPts; ++i)
     for (int d = 0; d < 3; ++d)
       pts_h(i, d) = pts[i][d];
   Kokkos::deep_copy(pts_d, pts_h);
+  return pts_d;
+}
+
+// At interior points: the values sum to one, the gradients sum to zero, the
+// basis reproduces f and its gradient exactly, and the analytic gradients
+// match central finite differences of the values.
+int checkInteriorPoints() {
+  const auto pts_d = makeInteriorPoints();
+  const int numPts = static_cast<int>(pts_d.extent(0));
 
   int numFailed = 0;
   Kokkos::parallel_reduce(
@@ -97,8 +103,7 @@ int checkInteriorPoints() {
           failed += !isClose(gInterp[d], gExact[d], tol);
         }
 
-		// gradient check with finite difference evaluation 
-
+        // gradients against central finite differences of the values
         const Real h = 1e-6;
         for (int d = 0; d < 3; ++d) {
           auto xp = xi;
@@ -115,19 +120,21 @@ int checkInteriorPoints() {
   return numFailed;
 }
 
+// Runs both checks and prints their failure counts. Must be called between
+// Kokkos::initialize and Kokkos::finalize.
+int runLinearWedgeShapeChecks() {
+  const int kronecker = checkKroneckerDelta();
+  std::cout << "LinearWedgeShape Kronecker delta failures: " << kronecker
+            << "\n";
+  const int interior = checkInteriorPoints();
+  std::cout << "LinearWedgeShape interior point failures: " << interior
+            << "\n";
+  return kronecker + interior;
+}
 
 int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
-  int numFailed = 0;
-  {
-    const int kronecker = checkKroneckerDelta();
-    std::cout << "LinearWedgeShape Kronecker delta failures: " << kronecker
-              << "\n";
-    const int interior = checkInteriorPoints();
-    std::cout << "LinearWedgeShape interior point failures: " << interior
-              << "\n";
-    numFailed = kronecker + interior;
-  }
+  const int numFailed = runLinearWedgeShapeChecks();
   Kokkos::finalize();
   return numFailed ? 1 : 0;
 }
