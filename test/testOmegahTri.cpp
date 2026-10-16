@@ -206,7 +206,6 @@ void doRun(Omega_h::Mesh &mesh,
 
   auto coords = mesh.coords();
   for (auto testCase : cases) {
-    using ViewType = decltype(testCase.coords);
     {
       const auto ShapeOrder = 1;
       const auto numComponents = 1;
