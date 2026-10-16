@@ -51,6 +51,34 @@ template <size_t dim> struct QuadraticFunction {
 };
 
 /**
+ * @brief the value of a numComp component function whose component c is
+ * (c+1)*f, which checks the component ordering
+ */
+template <size_t numComp, size_t dim, typename Function>
+KOKKOS_INLINE_FUNCTION Kokkos::Array<MeshField::Real, numComp>
+valueScaledByComponent(Function const &f, Vec<dim> const &x) {
+  Kokkos::Array<MeshField::Real, numComp> val;
+  for (size_t c = 0; c < numComp; ++c)
+    val[c] = (c + 1) * f(x);
+  return val;
+}
+
+/**
+ * @brief the gradient of the function in valueScaledByComponent, indexed
+ * [direction * numComp + component]; f must provide grad
+ */
+template <size_t numComp, size_t dim, typename Function>
+KOKKOS_INLINE_FUNCTION Kokkos::Array<MeshField::Real, dim * numComp>
+gradScaledByComponent(Function const &f, Vec<dim> const &x) {
+  const auto gf = f.grad(x);
+  Kokkos::Array<MeshField::Real, dim * numComp> g;
+  for (size_t d = 0; d < dim; ++d)
+    for (size_t c = 0; c < numComp; ++c)
+      g[d * numComp + c] = (c + 1) * gf[d];
+  return g;
+}
+
+/**
  * @brief CoordinateMap for an affine shear that makes every Jacobian a full
  * matrix: x += 0.3y + 0.1z, y += 0.2z
  *
