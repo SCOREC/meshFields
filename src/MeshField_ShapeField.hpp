@@ -8,7 +8,7 @@
 #include "MeshField_Field.hpp"
 #include "MeshField_Shape.hpp"
 #include <type_traits> //decltype
-#include <utility> // std::forward
+#include <utility>     // std::forward
 
 namespace MeshField {
 
@@ -72,19 +72,20 @@ template <typename Ctrlr, typename Field> struct FieldWithController {
  * @param mixins object(s) needed to construct the Accessor
  */
 //! [ShapeField]
-template <size_t numCompIn, typename Shape, typename Controller, typename... Mixins>
+template <size_t numCompIn, typename Shape, typename Controller,
+          typename... Mixins>
 struct ShapeField : public Mixins... {
   Shape shape;
   static const size_t numComp = numCompIn;
   const MeshInfo meshInfo;
   constexpr static auto Order = Shape::Order;
-  using Ctrlr=Controller;
+  using Ctrlr = Controller;
   // Mixins&&... binds only to rvalues/temporaries (braced-init-list call
   // sites like ShapeField(meshInfo, {vtxField}) are fine; passing a named
   // lvalue requires std::move). mixins is moved-from by std::forward below
   // - do not read mixins again after the initializer list.
-  ShapeField(const MeshInfo &meshInfoIn, Mixins &&... mixins)
-      : meshInfo(meshInfoIn), Mixins( std::forward<Mixins>(mixins) )... {};
+  ShapeField(const MeshInfo &meshInfoIn, Mixins &&...mixins)
+      : meshInfo(meshInfoIn), Mixins(std::forward<Mixins>(mixins))... {};
 };
 //! [ShapeField]
 
@@ -276,13 +277,14 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     // clang-format on
     QuadraticLagrangeShapeField qlsf(meshInfo, {vtxField, edgeField});
     return FieldWithController<Ctrlr, QuadraticLagrangeShapeField>{kk_ctrl,
-                                                                    qlsf};
+                                                                   qlsf};
     //! [CreateFieldControllerQuadratic]
   } else {
     fail("CreateLagrangeField does not support the specified "
          "combination of order %d and dimension %d.\n",
          order, dim);
-    return FieldWithController<int, std::nullptr_t>{}; // silence compiler warning
+    return FieldWithController<int,
+                               std::nullptr_t>{}; // silence compiler warning
   }
 };
 
@@ -309,7 +311,8 @@ template <typename ExecutionSpace,
           size_t dim>
 auto CreateCoordinateField(const MeshInfo &meshInfo) {
   // current coordinate fields are assumed to be linear over the elements
-  return CreateLagrangeField<ExecutionSpace, Controller, Real, 1, dim, dim>(meshInfo);
+  return CreateLagrangeField<ExecutionSpace, Controller, Real, 1, dim, dim>(
+      meshInfo);
 }
 
 } // namespace MeshField

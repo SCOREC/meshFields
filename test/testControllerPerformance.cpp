@@ -36,8 +36,8 @@ int main(int argc, char **argv) {
     };
     for (int i = 0; i < runs; ++i) {
       auto start = std::chrono::system_clock::now();
-      MeshField::simd_parallel_for<cab>({0, 0, 0}, {n, DIM1, DIM2},
-                                   cabDim4, "CabTest");
+      MeshField::simd_parallel_for<cab>({0, 0, 0}, {n, DIM1, DIM2}, cabDim4,
+                                        "CabTest");
       auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::system_clock::now() - start);
       avg += duration.count();
@@ -55,8 +55,8 @@ int main(int argc, char **argv) {
     };
     for (int i = 0; i < runs; ++i) {
       auto start = std::chrono::system_clock::now();
-      MeshField::parallel_for<kokkos>({0, 0, 0}, {n, DIM1, DIM2},
-                              kokkosDim4, "KokkosTest");
+      MeshField::parallel_for<kokkos>({0, 0, 0}, {n, DIM1, DIM2}, kokkosDim4,
+                                      "KokkosTest");
       auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(
           std::chrono::system_clock::now() - start);
       avg += duration.count();

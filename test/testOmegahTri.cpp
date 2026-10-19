@@ -96,8 +96,8 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
       field(vtx, 0, i, MeshField::Vertex) = func(x, y);
     }
   };
-  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nverts()},
-                          setFieldAtVertices, "setFieldAtVertices");
+  MeshField::parallel_for<typename ShapeField::Ctrlr>(
+      {0}, {mesh.nverts()}, setFieldAtVertices, "setFieldAtVertices");
 }
 
 template <typename AnalyticFunction, typename ShapeField>
@@ -119,8 +119,8 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
       field(edge, 0, i, MeshField::Edge) = func(x, y);
     }
   };
-  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nedges()},
-                          setFieldAtEdges, "setFieldAtEdges");
+  MeshField::parallel_for<typename ShapeField::Ctrlr>(
+      {0}, {mesh.nedges()}, setFieldAtEdges, "setFieldAtEdges");
 }
 
 template <size_t NumPtsPerElem>
@@ -157,8 +157,9 @@ void runTest(Omega_h::Mesh &mesh,
   // fieldWithCtrlr.ctrlr must stay alive for as long as fieldWithCtrlr.field
   // is used (some Controllers, e.g. CabanaController, hand out slices that
   // are only valid while the Controller that created them is alive).
-  auto fieldWithCtrlr = omf.template CreateLagrangeField<
-      MeshField::Real, ShapeOrder, numComponents>();
+  auto fieldWithCtrlr =
+      omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
+                                       numComponents>();
   auto field = fieldWithCtrlr.field;
   using FieldType = decltype(field);
   setVertices(mesh, function, field);
@@ -190,12 +191,10 @@ void doRun(Omega_h::Mesh &mesh,
   static const size_t OnePtPerElem = 1;
   static const size_t ThreePtsPerElem = 3;
   static const size_t SixPtsPerElem = 6;
-  auto centroids = createElmAreaCoords<OnePtPerElem>(
-      mesh.nfaces(), {1 / 3.0, 1 / 3.0});
-  auto interior =
-      createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.1, 0.4});
-  auto vertex =
-      createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.0, 0.0});
+  auto centroids =
+      createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {1 / 3.0, 1 / 3.0});
+  auto interior = createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.1, 0.4});
+  auto vertex = createElmAreaCoords<OnePtPerElem>(mesh.nfaces(), {0.0, 0.0});
   // clang-format off
     auto allVertices = createElmAreaCoords<ThreePtsPerElem>(mesh.nfaces(),
         {1.0, 0.0,
@@ -205,7 +204,8 @@ void doRun(Omega_h::Mesh &mesh,
   // triangle, in the shape function's own canonical node ordering - this
   // verifies field evaluation at edge dof holders against the true
   // physical edge midpoint
-  const auto quadNodeXi = MeshField::QuadraticTriangleShape().getNodeParametricCoords();
+  const auto quadNodeXi =
+      MeshField::QuadraticTriangleShape().getNodeParametricCoords();
   auto allNodes = createElmAreaCoords<SixPtsPerElem>(
       mesh.nfaces(),
       {quadNodeXi[0], quadNodeXi[1], quadNodeXi[2], quadNodeXi[3],

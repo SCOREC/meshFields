@@ -111,8 +111,8 @@ private:
   template <class T, int stride>
   using wrapper_slice_t = CabanaSliceWrapper<member_slice_t<T, stride>, T>;
 
-  using AoSoATuple =
-      std::tuple<Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>;
+  using AoSoATuple = std::tuple<
+      Cabana::AoSoA<Cabana::MemberTypes<Ts>, MemorySpace, vecLen>...>;
 
   template <size_t... I>
   static auto construct(std::integer_sequence<size_t, I...>,

@@ -38,14 +38,16 @@ void setEdgeCoords(size_t numVerts, Kokkos::View<MeshField::Real *> coords,
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
     field(vtx, 0, 0, MeshField::Vertex) = coords(vtx);
   };
-  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {numVerts}, setFieldAtVertices,
-                          "setFieldAtVertices");
+  MeshField::parallel_for<typename ShapeField::Ctrlr>(
+      {0}, {numVerts}, setFieldAtVertices, "setFieldAtVertices");
 }
 
 void edgeJacobian() {
   const MeshField::MeshInfo meshInfo{.numVtx = 2, .numEdge = 1, .dim = 1};
-  auto coordField = MeshField::CreateCoordinateField<
-      ExecutionSpace, MeshField::KokkosController, 1>(meshInfo).field;
+  auto coordField =
+      MeshField::CreateCoordinateField<ExecutionSpace,
+                                       MeshField::KokkosController, 1>(meshInfo)
+          .field;
   Kokkos::View<MeshField::Real *, Kokkos::HostSpace> coords_h("coords_h", 2);
   coords_h[0] = -1;
   coords_h[1] = 1;

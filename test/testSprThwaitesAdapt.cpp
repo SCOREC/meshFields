@@ -142,8 +142,8 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, Reals recoveredStrain,
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
     field(vtx, 0, 0, MeshField::Vertex) = recoveredStrain[vtx];
   };
-  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nverts()},
-                          setFieldAtVertices, "setFieldAtVertices");
+  MeshField::parallel_for<typename ShapeField::Ctrlr>(
+      {0}, {mesh.nverts()}, setFieldAtVertices, "setFieldAtVertices");
 }
 
 void printTriCount(Mesh *mesh, std::string_view prefix) {
@@ -250,8 +250,7 @@ int main(int argc, char **argv) {
     const std::string outfilename = "afterAdapt_" + outname;
     Omega_h::vtk::write_parallel(outfilename + ".vtk", &mesh, 2);
     Omega_h::binary::write(outfilename + ".osh", &mesh);
-    std::cout << "wrote adapted mesh: " << outfilename + ".osh"
-              << "\n";
+    std::cout << "wrote adapted mesh: " << outfilename + ".osh" << "\n";
   }
 
   return 0;

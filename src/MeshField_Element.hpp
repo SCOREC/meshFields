@@ -89,17 +89,19 @@ KOKKOS_INLINE_FUNCTION auto addTensorProduct(VecA const &a, VecB const &b,
 
 namespace MeshField {
 
-
 //
 
 /**
  * @brief Supports mapping between mesh (i.e., Omega_h) ordering and MeshFields
  * ordering
  *
- * Return type used by structs/classes that implement the ElementDofHolderAccessor parenthesis operator.  See @ref adding-shape-functions-omegah "Adding Shape Functions Omega_h Element Topologies" 
+ * Return type used by structs/classes that implement the
+ * ElementDofHolderAccessor parenthesis operator.  See @ref
+ * adding-shape-functions-omegah "Adding Shape Functions Omega_h Element
+ * Topologies"
  */
 struct ElementToDofHolderMap {
-  /** Which node is being accessed; non-zero 
+  /** Which node is being accessed; non-zero
    *  for mesh entities associated with multiple nodes
    */
   LO node;
@@ -115,7 +117,7 @@ struct ElementToDofHolderMap {
    */
   LO entity;
 
-  /** Topological type of the entity at entityIndex 
+  /** Topological type of the entity at entityIndex
    *  (e.g., Vertex, Edge, Triangle)
    */
   Mesh_Topology topo;
@@ -288,6 +290,7 @@ struct FieldElement {
                 Ji(0, 0) * (Ji(1, 1) * Ji(2, 2) - Ji(1, 2) * Ji(2, 1)) -
                 Ji(0, 1) * (Ji(1, 0) * Ji(2, 2) - Ji(1, 2) * Ji(2, 0)) +
                 Ji(0, 2) * (Ji(1, 0) * Ji(2, 1) - Ji(1, 1) * Ji(2, 0));
+            KOKKOS_ASSERT(cofactorSum >= 0);
             determinants(i) = cofactorSum;
           });
       return determinants;
@@ -309,6 +312,7 @@ struct FieldElement {
             // TODO use nested parallel for?
             auto Ji = Kokkos::subview(J, i, Kokkos::ALL(), Kokkos::ALL());
             const auto cross = Ji(0, 0) * Ji(1, 1) - Ji(1, 0) * Ji(0, 1);
+            KOKKOS_ASSERT(cros >= 0);
             determinants(i) = cross;
           });
       return determinants;
@@ -326,7 +330,8 @@ struct FieldElement {
     return Kokkos::View<Real *>("foo", J.extent(0));
   }
 
-  Kokkos::View<Real ***> getJacobiansStaticLength(Kokkos::View<Real **> localCoords) {
+  Kokkos::View<Real ***>
+  getJacobiansStaticLength(Kokkos::View<Real **> localCoords) {
     if (Debug) {
       LO numErrors = 0;
       Kokkos::parallel_reduce(
@@ -363,8 +368,8 @@ struct FieldElement {
         const auto val = getJacobian1d(ent);
         res(pt, 0, 0) = val;
       };
-        MeshField::parallel_for<typename FieldAccessor::Ctrlr, true>({0, 0},
-            {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
+      MeshField::parallel_for<typename FieldAccessor::Ctrlr, true>(
+          {0, 0}, {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
       return res;
     } else if constexpr (MeshEntDim == 2 || MeshEntDim == 3) {
       const auto numPts = localCoords.extent(0);
@@ -374,17 +379,17 @@ struct FieldElement {
       auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int ent, const int pt) {
         const auto vals = getNodeValues(ent);
         Kokkos::Array<Real, MeshEntDim> xi;
-              for (size_t d = 0; d < MeshEntDim; d++)
-                xi[d] = localCoords(pt, d);
-              const auto grad = shapeFn.getLocalGradients(xi);
-	auto A = Kokkos::subview(res, ent * numPts + pt, Kokkos::ALL(),
+        for (size_t d = 0; d < MeshEntDim; d++)
+          xi[d] = localCoords(pt, d);
+        const auto grad = shapeFn.getLocalGradients(xi);
+        auto A = Kokkos::subview(res, ent * numPts + pt, Kokkos::ALL(),
                                  Kokkos::ALL());
         Real localA[MeshEntDim][MeshEntDim] = {};
         for (size_t node = 0; node < ShapeType::numNodes; node++) {
           for (size_t i = 0; i < MeshEntDim; ++i) {
             for (size_t j = 0; j < MeshEntDim; ++j) {
-              localA[j][i] += vals[node * MeshEntDim + i] *
-                              grad[node * MeshEntDim + j];
+              localA[j][i] +=
+                  vals[node * MeshEntDim + i] * grad[node * MeshEntDim + j];
             }
           }
         }
@@ -394,8 +399,8 @@ struct FieldElement {
           }
         }
       };
-        MeshField::parallel_for<typename FieldAccessor::Ctrlr, true>({0, 0},
-            {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
+      MeshField::parallel_for<typename FieldAccessor::Ctrlr, true>(
+          {0, 0}, {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
       return res;
     }
   }
@@ -547,8 +552,8 @@ evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
       res(ent * numPts + pt, i) = val[i];
     }
   };
-    MeshField::parallel_for<typename decltype(fes.field)::Ctrlr, true>({0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
-                            "evaluate");
+  MeshField::parallel_for<typename decltype(fes.field)::Ctrlr, true>(
+      {0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc, "evaluate");
   return res;
 }
 

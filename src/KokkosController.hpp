@@ -183,7 +183,7 @@ private:
 
 public:
   typedef ExeSpace exe;
-  using ExecutionSpace=exe;
+  using ExecutionSpace = exe;
   static const int MAX_RANK = 5;
 
   KokkosController() {

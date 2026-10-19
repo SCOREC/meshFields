@@ -19,9 +19,9 @@
 // helper function, keeps the returned FieldWithController (both members)
 // alive in main(), and writes to the field - this must NOT reproduce the
 // heap-use-after-free ASan caught in testOmegahTri.cpp / testOmegahTet.cpp.
-#include <iostream>
 #include "MeshField_ShapeField.hpp"
 #include <Kokkos_Core.hpp>
+#include <iostream>
 #ifdef MESHFIELDS_ENABLE_CABANA
 #include "CabanaController.hpp"
 #endif
