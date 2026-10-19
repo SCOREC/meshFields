@@ -363,7 +363,7 @@ struct FieldElement {
         const auto val = getJacobian1d(ent);
         res(pt, 0, 0) = val;
       };
-        MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
+        MeshField::parallel_for<typename FieldAccessor::Ctrlr, true>({0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
       return res;
     } else if constexpr (MeshEntDim == 2 || MeshEntDim == 3) {
@@ -394,7 +394,7 @@ struct FieldElement {
           }
         }
       };
-        MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
+        MeshField::parallel_for<typename FieldAccessor::Ctrlr, true>({0, 0},
             {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
       return res;
     }
@@ -547,7 +547,7 @@ evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
       res(ent * numPts + pt, i) = val[i];
     }
   };
-    MeshField::parallel_for<typename decltype(fes.field)::Ctrlr>({0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
+    MeshField::parallel_for<typename decltype(fes.field)::Ctrlr, true>({0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
                             "evaluate");
   return res;
 }

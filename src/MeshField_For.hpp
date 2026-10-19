@@ -16,12 +16,12 @@ template <template <typename...> class T, typename... innerArgs>
 struct checkController<T<innerArgs...>, T> {
   static constexpr bool value = true;
 };
-template <typename Controller, typename FunctorType, class IS, class IE>
+template <typename Controller, bool forceKokkos = false, typename FunctorType, class IS, class IE>
 void parallel_for(const std::initializer_list<IS> &start,
                   const std::initializer_list<IE> &end,
                   const FunctorType &vectorKernel, std::string tag) {
   using ExecutionSpace = Controller::ExecutionSpace;
-  if constexpr (checkController<Controller, KokkosController>::value) {
+  if constexpr (checkController<Controller, KokkosController>::value || forceKokkos) {
     constexpr auto funcRank = MeshFieldUtil::function_traits<FunctorType>::arity;
     assert(funcRank >= 1);
     Kokkos::Array<int64_t, funcRank> a_start =
