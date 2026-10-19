@@ -311,31 +311,30 @@ void testCabanaParallelFor() {
       field0(i) = i;
       assert(field0(i) == i);
     };
-    MeshField::simd_parallel_for<simd_ctrlr>({0}, {x}, vectorKernel,
-                                             "simple_loop");
+    MeshField::simd_parallel_for<simd_ctrlr>({0}, {x}, vectorKernel, "simple_loop");
 
     auto vectorKernel2 = KOKKOS_LAMBDA(const int &i, const int &j) {
       field1(i, j) = i + j;
       assert(field1(i, j) == i + j);
     };
     MeshField::simd_parallel_for<simd_ctrlr>({0, 0}, {x, y}, vectorKernel2,
-                                             "simple_loop");
+                                 "simple_loop");
 
     auto vectorKernel3 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k) {
       field2(i, j, k) = i + j + k;
       assert(field2(i, j, k) == i + j + k);
     };
-    MeshField::simd_parallel_for<simd_ctrlr>({0, 0, 0}, {x, y, z},
-                                             vectorKernel3, "simple_loop");
+    MeshField::simd_parallel_for<simd_ctrlr>({0, 0, 0}, {x, y, z}, vectorKernel3,
+                                 "simple_loop");
 
     auto vectorKernel4 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
       field3(i, j, k, l) = i + j + k + l;
       assert(field3(i, j, k, l) == i + j + k + l);
     };
-    MeshField::simd_parallel_for<simd_ctrlr>({0, 0, 0, 0}, {x, y, z, a},
-                                             vectorKernel4, "simple_loop");
+    MeshField::simd_parallel_for<simd_ctrlr>({0, 0, 0, 0}, {x, y, z, a}, vectorKernel4,
+                                 "simple_loop");
   }
   {
     using simd_ctrlr =
@@ -351,23 +350,22 @@ void testCabanaParallelFor() {
       field0(i) = i;
       assert(field0(i) == i);
     };
-    MeshField::simd_parallel_for<simd_ctrlr>({0}, {x}, vectorKernel,
-                                             "simple_loop");
+    MeshField::simd_parallel_for<simd_ctrlr>({0}, {x}, vectorKernel, "simple_loop");
 
     auto vectorKernel2 = KOKKOS_LAMBDA(const int &i, const int &j) {
       field1(i, j) = i + j;
       assert(field1(i, j) == i + j);
     };
     MeshField::simd_parallel_for<simd_ctrlr>({0, 0}, {x + 1, y}, vectorKernel2,
-                                             "simple_loop");
+                                 "simple_loop");
 
     auto vectorKernel3 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k) {
       field2(i, j, k) = i + j + k;
       assert(field2(i, j, k) == i + j + k);
     };
-    MeshField::simd_parallel_for<simd_ctrlr>({0, 0, 0}, {x + 2, y, z},
-                                             vectorKernel3, "simple_loop");
+    MeshField::simd_parallel_for<simd_ctrlr>({0, 0, 0}, {x + 2, y, z}, vectorKernel3,
+                                 "simple_loop");
 
     auto vectorKernel4 =
         KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l) {
@@ -375,7 +373,7 @@ void testCabanaParallelFor() {
       assert(field3(i, j, k, l) == i + j + k + l);
     };
     MeshField::simd_parallel_for<simd_ctrlr>({0, 0, 0, 0}, {x + 3, y, z, a},
-                                             vectorKernel4, "simple_loop");
+                                 vectorKernel4, "simple_loop");
   }
 
   printf("== END testCabanaParallelFor() ==\n");

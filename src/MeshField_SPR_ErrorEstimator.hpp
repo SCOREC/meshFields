@@ -92,12 +92,10 @@ public:
                 Kokkos::View<MeshField::Real *> w,
                 Kokkos::View<MeshField::Real *> dV) {
     const size_t numPtsPerElem = p.extent(0);
-    const auto [shp, map] = Omegah::getTriangleElement<
-        std::remove_reference_t<decltype(estimation.eps_star)>::Order>(
-        estimation.mesh);
-    FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star,
-                                 shp, map);
-    auto eps_star_atPts = evaluateStaticLength(estimationField, p);
+    const auto [shp, map] = Omegah::getTriangleElement<std::remove_reference_t<decltype(estimation.eps_star)>::Order>(estimation.mesh);
+    FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star, shp, map);
+    auto eps_star_atPts =
+        evaluateStaticLength(estimationField, p);
 
     r = 0;
     Kokkos::parallel_reduce(
@@ -173,12 +171,10 @@ public:
     //       the value from the element and assert that there is
     //       one integration point per element.
     assert(numPtsPerElem == 1);
-    const auto [shp, map] = Omegah::getTriangleElement<
-        std::remove_reference_t<decltype(estimation.eps_star)>::Order>(
-        estimation.mesh);
-    FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star,
-                                 shp, map);
-    auto eps_star_atPts = evaluateStaticLength(estimationField, p);
+    const auto [shp, map] = Omegah::getTriangleElement<std::remove_reference_t<decltype(estimation.eps_star)>::Order>(estimation.mesh);
+    FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star, shp, map);
+    auto eps_star_atPts =
+        evaluateStaticLength(estimationField, p);
     double meshDim = estimation.mesh.dim();
     double orderP = estimation.recovered_order;
 

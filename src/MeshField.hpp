@@ -51,8 +51,8 @@ createCoordinateField(const MeshField::MeshInfo &mesh_info,
       coordField(i, 0, 2, MeshField::Vertex) = coords[i * meshDim + 2];
     }
   };
-  MeshField::parallel_for<decltype(coordFieldWithCtrlr.ctrlr)>(
-      {0}, {mesh_info.numVtx}, setCoordField, "setCoordField");
+  MeshField::parallel_for<decltype(coordFieldWithCtrlr.ctrlr)>({0}, {mesh_info.numVtx},
+                          setCoordField, "setCoordField");
   return coordFieldWithCtrlr;
 }
 
@@ -113,8 +113,7 @@ struct LinearTetrahedronToVertexField {
     const auto tetDim = 3;
     const auto vtxDim = 0;
     const auto ignored = -1;
-    const auto localVtxIdx =
-        Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored);
+    const auto localVtxIdx = Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored);
     const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
     const MeshField::LO vtx = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
     return {0, tetCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
@@ -162,8 +161,8 @@ struct QuadraticTriangleToField {
       const auto triDim = 2;
       const auto vtxDim = 0;
       const auto ignored = -1;
-      const auto localVtxIdx =
-          Omega_h::simplex_down_template(triDim, vtxDim, dofHolderIdx, ignored);
+      const auto localVtxIdx = Omega_h::simplex_down_template(
+                                    triDim, vtxDim, dofHolderIdx, ignored);
       const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
       osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
     } else if (dofHolderTopo == MeshField::Edge) {
@@ -217,8 +216,8 @@ struct QuadraticTetrahedronToField {
       const auto tetDim = 3;
       const auto vtxDim = 0;
       const auto ignored = -1;
-      const auto localVtxIdx =
-          Omega_h::simplex_down_template(tetDim, vtxDim, dofHolderIdx, ignored);
+      const auto localVtxIdx = Omega_h::simplex_down_template(
+                                    tetDim, vtxDim, dofHolderIdx, ignored);
       const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
       osh_ent = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
     } else if (dofHolderTopo == MeshField::Edge) {

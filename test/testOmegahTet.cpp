@@ -100,8 +100,8 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
       field(vtx, 0, i, MeshField::Vertex) = func(x, y, z);
     }
   };
-  MeshField::parallel_for<typename ShapeField::Ctrlr>(
-      {0}, {mesh.nverts()}, setFieldAtVertices, "setFieldAtVertices");
+  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nverts()},
+                          setFieldAtVertices, "setFieldAtVertices");
 }
 
 template <typename AnalyticFunction, typename ShapeField>
@@ -125,8 +125,8 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
       field(edge, 0, i, MeshField::Edge) = func(x, y, z);
     }
   };
-  MeshField::parallel_for<typename ShapeField::Ctrlr>(
-      {0}, {mesh.nedges()}, setFieldAtEdges, "setFieldAtEdges");
+  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nedges()},
+                          setFieldAtEdges, "setFieldAtEdges");
 }
 
 template <size_t NumPtsPerElem>
@@ -164,9 +164,8 @@ void runTest(Omega_h::Mesh &mesh,
   // fieldWithCtrlr.ctrlr must stay alive for as long as fieldWithCtrlr.field
   // is used (some Controllers, e.g. CabanaController, hand out slices that
   // are only valid while the Controller that created them is alive).
-  auto fieldWithCtrlr =
-      omf.template CreateLagrangeField<MeshField::Real, ShapeOrder,
-                                       numComponents>();
+  auto fieldWithCtrlr = omf.template CreateLagrangeField<
+      MeshField::Real, ShapeOrder, numComponents>();
   auto field = fieldWithCtrlr.field;
   using FieldType = decltype(field);
   setVertices(mesh, function, field);

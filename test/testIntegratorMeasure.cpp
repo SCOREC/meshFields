@@ -54,10 +54,10 @@ int main(int argc, char **argv) {
   int failed = 0;
   {
     auto lib = Omega_h::Library(&argc, &argv);
-    auto tris = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0,
-                                   3, 3, 0);
-    auto tets = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 2.0, 3.0,
-                                   2, 2, 2);
+    auto tris = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0,
+                                   0.0, 3, 3, 0);
+    auto tets = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 2.0,
+                                   3.0, 2, 2, 2);
     failed += !testMeasure<2>(tris, 1.0, "triangles");
     failed += !testMeasure<3>(tets, 6.0, "tetrahedra");
   }

@@ -28,7 +28,7 @@ struct QuadraticTriangleToField {
     assert(topo == MeshField::Triangle);
     assert(ent == 0);
     MeshField::LO triNode2DofHolder[6] = {/*vertices*/ 0, 1, 2,
-                                          /*edges*/ 0,    1, 2};
+                                          /*edges*/ 0, 1, 2};
     MeshField::Mesh_Topology triNode2DofHolderTopo[6] = {
         MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
         MeshField::Edge,   MeshField::Edge,   MeshField::Edge};
@@ -42,7 +42,8 @@ int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   {
     // triangle: vtx 0,1,2 with edges 0(v0-v1), 1(v1-v2), 2(v2-v0)
-    const MeshInfo meshInfo{.numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
+    const MeshInfo meshInfo{
+        .numVtx = 3, .numEdge = 3, .numTri = 1, .dim = 2};
     const int numComp = 1;
 
     using Ctrlr =
@@ -51,7 +52,7 @@ int main(int argc, char **argv) {
     // kept alive for the entire duration of the test - controller is NOT
     // stored inside the returned ShapeField anymore.
     Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, numComp,
-                   /*field 1*/ meshInfo.numEdge, 1, numComp});
+                  /*field 1*/ meshInfo.numEdge, 1, numComp});
 
     auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
     auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
@@ -95,10 +96,11 @@ int main(int argc, char **argv) {
           const auto expected = 1.0;
           if (Kokkos::fabs(computed - expected) > 1e-9) {
             Kokkos::printf("MISMATCH: expected %f computed %f\n", expected,
-                           computed);
+                          computed);
             lerrors += 1;
           } else {
-            Kokkos::printf("OK: expected %f computed %f\n", expected, computed);
+            Kokkos::printf("OK: expected %f computed %f\n", expected,
+                          computed);
           }
         },
         numErrors);

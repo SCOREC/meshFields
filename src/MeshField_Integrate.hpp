@@ -65,12 +65,12 @@ public:
   public:
     virtual int countPoints() const { return 3; }
     virtual std::vector<IntegrationPoint<2>> getPoints() const {
-      return {IntegrationPoint(Vector2{0.166666666666667, 0.166666666666667},
-                               1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(Vector2{0.666666666666667, 0.166666666666667},
-                               1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(Vector2{0.166666666666667, 0.666666666666667},
-                               1. / 3. / 2.0, 2, 0)};
+      return {IntegrationPoint(
+                  Vector2{0.166666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.666666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.166666666666667, 0.666666666666667}, 1. / 3. / 2.0, 2, 0)};
     }
     virtual int getAccuracy() const { return 2; }
   }; // end N2
@@ -240,7 +240,7 @@ public:
    * process-local integrations into a global
    * mesh integration.
    */
-  virtual void parallelReduce() {};
+  virtual void parallelReduce(){};
 
   /** \brief Run the Integrator over the local field elements.
    *  \param fes FieldElement
@@ -253,6 +253,11 @@ public:
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords);
     // 3d determinants are signed
+    if (Debug) {
+    Kokkos::parallel_for(
+        "absJacobianDeterminants", dV.extent(0),
+        KOKKOS_LAMBDA(const int i) { KOKKOS_ASSERT(dV(i) >= 0) });
+}
     atPoints(localCoords, weights, dV);
     parallelReduce();
     post();
