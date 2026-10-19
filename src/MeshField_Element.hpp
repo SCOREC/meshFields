@@ -359,23 +359,19 @@ struct FieldElement {
     if constexpr (MeshEntDim == 1) {
       const auto numPts = localCoords.extent(0);
       Kokkos::View<Real ***> res("result", numPts * numMeshEnts, 1, 1);
-      auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int index) {
-        const int ent = index / numPts;
-	const int pt = index % numPts;
+      auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int ent, const int pt) {
         const auto val = getJacobian1d(ent);
         res(pt, 0, 0) = val;
       };
-	//TODO: Cabana simd for has worse performance.  When fixed should swap to Meshfield parallel for
-        Kokkos::parallel_for(numMeshEnts * numPts, jacobianFunc);
+        MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
+            {numMeshEnts, numPts}, jacobianFunc, "1dJacobian");
       return res;
     } else if constexpr (MeshEntDim == 2 || MeshEntDim == 3) {
       const auto numPts = localCoords.extent(0);
       Kokkos::View<Real ***> res("result", numPts * numMeshEnts, MeshEntDim,
                                  MeshEntDim);
       Kokkos::deep_copy(res, 0.0);
-      auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int index) {
-	const int ent = index / numPts;
-	const int pt = index % numPts;
+      auto jacobianFunc = KOKKOS_CLASS_LAMBDA(const int ent, const int pt) {
         const auto vals = getNodeValues(ent);
         Kokkos::Array<Real, MeshEntDim> xi;
               for (size_t d = 0; d < MeshEntDim; d++)
@@ -398,8 +394,8 @@ struct FieldElement {
           }
         }
       };
-	//TODO: Cabana simd for has worse performance.  When fixed should swap to Meshfield parallel for
-        Kokkos::parallel_for(numMeshEnts * numPts, jacobianFunc);
+        MeshField::parallel_for<typename FieldAccessor::Ctrlr>({0, 0},
+            {numMeshEnts, numPts}, jacobianFunc, "2d3dJacobian");
       return res;
     }
   }
@@ -542,9 +538,7 @@ evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
   constexpr const auto numComponents = FieldElement::ValArray::size();
   const auto numPts = localCoords.extent(0);
   Kokkos::View<Real *[numComponents]> res("result", numPts * fes.numMeshEnts);
-  auto evaluateFunc = KOKKOS_LAMBDA(const int index) {
-    const int ent = index / numPts;
-    const int pt = index % numPts;
+  auto evaluateFunc = KOKKOS_LAMBDA(const int ent, const int pt) {
     Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
     for (int i = 0; i < localCoords.extent(1); ++i)
       lc[i] = localCoords(pt, i);
@@ -553,8 +547,8 @@ evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
       res(ent * numPts + pt, i) = val[i];
     }
   };
-  //TODO: Cabana simd for has worse performance.  When fixed should swap to Meshfield parallel for
-  Kokkos::parallel_for(fes.numMeshEnts * numPts, evaluateFunc);
+    MeshField::parallel_for<typename decltype(fes.field)::Ctrlr>({0, 0}, {fes.numMeshEnts, numPts}, evaluateFunc,
+                            "evaluate");
   return res;
 }
 
