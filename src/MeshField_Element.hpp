@@ -288,6 +288,7 @@ struct FieldElement {
                 Ji(0, 0) * (Ji(1, 1) * Ji(2, 2) - Ji(1, 2) * Ji(2, 1)) -
                 Ji(0, 1) * (Ji(1, 0) * Ji(2, 2) - Ji(1, 2) * Ji(2, 0)) +
                 Ji(0, 2) * (Ji(1, 0) * Ji(2, 1) - Ji(1, 1) * Ji(2, 0));
+	    KOKKOS_ASSERT(cofactorSum >= 0);
             determinants(i) = cofactorSum;
           });
       return determinants;
@@ -309,6 +310,7 @@ struct FieldElement {
             // TODO use nested parallel for?
             auto Ji = Kokkos::subview(J, i, Kokkos::ALL(), Kokkos::ALL());
             const auto cross = Ji(0, 0) * Ji(1, 1) - Ji(1, 0) * Ji(0, 1);
+	    KOKKOS_ASSERT(cross >= 0);
             determinants(i) = cross;
           });
       return determinants;
