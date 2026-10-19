@@ -19,7 +19,7 @@ struct checkController<T<innerArgs...>, T> {
 template <typename Controller, typename FunctorType, class IS, class IE>
 void parallel_for(const std::initializer_list<IS> &start,
                   const std::initializer_list<IE> &end,
-                  FunctorType &vectorKernel, std::string tag) {
+                  const FunctorType &vectorKernel, std::string tag) {
   using ExecutionSpace = Controller::ExecutionSpace;
   if constexpr (checkController<Controller, KokkosController>::value) {
     constexpr auto funcRank = MeshFieldUtil::function_traits<FunctorType>::arity;

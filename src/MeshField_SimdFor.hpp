@@ -7,7 +7,7 @@
 namespace {
 template <class Fn, typename ExecutionSpace, size_t VecLen>
 typename std::enable_if<1 == MeshFieldUtil::function_traits<Fn>::arity>::type
-simd_for(Fn &kernel, const Kokkos::Array<int64_t, 1> &start,
+simd_for(const Fn &kernel, const Kokkos::Array<int64_t, 1> &start,
          const Kokkos::Array<int64_t, 1> &end, std::string tag) {
   Cabana::SimdPolicy<VecLen, ExecutionSpace> policy(start[0], end[0]);
   Cabana::simd_parallel_for(
@@ -21,7 +21,7 @@ simd_for(Fn &kernel, const Kokkos::Array<int64_t, 1> &start,
 
 template <class Fn, typename ExecutionSpace, size_t VecLen>
 typename std::enable_if<2 == MeshFieldUtil::function_traits<Fn>::arity>::type
-simd_for(Fn &kernel, const Kokkos::Array<int64_t, 2> &start,
+simd_for(const Fn &kernel, const Kokkos::Array<int64_t, 2> &start,
          const Kokkos::Array<int64_t, 2> &end, std::string tag) {
   Cabana::SimdPolicy<VecLen, ExecutionSpace> policy(start[0], end[0]);
   const int64_t s1 = start[1];
@@ -38,7 +38,7 @@ simd_for(Fn &kernel, const Kokkos::Array<int64_t, 2> &start,
 
 template <class Fn, typename ExecutionSpace, size_t VecLen>
 typename std::enable_if<3 == MeshFieldUtil::function_traits<Fn>::arity>::type
-simd_for(Fn &kernel, const Kokkos::Array<int64_t, 3> &start,
+simd_for(const Fn &kernel, const Kokkos::Array<int64_t, 3> &start,
          const Kokkos::Array<int64_t, 3> &end, std::string tag) {
   Cabana::SimdPolicy<VecLen, ExecutionSpace> policy(start[0], end[0]);
   const int s1 = start[1], s2 = start[2];
@@ -58,7 +58,7 @@ simd_for(Fn &kernel, const Kokkos::Array<int64_t, 3> &start,
 
 template <class Fn, typename ExecutionSpace, size_t VecLen>
 typename std::enable_if<4 == MeshFieldUtil::function_traits<Fn>::arity>::type
-simd_for(Fn &kernel, const Kokkos::Array<int64_t, 4> &start,
+simd_for(const Fn &kernel, const Kokkos::Array<int64_t, 4> &start,
          const Kokkos::Array<int64_t, 4> &end, std::string tag) {
   Cabana::SimdPolicy<VecLen, ExecutionSpace> policy(start[0], end[0]);
   const int s1 = start[1], s2 = start[2], s3 = start[3];
@@ -83,7 +83,7 @@ namespace MeshField {
 template <typename CabController, typename FunctorType, class IS, class IE>
 void simd_parallel_for(const std::initializer_list<IS> &start_init,
                        const std::initializer_list<IE> &end_init,
-                       FunctorType &vectorKernel, std::string tag) {
+                       const FunctorType &vectorKernel, std::string tag) {
   static_assert(std::is_integral<IS>::value, "Integral required\n");
   static_assert(std::is_integral<IE>::value, "Integral required\n");
   constexpr std::size_t RANK =
