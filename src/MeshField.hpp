@@ -41,10 +41,10 @@ struct SetCoordFieldFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(const size_t vtx) const {
     Kokkos::Array<MeshField::Real, dim> x{};
-    for (size_t d = 0; d < meshDim_; ++d)
+    for (int d = 0; d < meshDim_; ++d)
       x[d] = coords_[vtx * meshDim_ + d];
     const auto mapped = map_(x);
-    for (size_t d = 0; d < meshDim_; ++d)
+    for (int d = 0; d < meshDim_; ++d)
       field_(vtx, 0, d, MeshField::Vertex) = mapped[d];
   }
   Field field_;
