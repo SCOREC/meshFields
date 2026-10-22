@@ -95,7 +95,7 @@ public:
     virtual int getAccuracy() const { return 4; }
   }; // end N4
 
-  virtual int countIntegrations() const { return 2; }
+  virtual int countIntegrations() const { return 3; }
   virtual Integration<2> const *getIntegration(int i) const {
     static N1 i1;
     static N2 i2;
