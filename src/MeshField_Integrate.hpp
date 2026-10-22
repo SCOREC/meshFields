@@ -74,11 +74,33 @@ public:
     }
     virtual int getAccuracy() const { return 2; }
   }; // end N2
+
+  // 6-point rule with positive weights, exact for polynomials of degree 4
+  // (D. A. Dunavant, Int. J. Numer. Meth. Eng. 21, 1985). The points are the
+  // two orbits of the barycentric point (a, a, 1-2a). It also serves order 3:
+  // the only symmetric 4-point degree-3 rule has a negative weight.
+  class N4 : public Integration<2> {
+  public:
+    virtual int countPoints() const { return 6; }
+    virtual std::vector<IntegrationPoint<2>> getPoints() const {
+      const Real a1 = 0.44594849091596488632, w1 = 0.22338158967801146570;
+      const Real a2 = 0.091576213509770743460, w2 = 0.10995174365532186764;
+      return {IntegrationPoint(Vector2{a1, a1}, w1 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{1 - 2 * a1, a1}, w1 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{a1, 1 - 2 * a1}, w1 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{a2, a2}, w2 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{1 - 2 * a2, a2}, w2 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{a2, 1 - 2 * a2}, w2 / 2.0, 2, 0)};
+    }
+    virtual int getAccuracy() const { return 4; }
+  }; // end N4
+
   virtual int countIntegrations() const { return 2; }
   virtual Integration<2> const *getIntegration(int i) const {
     static N1 i1;
     static N2 i2;
-    static Integration<2> *integrations[2] = {&i1, &i2};
+    static N4 i4;
+    static Integration<2> *integrations[3] = {&i1, &i2, &i4};
     return integrations[i];
   }
 };
