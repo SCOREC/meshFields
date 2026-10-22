@@ -15,8 +15,6 @@
 //    for order 5,
 // 3. Integrator::process with orders 3 and 4 integrates monomials of that
 //    degree exactly over a triangulated unit square.
-// Failures are counted explicitly so the test also fails in builds where
-// assert() is disabled.
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
