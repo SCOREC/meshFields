@@ -253,7 +253,7 @@ public:
    *  \param fes FieldElement
    * */
   template <typename FieldElement> void process(FieldElement &fes) {
-    constexpr auto topo = decltype(FieldElement::elm2dof)::getTopology();
+    constexpr auto topo = FieldElement::getTopology();
     pre();
     auto ip = getIntegrationPoints<topo[0]>(order);
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
