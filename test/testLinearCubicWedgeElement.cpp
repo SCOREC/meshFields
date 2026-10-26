@@ -1,8 +1,9 @@
+#include "MeshField_Defines.hpp"
+#include "MeshField_Element.hpp"
+#include "MeshField_Shape.hpp"
+#include "MeshField_ShapeField.hpp"
 #include <Kokkos_Core.hpp>
 #include <Omega_h_vector.hpp>
-#include "MeshField_Defines.hpp"
-#include "MeshField_Shape.hpp"
-#include "MeshField_Element.hpp"
 #include <array>
 #include <cassert>
 #include <iostream>
@@ -11,11 +12,10 @@
 // Checks MeshField::LinearCubicWedgeShape inside a MeshField::FieldElement:
 // field evaluation (MeshField::evaluate) and the Jacobian
 // (MeshField::getJacobians, MeshField::getJacobianDeterminants) for two cubic
-// wedges. The nodes are placed by geometric maps that are linear in (xi0, xi1)
-// and cubic in zeta, so the element map reproduces them exactly and the
-// expected values are the analytic maps and their derivatives. Failures are
-// counted explicitly so the test also fails in builds where assert() is
-// disabled.
+// wedges. The coordinates are stored in a field from
+// MeshField::CreateLagrangeField with LinearCubicWedgeShape: one DOF per vertex
+// and two per vertical edge.
+// The nodes are placed by geometric maps that are linear in (xi0, xi1)
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
@@ -29,21 +29,6 @@ constexpr int numVtxPerWedge = 6;
 constexpr int numEdgesPerWedge = 3;
 
 bool isClose(Real a, Real b) { return Omega_h::are_close(a, b, 1e-12, 1e-12); }
-
-// Field storage for the test: one value per vertex and two per vertical edge,
-// each with three components. FieldElement only calls
-// field(entity, dof, comp, topo), so this stands in for a MeshField field.
-struct CubicWedgeField {
-  using BaseType = Real;
-  static constexpr size_t numComp = 3;
-  Kokkos::View<Real **, ExecutionSpace> vtx;   // (vertex, comp)
-  Kokkos::View<Real ***, ExecutionSpace> edge; // (edge, dof, comp)
-  KOKKOS_INLINE_FUNCTION Real &operator()(MeshField::LO ent, MeshField::LO dof,
-                                          MeshField::LO comp,
-                                          MeshField::Mesh_Topology topo) const {
-    return topo == MeshField::Vertex ? vtx(ent, comp) : edge(ent, dof, comp);
-  }
-};
 
 // Local node n of wedge w: nodes 0-5 are vertex 6*w + n; nodes 6+2a and 7+2a
 // are the two DOFs on vertical edge 3*w + a, at zeta = -1/3 and +1/3.
@@ -86,8 +71,7 @@ Vec3 mapX(int w, Vec3 xi) {
 std::array<Vec3, 3> mapJ(int w, Vec3 xi) {
   const Real x0 = xi[0], x1 = xi[1], z = xi[2];
   if (w == 0)
-    return {Vec3{2, 0.1 * z * z * z, 0},
-            Vec3{0.3 * z * z, 3, 0},
+    return {Vec3{2, 0.1 * z * z * z, 0}, Vec3{0.3 * z * z, 3, 0},
             Vec3{0.6 * z * x1 + 0.6 * z * z, 0.3 * z * z * x0 - 0.4,
                  2 + 0.75 * z * z}};
   return {Vec3{1 + 0.3 * z * z * z, 0, 0},
@@ -99,9 +83,9 @@ std::array<Vec3, 3> mapJ(int w, Vec3 xi) {
 // Reference coordinates of the 12 nodes: six vertices, then two edge nodes on
 // each vertical edge at zeta = -1/3 and +1/3.
 const Vec3 nodeRef[numNodes] = {
-    {0, 0, -1},      {1, 0, -1},      {0, 1, -1},      {0, 0, 1},
-    {1, 0, 1},       {0, 1, 1},       {0, 0, -1. / 3}, {0, 0, 1. / 3},
-    {1, 0, -1. / 3}, {1, 0, 1. / 3},  {0, 1, -1. / 3}, {0, 1, 1. / 3}};
+    {0, 0, -1},      {1, 0, -1},     {0, 1, -1},      {0, 0, 1},
+    {1, 0, 1},       {0, 1, 1},      {0, 0, -1. / 3}, {0, 0, 1. / 3},
+    {1, 0, -1. / 3}, {1, 0, 1. / 3}, {0, 1, -1. / 3}, {0, 1, 1. / 3}};
 
 // The 12 nodes, then interior points.
 std::vector<Vec3> makeLocalPoints() {
@@ -113,15 +97,15 @@ std::vector<Vec3> makeLocalPoints() {
   return pts;
 }
 
-// Vertex and edge DOFs, filled from the geometric maps at the nodes. The
-// device views are filled through their mirrors, so the layouts always match.
-CubicWedgeField makeCubicWedgeField() {
+// Writes the node positions from mapX into the coordinate field: vertex
+// nodes to the vertex DOFs, and the zeta = -1/3 and +1/3 nodes to DOFs 0 and 1
+// of their vertical edge.
+template <typename CoordField> void setCubicWedgeCoords(CoordField field) {
   const int numVtx = numWedges * numVtxPerWedge;
   const int numEdges = numWedges * numEdgesPerWedge;
-  Kokkos::View<Real **, ExecutionSpace> vtx("vtx", numVtx, 3);
-  Kokkos::View<Real ***, ExecutionSpace> edge("edge", numEdges, 2, 3);
-  auto vtx_h = Kokkos::create_mirror_view(vtx);
-  auto edge_h = Kokkos::create_mirror_view(edge);
+  Kokkos::View<Real *[3], Kokkos::HostSpace> vtx_h("vtx_h", numVtx);
+  Kokkos::View<Real *[2][3], Kokkos::HostSpace> edge_h("edge_h", numEdges);
+
   for (int w = 0; w < numWedges; ++w)
     for (int n = 0; n < numNodes; ++n) {
       const Vec3 X = mapX(w, nodeRef[n]);
@@ -135,9 +119,22 @@ CubicWedgeField makeCubicWedgeField() {
         }
       }
     }
-  Kokkos::deep_copy(vtx, vtx_h);
-  Kokkos::deep_copy(edge, edge_h);
-  return CubicWedgeField{vtx, edge};
+
+  auto vtx = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), vtx_h);
+  auto edge = Kokkos::create_mirror_view_and_copy(ExecutionSpace(), edge_h);
+  Kokkos::parallel_for(
+      "setVtxCoords", Kokkos::RangePolicy<ExecutionSpace>(0, numVtx),
+      KOKKOS_LAMBDA(const int v) {
+        for (int d = 0; d < 3; ++d)
+          field(v, 0, d, MeshField::Vertex) = vtx(v, d);
+      });
+  Kokkos::parallel_for(
+      "setEdgeCoords", Kokkos::RangePolicy<ExecutionSpace>(0, numEdges),
+      KOKKOS_LAMBDA(const int e) {
+        for (int dof = 0; dof < 2; ++dof)
+          for (int d = 0; d < 3; ++d)
+            field(e, dof, d, MeshField::Edge) = edge(e, dof, d);
+      });
 }
 
 // Compares the evaluated positions, Jacobians and determinants of wedge w
@@ -168,16 +165,24 @@ int checkWedge(int w, const std::vector<Vec3> &pts, const XView &x_h,
 }
 
 // Builds the field and the FieldElement, runs the evaluation, Jacobian and
-// determinant, and checks every wedge. 
+// determinant, and checks every wedge.
 int runCubicWedgeElementChecks() {
   const auto pts = makeLocalPoints();
   const int numPts = static_cast<int>(pts.size());
-
-  CubicWedgeField field = makeCubicWedgeField();
-  MeshField::FieldElement fe(numWedges, field,
+  // numEdge counts only the vertical edges, which hold the zeta = +-1/3 DOFs
+  const MeshField::MeshInfo meshInfo{.numVtx = numWedges * numVtxPerWedge,
+                                     .numEdge = numWedges * numEdgesPerWedge,
+                                     .numWedge = numWedges,
+                                     .dim = 3};
+  auto coordField =
+      MeshField::CreateLagrangeField<ExecutionSpace,
+                                     MeshField::KokkosController, Real, 3, 3, 3,
+                                     MeshField::LinearCubicWedgeShape>(
+          meshInfo);
+  setCubicWedgeCoords(coordField.field);
+  MeshField::FieldElement fe(numWedges, coordField.field,
                              MeshField::LinearCubicWedgeShape(),
                              CubicWedgeToField());
-
   // the same local points in every wedge, stored element-major
   Kokkos::View<Real **> lc("localCoords", numWedges * numPts, 3);
   auto lc_h = Kokkos::create_mirror_view(lc);
@@ -190,10 +195,8 @@ int runCubicWedgeElementChecks() {
   const auto x = MeshField::evaluate(fe, lc, numPts);
   const auto J = MeshField::getJacobians(fe, lc, numPts);
   const auto detJ = MeshField::getJacobianDeterminants(fe, J);
-  const auto x_h =
-      Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), x);
-  const auto J_h =
-      Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), J);
+  const auto x_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), x);
+  const auto J_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), J);
   const auto detJ_h =
       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), detJ);
 
