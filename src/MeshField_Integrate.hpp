@@ -75,10 +75,13 @@ public:
     virtual int getAccuracy() const { return 2; }
   }; // end N2
 
-  // 6-point rule with positive weights, exact for polynomials of degree 4
-  // (D. A. Dunavant, Int. J. Numer. Meth. Eng. 21, 1985). The points are the
+  // 6-point rule with positive weights, exact for polynomials of degree 4. The points are the
   // two orbits of the barycentric point (a, a, 1-2a). It also serves order 3:
   // the only symmetric 4-point degree-3 rule has a negative weight.
+  //
+  // D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature
+  // rules for the triangle", Int. J. Numer. Meth. Eng. 21, 1129-1148 (1985).
+  //
   class N4 : public Integration<2> {
   public:
     virtual int countPoints() const { return 6; }
