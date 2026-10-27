@@ -47,6 +47,101 @@ public:
   virtual int countIntegrations() const = 0;
   virtual Integration<pointSize> const *getIntegration(int i) const = 0;
 };
+// Gauss-Legendre rules on [-1, 1] from
+// N1 to N6 are copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc
+// (EdgeIntegration, lines 27-129). The n-point rule is exact for degree
+// 2n - 1, and the weights sum to 2, the length of the reference edge.
+//! [EdgeIntegration]
+class EdgeIntegration : public EntityIntegration<1> {
+public:
+  class N1 : public Integration<1> {
+  public:
+    virtual int countPoints() const { return 1; }
+    virtual std::vector<IntegrationPoint<1>> getPoints() const {
+      return {IntegrationPoint(Vector1{0}, 2, 1, 0)};
+    }
+    virtual int getAccuracy() const { return 1; }
+  }; // end N1
+  class N2 : public Integration<1> {
+  public:
+    virtual int countPoints() const { return 2; }
+    virtual std::vector<IntegrationPoint<1>> getPoints() const {
+      return {IntegrationPoint(Vector1{0.577350269189626}, 1, 1, 0),
+              IntegrationPoint(Vector1{-0.577350269189626}, 1, 1, 0)};
+    }
+    virtual int getAccuracy() const { return 3; }
+  }; // end N2
+  class N3 : public Integration<1> {
+  public:
+    virtual int countPoints() const { return 3; }
+    virtual std::vector<IntegrationPoint<1>> getPoints() const {
+      return {
+          IntegrationPoint(Vector1{0.000000000000000}, 0.888888888888889, 1, 0),
+          IntegrationPoint(Vector1{0.774596669241483}, 0.555555555555556, 1, 0),
+          IntegrationPoint(Vector1{-0.774596669241483}, 0.555555555555556, 1,
+                           0)};
+    }
+    virtual int getAccuracy() const { return 5; }
+  }; // end N3
+  class N4 : public Integration<1> {
+  public:
+    virtual int countPoints() const { return 4; }
+    virtual std::vector<IntegrationPoint<1>> getPoints() const {
+      return {
+          IntegrationPoint(Vector1{0.339981043584856}, 0.652145154862546, 1, 0),
+          IntegrationPoint(Vector1{-0.339981043584856}, 0.652145154862546, 1,
+                           0),
+          IntegrationPoint(Vector1{0.861136311594053}, 0.347854845137454, 1, 0),
+          IntegrationPoint(Vector1{-0.861136311594053}, 0.347854845137454, 1,
+                           0)};
+    }
+    virtual int getAccuracy() const { return 7; }
+  }; // end N4
+  class N5 : public Integration<1> {
+  public:
+    virtual int countPoints() const { return 5; }
+    virtual std::vector<IntegrationPoint<1>> getPoints() const {
+      return {
+          IntegrationPoint(Vector1{0.000000000000000}, 0.568888888888889, 1, 0),
+          IntegrationPoint(Vector1{0.538469310105683}, 0.478628670499366, 1, 0),
+          IntegrationPoint(Vector1{-0.538469310105683}, 0.478628670499366, 1,
+                           0),
+          IntegrationPoint(Vector1{0.906179845938664}, 0.236926885056189, 1, 0),
+          IntegrationPoint(Vector1{-0.906179845938664}, 0.236926885056189, 1,
+                           0)};
+    }
+    virtual int getAccuracy() const { return 9; }
+  }; // end N5
+  class N6 : public Integration<1> {
+  public:
+    virtual int countPoints() const { return 6; }
+    virtual std::vector<IntegrationPoint<1>> getPoints() const {
+      return {
+          IntegrationPoint(Vector1{0.238619186083197}, 0.467913934572691, 1, 0),
+          IntegrationPoint(Vector1{-0.238619186083197}, 0.467913934572691, 1,
+                           0),
+          IntegrationPoint(Vector1{0.661209386466265}, 0.360761573048139, 1, 0),
+          IntegrationPoint(Vector1{-0.661209386466265}, 0.360761573048139, 1,
+                           0),
+          IntegrationPoint(Vector1{0.932469514203152}, 0.171324492379170, 1, 0),
+          IntegrationPoint(Vector1{-0.932469514203152}, 0.171324492379170, 1,
+                           0)};
+    }
+    virtual int getAccuracy() const { return 11; }
+  }; // end N6
+  virtual int countIntegrations() const { return 6; }
+  virtual Integration<1> const *getIntegration(int i) const {
+    static N1 i1;
+    static N2 i2;
+    static N3 i3;
+    static N4 i4;
+    static N5 i5;
+    static N6 i6;
+    static Integration<1> *integrations[6] = {&i1, &i2, &i3, &i4, &i5, &i6};
+    return integrations[i];
+  }
+};
+//! [EdgeIntegration]
 
 // points are given in the reduced parametric coordinates (xi0=L1, xi1=L2,
 // ...); the redundant barycentric coordinate L0 = 1-sum(xi) is omitted
@@ -65,23 +160,23 @@ public:
   public:
     virtual int countPoints() const { return 3; }
     virtual std::vector<IntegrationPoint<2>> getPoints() const {
-      return {IntegrationPoint(
-                  Vector2{0.166666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(
-                  Vector2{0.666666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(
-                  Vector2{0.166666666666667, 0.666666666666667}, 1. / 3. / 2.0, 2, 0)};
+      return {IntegrationPoint(Vector2{0.166666666666667, 0.166666666666667},
+                               1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(Vector2{0.666666666666667, 0.166666666666667},
+                               1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(Vector2{0.166666666666667, 0.666666666666667},
+                               1. / 3. / 2.0, 2, 0)};
     }
     virtual int getAccuracy() const { return 2; }
   }; // end N2
 
-// Symmetric Gaussian quadrature rules for the triangle from
-//   D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature
-//   rules for the triangle", Int. J. Numer. Meth. Eng. 21, 1129-1148 (1985).
-//  N4 is p = 4 rules of from the  Appendix II (p. 1140),
-// copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190).
-// weights sum to one, so divided by 2, the area of the reference
-// triangle. The p = 3 rule has a negative weight, so order 3 uses N4.
+  // Symmetric Gaussian quadrature rules for the triangle from
+  //   D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature
+  //   rules for the triangle", Int. J. Numer. Meth. Eng. 21, 1129-1148 (1985).
+  //  N4 is p = 4 rules of from the  Appendix II (p. 1140),
+  // copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190).
+  // weights sum to one, so divided by 2, the area of the reference
+  // triangle. The p = 3 rule has a negative weight, so order 3 uses N4.
   class N4 : public Integration<2> {
   public:
     virtual int countPoints() const { return 6; }
@@ -101,7 +196,7 @@ public:
     }
     virtual int getAccuracy() const { return 4; }
   }; // end N4
- 
+
   virtual int countIntegrations() const { return 3; }
   virtual Integration<2> const *getIntegration(int i) const {
     static N1 i1;
@@ -113,6 +208,7 @@ public:
 };
 //! [TriangleIntegration]
 
+//! [TetrahedronIntegrationIntegration]
 class TetrahedronIntegration : public EntityIntegration<3> {
 public:
   class N1 : public Integration<3> {
@@ -151,19 +247,52 @@ public:
     return integrations[i];
   }
 };
+//! [TetrahedronIntegrationIntegration]
+
+// Wedge rules are the tensor product of a triangle rule in (xi0, xi1) and an
+// edge rule in zeta. The rule for (triOrder, zetaOrder) integrates
+// xi0^a xi1^b zeta^c exactly for a + b <= triOrder and c <= zetaOrder. The
+// weights sum to 1, the volume of the reference wedge (area 1/2 times length
+// 2).
+inline std::vector<IntegrationPoint<3>>
+getWedgeIntegrationPoints(int triOrder, int zetaOrder) {
+  const auto *tri = TriangleIntegration().getAccurate(triOrder);
+  if (tri == nullptr) {
+    fail("getWedgeIntegrationPoints: no triangle rule of order %d\n", triOrder);
+  }
+  const auto *edge = EdgeIntegration().getAccurate(zetaOrder);
+  if (edge == nullptr) {
+    fail("getWedgeIntegrationPoints: no edge rule of order %d\n", zetaOrder);
+  }
+  std::vector<IntegrationPoint<3>> points;
+  for (auto const &t : tri->getPoints())
+    for (auto const &z : edge->getPoints())
+      points.push_back(
+          IntegrationPoint(Vector3{t.param[0], t.param[1], z.param[0]},
+                           t.weight * z.weight, 3, 0));
+  return points;
+}
+
 //! [getIntegration]
 template <Mesh_Topology topo> auto const getIntegration() {
-  if constexpr (topo == Triangle) {
+  if constexpr (topo == Edge) {
+    return std::make_shared<EdgeIntegration>();
+  } else if constexpr (topo == Triangle) {
     return std::make_shared<TriangleIntegration>();
   } else if constexpr (topo == Tetrahedron) {
     return std::make_shared<TetrahedronIntegration>();
   }
   fail("getIntegration does not support given topology\n");
 }
+
 //! [getIntegration]
 template <Mesh_Topology topo> auto getIntegrationPoints(int order) {
-  auto ip = getIntegration<topo>()->getAccurate(order)->getPoints();
-  return ip;
+  if constexpr (topo == Wedge) {
+    return getWedgeIntegrationPoints(order, order);
+  } else {
+    auto ip = getIntegration<topo>()->getAccurate(order)->getPoints();
+    return ip;
+  }
 }
 
 template <typename FieldElement>
@@ -245,6 +374,11 @@ class Integrator {
 public:
   /** \brief Construct an Integrator given an order of accuracy. */
   Integrator(int o) : order(o) {}
+  /** \brief Construct an Integrator for wedges, with separate orders of
+   * accuracy for the triangle (xi0, xi1) and zeta directions. */
+  Integrator(int triOrder, int zetaOrderIn)
+      : order(triOrder), zetaOrder(zetaOrderIn) {}
+
   virtual ~Integrator(){};
   /** \brief User callback: process entry
    *
@@ -284,7 +418,13 @@ public:
   template <typename FieldElement> void process(FieldElement &fes) {
     constexpr auto topo = decltype(FieldElement::elm2dof)::getTopology();
     pre();
-    auto ip = getIntegrationPoints<topo[0]>(order);
+    auto ip = [&] {
+      if constexpr (topo[0] == Wedge) {
+        return getWedgeIntegrationPoints(order, zetaOrder);
+      } else {
+        return getIntegrationPoints<topo[0]>(order);
+      }
+    }();
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords, ip.size());
@@ -299,6 +439,7 @@ public:
 
 protected:
   int order;
+  int zetaOrder;
 };
 
 } // namespace MeshField
