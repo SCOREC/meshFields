@@ -74,11 +74,40 @@ public:
     }
     virtual int getAccuracy() const { return 2; }
   }; // end N2
-  virtual int countIntegrations() const { return 2; }
+
+// Symmetric Gaussian quadrature rules for the triangle from
+//   D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature
+//   rules for the triangle", Int. J. Numer. Meth. Eng. 21, 1129-1148 (1985).
+//  N4 is p = 4 rules of from the  Appendix II (p. 1140),
+// copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190).
+// weights sum to one, so divided by 2, the area of the reference
+// triangle. The p = 3 rule has a negative weight, so order 3 uses N4.
+  class N4 : public Integration<2> {
+  public:
+    virtual int countPoints() const { return 6; }
+    virtual std::vector<IntegrationPoint<2>> getPoints() const {
+      return {IntegrationPoint(Vector2{0.816847572980459, 0.091576213509771},
+                               0.109951743655322 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{0.091576213509771, 0.816847572980459},
+                               0.109951743655322 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{0.091576213509771, 0.091576213509771},
+                               0.109951743655322 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{0.108103018168070, 0.445948490915965},
+                               0.223381589678011 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{0.445948490915965, 0.108103018168070},
+                               0.223381589678011 / 2.0, 2, 0),
+              IntegrationPoint(Vector2{0.445948490915965, 0.445948490915965},
+                               0.223381589678011 / 2.0, 2, 0)};
+    }
+    virtual int getAccuracy() const { return 4; }
+  }; // end N4
+ 
+  virtual int countIntegrations() const { return 3; }
   virtual Integration<2> const *getIntegration(int i) const {
     static N1 i1;
     static N2 i2;
-    static Integration<2> *integrations[2] = {&i1, &i2};
+    static N4 i4;
+    static Integration<2> *integrations[3] = {&i1, &i2, &i4};
     return integrations[i];
   }
 };
