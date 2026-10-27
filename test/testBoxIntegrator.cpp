@@ -97,10 +97,10 @@ int main(int argc, char **argv) {
   Kokkos::initialize(argc, argv);
   auto lib = Omega_h::Library(&argc, &argv);
   auto world = lib.world();
-  const auto family = OMEGA_H_SIMPLEX;
-  auto len = 1.0;
 #ifdef MESHFIELDS_ENABLE_CABANA
   {
+    const auto family = OMEGA_H_SIMPLEX;
+    const auto len = 1.0;
     Omega_h::Mesh mesh3D =
         Omega_h::build_box(world, family, 1.0, 1.0, 1.0, len, len, len);
     MeshField::OmegahMeshField<ExecutionSpace, 3, MeshField::CabanaController>
