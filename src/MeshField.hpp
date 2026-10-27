@@ -347,8 +347,8 @@ public:
     if constexpr (order == 1) {
       const auto meshDim = meshInfo.dim;
       const auto coords = mesh.coords();
-      MeshField::parallel_for(
-          ExecutionSpace(), {0}, {meshInfo.numVtx},
+      MeshField::parallel_for<decltype(fieldWithCtrlr.ctrlr)>(
+          {0}, {meshInfo.numVtx},
           SetCoordFieldFunctor<dim, decltype(field), decltype(coords),
                                CoordinateMap>(field, coords, meshDim, map),
           "setCoordField");
