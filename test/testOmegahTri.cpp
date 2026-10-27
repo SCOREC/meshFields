@@ -1,5 +1,6 @@
 #include "KokkosController.hpp"
 #include "MeshField.hpp"
+#include "MeshField_TestFunctions.hpp"
 #include "MeshField_Element.hpp"    //remove?
 #include "MeshField_Fail.hpp"       //remove?
 #include "MeshField_For.hpp"        //remove?
@@ -16,20 +17,6 @@
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
-
-struct LinearFunction {
-  KOKKOS_INLINE_FUNCTION
-  MeshField::Real operator()(MeshField::Real x, MeshField::Real y) const {
-    return 2.0 * x + y;
-  }
-};
-
-struct QuadraticFunction {
-  KOKKOS_INLINE_FUNCTION
-  MeshField::Real operator()(MeshField::Real x, MeshField::Real y) const {
-    return (x * x) + (2.0 * y);
-  }
-};
 
 Omega_h::Mesh createMeshTri18(Omega_h::Library &lib) {
   auto world = lib.world();
@@ -63,12 +50,12 @@ bool checkResult(Omega_h::Mesh &mesh, Result &result, CoordField coordField,
         for (auto pt = first; pt < last; pt++) {
           const auto x = globalCoords(pt, 0);
           const auto y = globalCoords(pt, 1);
-          const auto expected = func(x, y);
+          const auto expected = func(Vec<2>{x, y});
           for (size_t i = 0; i < numComp; ++i) {
             const auto computed = result(pt, i);
             MeshField::LO isError = 0;
             if (Kokkos::fabs(computed - expected) >
-                MeshField::MachinePrecision) {
+                MeshField::Epsilon) {
               isError = 1;
               Kokkos::printf(
                   "result for elm %d, pt %d, does not match: expected "
@@ -93,7 +80,7 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto x = coords[vtx * MeshDim];
     const auto y = coords[vtx * MeshDim + 1];
     for (size_t i = 0; i < field.numComp; ++i) {
-      field(vtx, 0, i, MeshField::Vertex) = func(x, y);
+      field(vtx, 0, i, MeshField::Vertex) = func(Vec<2>{x, y});
     }
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
@@ -116,7 +103,7 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto y =
         (coords[left * MeshDim + 1] + coords[right * MeshDim + 1]) / 2.0;
     for (size_t i = 0; i < field.numComp; ++i) {
-      field(edge, 0, i, MeshField::Edge) = func(x, y);
+      field(edge, 0, i, MeshField::Edge) = func(Vec<2>{x, y});
     }
   };
   MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nedges()},
@@ -173,7 +160,7 @@ void runTest(Omega_h::Mesh &mesh,
   if (failed) {
     std::string fieldErr = ShapeOrder == 1 ? "linear" : "quadratic";
     std::string functionErr;
-    if constexpr (std::is_same_v<functionType, LinearFunction>) {
+    if constexpr (std::is_same_v<functionType, LinearFunction<2>>) {
       functionErr = "linear";
     } else {
       functionErr = "quadratic";
@@ -219,47 +206,46 @@ void doRun(Omega_h::Mesh &mesh,
 
   auto coords = mesh.coords();
   for (auto testCase : cases) {
-    using ViewType = decltype(testCase.coords);
     {
       const auto ShapeOrder = 1;
       const auto numComponents = 1;
-      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction<2>());
     }
 
     {
       const auto ShapeOrder = 2;
       const auto numComponents = 1;
       runTest<ShapeOrder, numComponents>(mesh, omf, testCase,
-                                         QuadraticFunction());
+                                         QuadraticFunction<2>());
     }
 
     {
       const auto ShapeOrder = 2;
       const auto numComponents = 1;
-      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction<2>());
     }
 
     {
       const auto ShapeOrder = 1;
       const auto numComponents = 2;
-      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction<2>());
     }
     {
       const auto ShapeOrder = 1;
       const auto numComponents = 3;
-      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction<2>());
     }
     {
       const auto ShapeOrder = 2;
       const auto numComponents = 2;
       runTest<ShapeOrder, numComponents>(mesh, omf, testCase,
-                                         QuadraticFunction());
+                                         QuadraticFunction<2>());
     }
 
     {
       const auto ShapeOrder = 2;
       const auto numComponents = 3;
-      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction());
+      runTest<ShapeOrder, numComponents>(mesh, omf, testCase, LinearFunction<2>());
     }
   }
 }
