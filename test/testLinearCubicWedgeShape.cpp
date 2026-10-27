@@ -23,8 +23,7 @@ KOKKOS_INLINE_FUNCTION Real f(Real x0, Real x1, Real z) {
          4 * x0 * z - 1.5 * x1 * z * z - 2 * x0 * z * z * z + x1 * z * z * z;
 }
 KOKKOS_INLINE_FUNCTION MeshField::Vector3 gradF(Real x0, Real x1, Real z) {
-  return {2 + 4 * z - 2 * z * z * z,
-          -3 - 1.5 * z * z + z * z * z,
+  return {2 + 4 * z - 2 * z * z * z, -3 - 1.5 * z * z + z * z * z,
           0.25 - 3 * z + 2.25 * z * z + 4 * x0 - 3 * x1 * z - 6 * x0 * z * z +
               3 * x1 * z * z};
 }
@@ -129,7 +128,7 @@ int checkInteriorPoints() {
   return numFailed;
 }
 
-// Runs both checks and prints their failure counts. 
+// Runs both checks and prints their failure counts.
 int runCubicWedgeShapeChecks() {
   const int kronecker = checkKroneckerDelta();
   std::cout << "LinearCubicWedgeShape Kronecker delta failures: " << kronecker

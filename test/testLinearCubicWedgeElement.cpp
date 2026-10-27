@@ -16,6 +16,10 @@
 // MeshField::CreateLagrangeField with LinearCubicWedgeShape: one DOF per vertex
 // and two per vertical edge.
 // The nodes are placed by geometric maps that are linear in (xi0, xi1)
+// and cubic in zeta, so the element map reproduces them exactly and the
+// expected values are the analytic maps and their derivatives. Failures are
+// counted explicitly so the test also fails in builds where assert() is
+// disabled.
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
