@@ -286,14 +286,14 @@ template <Mesh_Topology topo> auto const getIntegration() {
 }
 //! [getIntegration]
 
-// wedges use triOrder in (xi0, xi1) and zetaOrder in zeta; other topologies
-// use triOrder
+// zetaOrder is used only for wedges and defaults to order
 template <Mesh_Topology topo>
-auto getIntegrationPoints(int triOrder, int zetaOrder) {
+auto getIntegrationPoints(int order, int zetaOrder = -1) {
   if constexpr (topo == Wedge) {
-    return getWedgeIntegrationPoints(triOrder, zetaOrder);
+    return getWedgeIntegrationPoints(order, zetaOrder < 0 ? order : zetaOrder);
   } else {
-    return getIntegrationPoints<topo>(triOrder);
+    auto ip = getIntegration<topo>()->getAccurate(order)->getPoints();
+    return ip;
   }
 }
 
@@ -375,11 +375,11 @@ auto getJacobianDeterminants(FieldElement &fes,
 class Integrator {
 public:
   /** \brief Construct an Integrator given an order of accuracy. */
-  Integrator(int o) : order(o) {}
+  Integrator(int o) : order(o), zetaOrder(o) {}
   /** \brief Construct an Integrator for wedges, with separate orders of
    * accuracy for the triangle (xi0, xi1) and zeta directions. */
-  Integrator(int triOrder, int zetaOrderIn)
-      : order(triOrder), zetaOrder(zetaOrderIn) {}
+  Integrator(int triOrderIn, int zetaOrderIn)
+      : order(triOrderIn), zetaOrder(zetaOrderIn) {}
 
   virtual ~Integrator(){};
   /** \brief User callback: process entry
