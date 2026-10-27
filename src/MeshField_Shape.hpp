@@ -23,11 +23,8 @@ namespace {
  * @param val Reference value
  * @return true if xi >= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi,
-                                               const MeshField::Real val,
-                                               const MeshField::Real tol) {
-  if (xi > val)
-    return true;
+KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi, const MeshField::Real val, const MeshField::Real tol) {
+  if ( xi > val ) return true;
   return (Kokkos::fabs(xi - val) <= tol);
 }
 
@@ -39,12 +36,10 @@ KOKKOS_INLINE_FUNCTION bool greaterThanOrEqual(MeshField::Real xi,
  * @return true if all xi[i] >= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi,
-                                                   const MeshField::Real val,
-                                                   const MeshField::Real tol) {
+KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi, const MeshField::Real val, const MeshField::Real tol) {
   auto gt = true;
   for (size_t i = 0; i < xi.size(); i++) {
-    gt = gt && greaterThanOrEqual(xi[i], val, tol);
+    gt = gt && greaterThanOrEqual(xi[i],val,tol);
   }
   return gt;
 }
@@ -55,11 +50,8 @@ KOKKOS_INLINE_FUNCTION bool eachGreaterThanOrEqual(Array &xi,
  * @param val Reference value
  * @return true if xi <= val within machine precision
  */
-KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi,
-                                            const MeshField::Real val,
-                                            const MeshField::Real tol) {
-  if (xi < val)
-    return true;
+KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi, const MeshField::Real val, const MeshField::Real tol) {
+  if ( xi < val ) return true;
   return (Kokkos::fabs(xi - val) <= tol);
 }
 
@@ -71,12 +63,10 @@ KOKKOS_INLINE_FUNCTION bool lessThanOrEqual(MeshField::Real xi,
  * @return true if all xi[i] <= val within machine precision
  */
 template <typename Array>
-KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi,
-                                                const MeshField::Real val,
-                                                const MeshField::Real tol) {
+KOKKOS_INLINE_FUNCTION bool eachLessThanOrEqual(Array &xi, const MeshField::Real val, const MeshField::Real tol) {
   auto lt = true;
   for (size_t i = 0; i < xi.size(); i++) {
-    lt = lt && lessThanOrEqual(xi[i], val, tol);
+    lt = lt && lessThanOrEqual(xi[i],val,tol);
   }
   return lt;
 }
@@ -107,11 +97,10 @@ using Vector3 = Kokkos::Array<Real, 3>;
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearEdgeShape {
-  static const size_t numNodes = 2;   ///< Number of nodes (2 for linear edge)
-  static const size_t meshEntDim = 1; ///< Mesh entity dimension (1D)
-  constexpr static Mesh_Topology DofHolders[1] = {
-      Vertex};                       ///< DOFs located at vertices
-  constexpr static size_t Order = 1; ///< Polynomial order (linear)
+  static const size_t numNodes = 2;         ///< Number of nodes (2 for linear edge)
+  static const size_t meshEntDim = 1;       ///< Mesh entity dimension (1D)
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex}; ///< DOFs located at vertices
+  constexpr static size_t Order = 1;        ///< Polynomial order (linear)
 
   /**
    * @brief Get parametric coordinates of element nodes
@@ -132,8 +121,8 @@ struct LinearEdgeShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector1 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, -1.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,-1.0,ParametricCoordTol));
     // clang-format off
     return {(1.0 - xi[0]) / 2.0,
             (1.0 + xi[0]) / 2.0};
@@ -165,26 +154,22 @@ struct LinearEdgeShape {
  * - Node 1 at (1, 0)
  * - Node 2 at (0, 1)
  *
- * Shape functions use barycentric coordinates where L0 = 1-xi0-xi1, L1 = xi0,
- * L2 = xi1
+ * Shape functions use barycentric coordinates where L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1
  *
  * Shape functions and ordering from:
  * Zienkiewicz, Taylor, and Zhu
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearTriangleShape {
-  static const size_t numNodes = 3; ///< Number of nodes (3 for linear triangle)
-  static const size_t numComponentsPerDof =
-      1;                              ///< Components per DOF (scalar field)
-  static const size_t meshEntDim = 2; ///< Mesh entity dimension (2D)
-  constexpr static Mesh_Topology DofHolders[1] = {
-      Vertex};                       ///< DOFs located at vertices
-  constexpr static size_t Order = 1; ///< Polynomial order (linear)
+  static const size_t numNodes = 3;                         ///< Number of nodes (3 for linear triangle)
+  static const size_t numComponentsPerDof = 1;              ///< Components per DOF (scalar field)
+  static const size_t meshEntDim = 2;                       ///< Mesh entity dimension (2D)
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};  ///< DOFs located at vertices
+  constexpr static size_t Order = 1;                        ///< Polynomial order (linear)
 
   /**
    * @brief Get parametric coordinates of element nodes
-   * @return Array of node coordinates: [node0_xi0, node0_xi1, node1_xi0,
-   * node1_xi1, ...]
+   * @return Array of node coordinates: [node0_xi0, node0_xi1, node1_xi0, node1_xi1, ...]
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
@@ -203,11 +188,11 @@ struct LinearTriangleShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
-    assert(lessThanOrEqual(L0, 1.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     // clang-format off
     return {L0,
             xi[0],  //L1
@@ -218,12 +203,11 @@ struct LinearTriangleShape {
   /**
    * @brief Get gradients of shape functions
    * @detail gradients are constant - ignoring parametric coord input
-   * @return Array of gradients [dN0/dxi0, dN0/dxi1, dN1/dxi0, dN1/dxi1,
-   * dN2/dxi0, dN2/dxi1] Constant gradients: [[-1,-1], [1,0], [0,1]]
+   * @return Array of gradients [dN0/dxi0, dN0/dxi1, dN1/dxi0, dN1/dxi1, dN2/dxi0, dN2/dxi1]
+   *         Constant gradients: [[-1,-1], [1,0], [0,1]]
    */
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, meshEntDim * numNodes>
-  getLocalGradients(Vector2 const &) const {
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients(Vector2 const &) const {
     // clang-format off
     return { -1,-1,  //first vector
               1, 0,
@@ -244,16 +228,14 @@ struct LinearTriangleShape {
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearTriangleCoordinateShape {
-  static const size_t numNodes = 3;   ///< Number of nodes
-  static const size_t meshEntDim = 2; ///< Mesh entity dimension (2D)
-  constexpr static Mesh_Topology DofHolders[1] = {
-      Vertex};                       ///< DOFs located at vertices
-  constexpr static size_t Order = 1; ///< Polynomial order (linear)
+  static const size_t numNodes = 3;                         ///< Number of nodes
+  static const size_t meshEntDim = 2;                       ///< Mesh entity dimension (2D)
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};  ///< DOFs located at vertices
+  constexpr static size_t Order = 1;                        ///< Polynomial order (linear)
 
   /**
    * @brief Get parametric coordinates of element nodes
-   * @return Array of node coordinates: [node0_xi0, node0_xi1, node1_xi0,
-   * node1_xi1, node2_xi0, node2_xi1]
+   * @return Array of node coordinates: [node0_xi0, node0_xi1, node1_xi0, node1_xi1, node2_xi0, node2_xi1]
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
@@ -267,16 +249,15 @@ struct LinearTriangleCoordinateShape {
   /**
    * @brief Evaluate shape functions at parametric coordinate
    * @param xi Parametric coordinates (xi0, xi1) where xi0, xi1 \f$\in\f$ [0,1]
-   * @return Array of shape function values using barycentric coordinates [L0,
-   * L1, L2]
+   * @return Array of shape function values using barycentric coordinates [L0, L1, L2]
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
-    assert(lessThanOrEqual(L0, 1.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     // clang-format off
     return {L0,
             xi[0],
@@ -302,19 +283,16 @@ struct LinearTriangleCoordinateShape {
  */
 //! [QuadraticTriangleShape]
 struct QuadraticTriangleShape {
-  static const size_t numNodes =
-      6; ///< Number of nodes (6 for quadratic triangle)
-  static const size_t meshEntDim = 2; ///< Mesh entity dimension (2D)
-  constexpr static Mesh_Topology DofHolders[2] = {
-      Vertex, Edge}; ///< DOFs at vertices and edges
-  constexpr static size_t NumDofHolders[2] = {3, 3}; ///< 3 vertices, 3 edges
-  constexpr static size_t DofsPerHolder[2] = {1, 1}; ///< 1 DOF per vertex/edge
-  constexpr static size_t Order = 2; ///< Polynomial order (quadratic)
+  static const size_t numNodes = 6;                              ///< Number of nodes (6 for quadratic triangle)
+  static const size_t meshEntDim = 2;                            ///< Mesh entity dimension (2D)
+  constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge}; ///< DOFs at vertices and edges
+  constexpr static size_t NumDofHolders[2] = {3, 3};             ///< 3 vertices, 3 edges
+  constexpr static size_t DofsPerHolder[2] = {1, 1};             ///< 1 DOF per vertex/edge
+  constexpr static size_t Order = 2;                             ///< Polynomial order (quadratic)
 
   /**
    * @brief Get parametric coordinates of element nodes
-   * @return Array of node coordinates for 6 nodes (3 at vertices, 3 at edge
-   * midpoints)
+   * @return Array of node coordinates for 6 nodes (3 at vertices, 3 at edge midpoints)
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
@@ -342,11 +320,11 @@ struct QuadraticTriangleShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
-    assert(lessThanOrEqual(L0, 1.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     // clang-format off
@@ -362,17 +340,16 @@ struct QuadraticTriangleShape {
   /**
    * @brief Get gradients of quadratic shape functions at parametric coordinate
    * @param xi Parametric coordinates (xi0, xi1) where xi0, xi1 \f$\in\f$ [0,1]
-   * @return Array of gradient vectors [dN0/dxi0, dN0/dxi1, ..., dN5/dxi0,
-   * dN5/dxi1]
+   * @return Array of gradient vectors [dN0/dxi0, dN0/dxi1, ..., dN5/dxi0, dN5/dxi1]
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, meshEntDim * numNodes>
   getLocalGradients(Vector2 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1];
-    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
-    assert(lessThanOrEqual(L0, 1.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     // clang-format off
@@ -409,12 +386,10 @@ struct QuadraticTriangleShape {
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct LinearTetrahedronShape {
-  static const size_t numNodes =
-      4; ///< Number of nodes (4 for linear tetrahedron)
-  static const size_t meshEntDim = 3; ///< Mesh entity dimension (3D)
-  constexpr static Mesh_Topology DofHolders[1] = {
-      Vertex};                       ///< DOFs located at vertices
-  constexpr static size_t Order = 1; ///< Polynomial order (linear)
+  static const size_t numNodes = 4;                         ///< Number of nodes (4 for linear tetrahedron)
+  static const size_t meshEntDim = 3;                       ///< Mesh entity dimension (3D)
+  constexpr static Mesh_Topology DofHolders[1] = {Vertex};  ///< DOFs located at vertices
+  constexpr static size_t Order = 1;                        ///< Polynomial order (linear)
 
   /**
    * @brief Get parametric coordinates of element nodes
@@ -438,11 +413,11 @@ struct LinearTetrahedronShape {
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
-    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
-    assert(lessThanOrEqual(L0, 1.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     // clang-format off
     return {L0,
             xi[0],  //L1
@@ -454,12 +429,11 @@ struct LinearTetrahedronShape {
   /**
    * @brief Get gradients of shape functions in parametric coordinates
    * @detail gradients are constant - ignoring parametric coord input
-   * @return Array of constant gradients [dN0/dxi0, dN0/dxi1, dN0/dxi2,
-   * dN1/dxi0, ...] Constant gradients: [[-1,-1,-1], [1,0,0], [0,1,0], [0,0,1]]
+   * @return Array of constant gradients [dN0/dxi0, dN0/dxi1, dN0/dxi2, dN1/dxi0, ...]
+   *         Constant gradients: [[-1,-1,-1], [1,0,0], [0,1,0], [0,0,1]]
    */
   KOKKOS_INLINE_FUNCTION
-  Kokkos::Array<Real, meshEntDim * numNodes>
-  getLocalGradients(Vector3 const &) const {
+  Kokkos::Array<Real, meshEntDim * numNodes> getLocalGradients(Vector3 const &) const {
     // clang-format off
     return {-1, -1, -1,
              1,  0,  0,
@@ -485,19 +459,16 @@ struct LinearTetrahedronShape {
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013
  */
 struct QuadraticTetrahedronShape {
-  static const size_t numNodes =
-      10; ///< Number of nodes (10 for quadratic tetrahedron)
-  static const size_t meshEntDim = 3; ///< Mesh entity dimension (3D)
-  constexpr static Mesh_Topology DofHolders[2] = {
-      Vertex, Edge}; ///< DOFs at vertices and edges
-  constexpr static size_t NumDofHolders[2] = {4, 6}; ///< 4 vertices, 6 edges
-  constexpr static size_t DofsPerHolder[2] = {1, 1}; ///< 1 DOF per vertex/edge
-  constexpr static size_t Order = 2; ///< Polynomial order (quadratic)
+  static const size_t numNodes = 10;                             ///< Number of nodes (10 for quadratic tetrahedron)
+  static const size_t meshEntDim = 3;                            ///< Mesh entity dimension (3D)
+  constexpr static Mesh_Topology DofHolders[2] = {Vertex, Edge}; ///< DOFs at vertices and edges
+  constexpr static size_t NumDofHolders[2] = {4, 6};             ///< 4 vertices, 6 edges
+  constexpr static size_t DofsPerHolder[2] = {1, 1};             ///< 1 DOF per vertex/edge
+  constexpr static size_t Order = 2;                             ///< Polynomial order (quadratic)
 
   /**
    * @brief Get parametric coordinates of element nodes
-   * @return Array of node coordinates for 10 nodes (4 at vertices, 6 at edge
-   * midpoints)
+   * @return Array of node coordinates for 10 nodes (4 at vertices, 6 at edge midpoints)
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes * meshEntDim> getNodeParametricCoords() const {
@@ -525,16 +496,15 @@ struct QuadraticTetrahedronShape {
    * @return Array of 10 shape function values for quadratic tetrahedron
    *         N_i = L_i(2L_i - 1) for vertices (i=0,1,2,3)
    *         N_i = 4*L_j*L_k for edge midpoints (i=4-9)
-   *         where L0=1-xi0-xi1-xi2, L1=xi0, L2=xi1, L3=xi2 are barycentric
-   * coordinates
+   *         where L0=1-xi0-xi1-xi2, L1=xi0, L2=xi1, L3=xi2 are barycentric coordinates
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, numNodes> getValues(Vector3 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
-    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
-    assert(lessThanOrEqual(L0, 1.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     const Real L3 = xi[2];
@@ -555,17 +525,16 @@ struct QuadraticTetrahedronShape {
   /**
    * @brief Get gradients of quadratic shape functions in parametric coordinates
    * @param xi Parametric coordinates (xi0, xi1, xi2) where xi_i \f$\in\f$ [0,1]
-   * @return Array of gradient vectors [dN0/dxi0, dN0/dxi1, dN0/dxi2, ...,
-   * dN9/dxi0, dN9/dxi1, dN9/dxi2]
+   * @return Array of gradient vectors [dN0/dxi0, dN0/dxi1, dN0/dxi2, ..., dN9/dxi0, dN9/dxi1, dN9/dxi2]
    */
   KOKKOS_INLINE_FUNCTION
   Kokkos::Array<Real, meshEntDim * numNodes>
   getLocalGradients(Vector3 const &xi) const {
-    assert(eachLessThanOrEqual(xi, 1.0, ParametricCoordTol));
-    assert(eachGreaterThanOrEqual(xi, 0.0, ParametricCoordTol));
+    assert(eachLessThanOrEqual(xi,1.0,ParametricCoordTol));
+    assert(eachGreaterThanOrEqual(xi,0.0,ParametricCoordTol));
     const Real L0 = 1 - xi[0] - xi[1] - xi[2];
-    assert(greaterThanOrEqual(L0, 0.0, ParametricCoordTol));
-    assert(lessThanOrEqual(L0, 1.0, ParametricCoordTol));
+    assert(greaterThanOrEqual(L0,0.0,ParametricCoordTol));
+    assert(lessThanOrEqual(L0,1.0,ParametricCoordTol));
     const Real L1 = xi[0];
     const Real L2 = xi[1];
     const Real L3 = xi[2];
@@ -591,10 +560,11 @@ struct QuadraticTetrahedronShape {
 /**
  * @brief Linear shape functions for 3D wedge (triangular prism) elements
  *
- * Defines linear basis functions for a wedge element with 6 nodes: the tensor
- * product of the linear (P1) triangle in (xi0, xi1) and the linear edge in zeta
- * = xi2. Parametric coordinate range: xi0, xi1 \f$\in\f$ [0, 1] with xi0 + xi1
- * \f$\le\f$ 1, and zeta \f$\in\f$ [-1, 1]
+ * Defines linear basis functions for a wedge element with 6 nodes: the tensor product 
+ * of the linear (P1) triangle in (xi0, xi1) and the linear edge in
+ * zeta = xi2. 
+ * Parametric coordinate range: xi0, xi1 \f$\in\f$ [0, 1] with
+ * xi0 + xi1 \f$\le\f$ 1, and zeta \f$\in\f$ [-1, 1]
  *
  * Node ordering (node a+3 is joined to node a by an edge along \zeta):
  * - Node 0 at (0, 0 , -1)
@@ -604,16 +574,15 @@ struct QuadraticTetrahedronShape {
  * - Node 4 at (1, 0 , 1)
  * - Node 5 at (0, 1 , 1)
  *
- * Shape functions use barycentric coordinates L0 = 1-xi0-xi1, L1 = xi0, L2 =
- * xi1 of the triangle and, for a = 0, 1, 2:
+ * Shape functions use barycentric coordinates L0 = 1-xi0-xi1, L1 = xi0, L2 = xi1 of the triangle and, for a = 0, 1, 2:
  * - \f$N_a     = L_a (1 - \zeta) / 2\f$
  * - \f$N_{a+3} = L_a (1 + \zeta) / 2\f$
  *
  * Shape functions and ordering from:
  * Zienkiewicz, Taylor, and Zhu
  * 'The Finite Element Method: Its Basis and Fundamentals', 2013, Section 6.4,
- * Fig. 6.16a: \f$N_a = \frac{1}{2} L_a (1 + \zeta_a \zeta)\f$, with
- * \f$\zeta_a = -1\f$ for nodes 0-2 and \f$+1\f$ for nodes 3-5
+ * Fig. 6.16a: \f$N_a = \frac{1}{2} L_a (1 + \zeta_a \zeta)\f$, with 
+ * \f$\zeta_a = -1\f$ for nodes 0-2 and \f$+1\f$ for nodes 3-5 
  */
 struct LinearWedgeShape {
   // clang-format off
@@ -643,7 +612,7 @@ struct LinearWedgeShape {
    * @brief Evaluate shape functions at parametric coordinate
    * @param xi Parametric coordinates (xi0, xi1, zeta) where xi0, xi1
    *        \f$\in\f$ [0,1], xi0 + xi1 \f$\le\f$ 1 and zeta \f$\in\f$ [-1,1]
-   * @return Array of shape function values [N0, ..., N5] where
+   * @return Array of shape function values [N0, ..., N5] where 
    * N_a = L_a ( 1 - \zeta)/2 and N_{a+3} = L_a (1+\zeta)/2 for a = 0,1,2
    * with L0 = 1 - x0 - xi1, L1 = xi0 and L2 = xi1
    */
