@@ -75,14 +75,13 @@ public:
     virtual int getAccuracy() const { return 2; }
   }; // end N2
 
-// Symmetric Gaussian quadrature rules for the triangle from
-//   D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature
-//   rules for the triangle", Int. J. Numer. Meth. Eng. 21, 1129-1148 (1985).
-//  N4 is p = 4 rules of from the  Appendix II (p. 1140),
-// copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190).
-// weights sum to one, so divided by 2, the area of the reference
-// triangle. The p = 3 rule has a negative weight, so order 3 uses N4.
-
+  // Symmetric Gaussian quadrature rules for the triangle from
+  //   D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature
+  //   rules for the triangle", Int. J. Numer. Meth. Eng. 21, 1129-1148 (1985).
+  // N4 is the p = 4 rule of Appendix II (p. 1140), copied from
+  // SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190). The weights
+  // sum to one, so they are divided by 2, the area of the reference triangle.
+  // The p = 3 rule has a negative weight, so order 3 uses N4.
   class N4 : public Integration<2> {
   public:
     virtual int countPoints() const { return 6; }
