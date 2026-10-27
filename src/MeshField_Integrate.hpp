@@ -47,10 +47,11 @@ public:
   virtual int countIntegrations() const = 0;
   virtual Integration<pointSize> const *getIntegration(int i) const = 0;
 };
-// Gauss-Legendre rules on [-1, 1] from
-// N1 to N6 are copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc
-// (EdgeIntegration, lines 27-129). The n-point rule is exact for degree
-// 2n - 1, and the weights sum to 2, the length of the reference edge.
+
+// Gauss-Legendre rules on [-1, 1]. N1 to N6 are copied from SCOREC/core
+// @ 7cd76473 apf/apfIntegrate.cc (EdgeIntegration, lines 27-129). The n-point
+// rule is exact for degree 2n - 1, and the weights sum to 2, the length of
+// the reference edge.
 //! [EdgeIntegration]
 class EdgeIntegration : public EntityIntegration<1> {
 public:
@@ -160,12 +161,12 @@ public:
   public:
     virtual int countPoints() const { return 3; }
     virtual std::vector<IntegrationPoint<2>> getPoints() const {
-      return {IntegrationPoint(Vector2{0.166666666666667, 0.166666666666667},
-                               1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(Vector2{0.666666666666667, 0.166666666666667},
-                               1. / 3. / 2.0, 2, 0),
-              IntegrationPoint(Vector2{0.166666666666667, 0.666666666666667},
-                               1. / 3. / 2.0, 2, 0)};
+      return {IntegrationPoint(
+                  Vector2{0.166666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.666666666666667, 0.166666666666667}, 1. / 3. / 2.0, 2, 0),
+              IntegrationPoint(
+                  Vector2{0.166666666666667, 0.666666666666667}, 1. / 3. / 2.0, 2, 0)};
     }
     virtual int getAccuracy() const { return 2; }
   }; // end N2
@@ -173,10 +174,10 @@ public:
   // Symmetric Gaussian quadrature rules for the triangle from
   //   D. A. Dunavant, "High degree efficient symmetrical Gaussian quadrature
   //   rules for the triangle", Int. J. Numer. Meth. Eng. 21, 1129-1148 (1985).
-  //  N4 is p = 4 rules of from the  Appendix II (p. 1140),
-  // copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190).
-  // weights sum to one, so divided by 2, the area of the reference
-  // triangle. The p = 3 rule has a negative weight, so order 3 uses N4.
+  // N4 is the p = 4 rule of Appendix II (p. 1140), copied from
+  // SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190). The weights
+  // sum to one, so they are divided by 2, the area of the reference triangle.
+  // The p = 3 rule has a negative weight, so order 3 uses N4.
   class N4 : public Integration<2> {
   public:
     virtual int countPoints() const { return 6; }
@@ -208,7 +209,6 @@ public:
 };
 //! [TriangleIntegration]
 
-//! [TetrahedronIntegrationIntegration]
 class TetrahedronIntegration : public EntityIntegration<3> {
 public:
   class N1 : public Integration<3> {
@@ -247,7 +247,6 @@ public:
     return integrations[i];
   }
 };
-//! [TetrahedronIntegrationIntegration]
 
 // Wedge rules are the tensor product of a triangle rule in (xi0, xi1) and an
 // edge rule in zeta. The rule for (triOrder, zetaOrder) integrates
