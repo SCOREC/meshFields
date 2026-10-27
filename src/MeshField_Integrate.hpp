@@ -284,14 +284,16 @@ template <Mesh_Topology topo> auto const getIntegration() {
   }
   fail("getIntegration does not support given topology\n");
 }
-
 //! [getIntegration]
-template <Mesh_Topology topo> auto getIntegrationPoints(int order) {
+
+// wedges use triOrder in (xi0, xi1) and zetaOrder in zeta; other topologies
+// use triOrder
+template <Mesh_Topology topo>
+auto getIntegrationPoints(int triOrder, int zetaOrder) {
   if constexpr (topo == Wedge) {
-    return getWedgeIntegrationPoints(order, order);
+    return getWedgeIntegrationPoints(triOrder, zetaOrder);
   } else {
-    auto ip = getIntegration<topo>()->getAccurate(order)->getPoints();
-    return ip;
+    return getIntegrationPoints<topo>(triOrder);
   }
 }
 
@@ -418,13 +420,7 @@ public:
   template <typename FieldElement> void process(FieldElement &fes) {
     constexpr auto topo = decltype(FieldElement::elm2dof)::getTopology();
     pre();
-    auto ip = [&] {
-      if constexpr (topo[0] == Wedge) {
-        return getWedgeIntegrationPoints(order, zetaOrder);
-      } else {
-        return getIntegrationPoints<topo[0]>(order);
-      }
-    }();
+    auto ip = getIntegrationPoints<topo[0]>(order, zetaOrder);
     auto localCoords = getIntegrationPointLocalCoords(fes, ip);
     auto weights = getIntegrationPointWeights(fes, ip);
     auto dV = getJacobianDeterminants(fes, localCoords, ip.size());
