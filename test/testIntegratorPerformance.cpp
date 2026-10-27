@@ -56,15 +56,16 @@ void doRun(size_t size, size_t numberOfElems, Omega_h::Library &lib,
                                  numberOfElems, numberOfElems,
                                  dim == 3 ? numberOfElems : 0);
   MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
-  auto field =
+  auto fieldWithCtrlr =
       omf.template CreateLagrangeField<MeshField::Real, ShapeOrder, dim>();
+  auto field = fieldWithCtrlr.field;
   auto coords = mesh.coords();
   Kokkos::parallel_for(
       mesh.nverts(), KOKKOS_LAMBDA(int vtx) {
-        field.field(vtx, 0, 0, MeshField::Vertex) = coords[vtx * dim];
-        field.field(vtx, 0, 1, MeshField::Vertex) = coords[vtx * dim + 1];
+        field(vtx, 0, 0, MeshField::Vertex) = coords[vtx * dim];
+        field(vtx, 0, 1, MeshField::Vertex) = coords[vtx * dim + 1];
         if constexpr (dim == 3) {
-          field.field(vtx, 0, 2, MeshField::Vertex) = coords[vtx * dim + 2];
+          field(vtx, 0, 2, MeshField::Vertex) = coords[vtx * dim + 2];
         }
       });
   if (ShapeOrder == 2) {
@@ -77,12 +78,12 @@ void doRun(size_t size, size_t numberOfElems, Omega_h::Library &lib,
           const auto x = (coords[left * dim] + coords[right * dim]) / 2.0;
           const auto y =
               (coords[left * dim + 1] + coords[right * dim + 1]) / 2.0;
-          field.field(edge, 0, 0, MeshField::Edge) = x;
-          field.field(edge, 0, 1, MeshField::Edge) = y;
+          field(edge, 0, 0, MeshField::Edge) = x;
+          field(edge, 0, 1, MeshField::Edge) = y;
           if constexpr (dim == 3) {
             const auto z =
                 (coords[left * dim + 2] + coords[right * dim + 2]) / 2.0;
-            field.field(edge, 0, 2, MeshField::Edge) = z;
+            field(edge, 0, 2, MeshField::Edge) = z;
           }
         });
   }
@@ -94,7 +95,7 @@ void doRun(size_t size, size_t numberOfElems, Omega_h::Library &lib,
     }
   };
   const auto [shp, map] = shapeSet();
-  MeshField::FieldElement fes(mesh.nelems(), field.field, shp, map);
+  MeshField::FieldElement fes(mesh.nelems(), field, shp, map);
   for (int i = 0; i < runs; ++i) {
     testIntegrator testInt(fes, ShapeOrder);
     auto start = std::chrono::high_resolution_clock::now();
