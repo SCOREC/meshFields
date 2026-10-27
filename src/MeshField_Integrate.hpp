@@ -82,6 +82,7 @@ public:
 // copied from SCOREC/core @ 7cd76473 apf/apfIntegrate.cc (lines 175-190).
 // weights sum to one, so divided by 2, the area of the reference
 // triangle. The p = 3 rule has a negative weight, so order 3 uses N4.
+
   class N4 : public Integration<2> {
   public:
     virtual int countPoints() const { return 6; }
@@ -101,7 +102,7 @@ public:
     }
     virtual int getAccuracy() const { return 4; }
   }; // end N4
- 
+
   virtual int countIntegrations() const { return 3; }
   virtual Integration<2> const *getIntegration(int i) const {
     static N1 i1;
