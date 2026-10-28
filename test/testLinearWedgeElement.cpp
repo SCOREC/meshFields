@@ -108,8 +108,8 @@ void setVtxCoords(CoordField field) {
     for (int d = 0; d < 3; ++d)
       field(vtx, 0, d, MeshField::Vertex) = coords(vtx, d);
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {numVtx}, setCoordField,
-                          "setCoordField");
+  MeshField::parallel_for<typename CoordField::Ctrlr>(
+      {0}, {numVtx}, setCoordField, "setCoordField");
 }
 
 // Compares the evaluated positions, Jacobians and determinants of wedge w with
