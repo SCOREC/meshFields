@@ -59,7 +59,7 @@ int main(int argc, char **argv) {
     using LA = decltype(vtxField);
     using EA = decltype(edgeField);
     using QA = QuadraticAccessor<LA, EA>;
-    using QLSF = ShapeField<numComp, QuadraticTriangleShape, QA>;
+    using QLSF = ShapeField<numComp, QuadraticTriangleShape, Ctrlr, QA>;
     QLSF field(meshInfo, {vtxField, edgeField});
 
     // f(x,y) = 2x + y ; set exact analytic values at vertices and edge
