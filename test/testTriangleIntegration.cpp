@@ -76,15 +76,17 @@ public:
       : MeshField::Integrator(order), fe(feIn), px(pxIn), py(pyIn) {}
   void atPoints(Kokkos::View<Real **> p, Kokkos::View<Real *> w,
                 Kokkos::View<Real *> dV) override {
-    const int numPtsPerElem = p.extent(0) / fe.numMeshEnts;
-    const auto x = MeshField::evaluate(fe, p, numPtsPerElem);
+    // p and w hold one entry per point of a single element; x and dV hold
+    // one entry per point of every element
+    const auto x = MeshField::evaluateStaticLength(fe, p);
+    const int numPtsPerElem = w.extent(0);
     const Real a = px, b = py;
     Real sum = 0;
     Kokkos::parallel_reduce(
-        "integrateMonomial", w.extent(0),
+        "integrateMonomial", dV.extent(0),
         KOKKOS_LAMBDA(const int i, Real &lsum) {
-          lsum +=
-              w(i) * dV(i) * Kokkos::pow(x(i, 0), a) * Kokkos::pow(x(i, 1), b);
+          lsum += w(i % numPtsPerElem) * dV(i) * Kokkos::pow(x(i, 0), a) *
+                  Kokkos::pow(x(i, 1), b);
         },
         sum);
     integral += sum;
