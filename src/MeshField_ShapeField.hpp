@@ -287,7 +287,7 @@ auto CreateLagrangeField(const MeshInfo &meshInfo) {
     // QuadraticAccessor forwards the dof index to the edge field, so it also
     // serves edges with more than one dof
     using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
-    using WedgeShapeField = ShapeField<numComp, Shape, QA>;
+    using WedgeShapeField = ShapeField<numComp, Shape, Ctrlr, QA>;
     WedgeShapeField wsf(meshInfo, {vtxField, edgeField});
     return FieldWithController<Ctrlr, WedgeShapeField>{kk_ctrl, wsf};
   } else if constexpr (order == 1 && (dim == 1 || dim == 2 || dim == 3)) {
