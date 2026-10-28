@@ -103,10 +103,16 @@ public:
       : MeshField::Integrator(triOrder, zetaOrder) {}
   void atPoints(Kokkos::View<Real **>, Kokkos::View<Real *> w,
                 Kokkos::View<Real *> dV) override {
+    // w holds one weight per point of a single element; dV holds one entry
+    // per point of every element
+    const int numPtsPerElem = w.extent(0);
     Real sum = 0;
     Kokkos::parallel_reduce(
-        "volume", w.extent(0),
-        KOKKOS_LAMBDA(const int i, Real &s) { s += w(i) * dV(i); }, sum);
+        "volume", dV.extent(0),
+        KOKKOS_LAMBDA(const int i, Real &s) {
+          s += w(i % numPtsPerElem) * dV(i);
+        },
+        sum);
     volume = sum;
   }
   Real volume = 0;
@@ -136,8 +142,8 @@ template <typename CoordField> void setVtxCoords(CoordField field) {
     for (int d = 0; d < 3; ++d)
       field(vtx, 0, d, MeshField::Vertex) = coords(vtx, d);
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {numVtx}, setCoordField,
-                          "setCoordField");
+  MeshField::parallel_for<typename CoordField::Ctrlr>(
+      {0}, {numVtx}, setCoordField, "setCoordField");
 }
 
 int checkIntegrator() {
