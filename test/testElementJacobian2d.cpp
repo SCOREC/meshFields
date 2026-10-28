@@ -65,7 +65,7 @@ void setVtxCoords(size_t numVerts, size_t meshDim, TriangleTestCase testTri,
     field(vtx, 0, 0, MeshField::Vertex) = coords(vtx * meshDim);
     field(vtx, 0, 1, MeshField::Vertex) = coords(vtx * meshDim + 1);
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {numVerts}, setCoordField,
+  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {numVerts}, setCoordField,
                           "setCoordField");
 }
 
