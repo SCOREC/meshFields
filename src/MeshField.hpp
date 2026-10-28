@@ -284,6 +284,189 @@ template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
   }
 }
 
+/**
+ * @brief Maps the nodes of LinearWedgeShape wedges, extruded from a 2D
+ * triangle mesh, to vertices
+ * @details
+ * The 2D mesh is stacked into numLayers layers and every plane has the same
+ * triangulation. Vertex v on plane p is vertex p * nVtx2d + v. Wedge w is in
+ * layer k = w / nTri2d and comes from triangle t = w % nTri2d. Layer k runs
+ * from plane k to plane k + 1, or to plane (k + 1) % numLayers when periodic.
+ * Wedge corner a is local vertex a of triangle t, or local vertex {0, 2, 1}[a]
+ * when reverseOrientation is true. Node a is corner a on plane k and node
+ * a + 3 is corner a on the top plane of the layer.
+ *
+ * With coordinates (R, phi, Z), phi increasing with the layer and triangles
+ * counterclockwise in (R, Z), det J < 0. Setting reverseOrientation = true
+ * makes it positive.
+ */
+struct ExtrudedLinearWedgeToVertexField {
+  Omega_h::LOs triVerts;
+  int nVtx2d;
+  int nTri2d;
+  int numLayers;
+  bool periodic;
+  bool reverseOrientation;
+  ExtrudedLinearWedgeToVertexField(Omega_h::Mesh &mesh2d, int numLayersIn,
+                                   bool periodicIn, bool reverseOrientationIn)
+      : triVerts(mesh2d.ask_elem_verts()), nVtx2d(mesh2d.nverts()),
+        nTri2d(mesh2d.nfaces()), numLayers(numLayersIn), periodic(periodicIn),
+        reverseOrientation(reverseOrientationIn) {
+    if (mesh2d.dim() != 2 || mesh2d.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
+    if (numLayers < 1 || (periodic && numLayers < 2)) {
+      MeshField::fail("%s needs numLayers >= 1, and >= 2 when periodic; got "
+                      "%d\n",
+                      __func__, numLayers);
+    }
+  }
+
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
+    return {MeshField::Wedge};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO wedgeNodeIdx, MeshField::LO wedgeCompIdx,
+             MeshField::LO wedge, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Wedge);
+    const MeshField::LO layer = wedge / nTri2d;
+    const MeshField::LO tri = wedge % nTri2d;
+    const MeshField::LO corner = wedgeNodeIdx % 3;
+    // reverseOrientation swaps corners 1 and 2
+    const MeshField::LO triNodeIdx =
+        (reverseOrientation && corner != 0) ? 3 - corner : corner;
+    const auto triDim = 2;
+    const auto vtxDim = 0;
+    const auto ignored = -1;
+    const auto localVtxIdx =
+        Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
+    const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+    const MeshField::LO vtx2d = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+    const MeshField::LO top = periodic ? (layer + 1) % numLayers : layer + 1;
+    const MeshField::LO plane = (wedgeNodeIdx < 3) ? layer : top;
+    return {0, wedgeCompIdx, plane * nVtx2d + vtx2d, MeshField::Vertex};
+  }
+};
+
+/**
+ * @brief Maps the nodes of LinearCubicWedgeShape wedges, extruded from a 2D
+ * triangle mesh, to vertices and vertical edges
+ * @details
+ * Nodes 0-5 map as in ExtrudedLinearWedgeToVertexField. The vertical edge
+ * above 2D vertex v in layer k is edge k * nVtx2d + v. Nodes 6 + 2a and
+ * 7 + 2a are DOFs 0 (zeta = -1/3) and 1 (zeta = +1/3) of the edge above
+ * corner a. The orientation note of ExtrudedLinearWedgeToVertexField applies.
+ */
+struct ExtrudedLinearCubicWedgeToField {
+  Omega_h::LOs triVerts;
+  int nVtx2d;
+  int nTri2d;
+  int numLayers;
+  bool periodic;
+  bool reverseOrientation;
+  ExtrudedLinearCubicWedgeToField(Omega_h::Mesh &mesh2d, int numLayersIn,
+                                  bool periodicIn, bool reverseOrientationIn)
+      : triVerts(mesh2d.ask_elem_verts()), nVtx2d(mesh2d.nverts()),
+        nTri2d(mesh2d.nfaces()), numLayers(numLayersIn), periodic(periodicIn),
+        reverseOrientation(reverseOrientationIn) {
+    if (mesh2d.dim() != 2 || mesh2d.family() != OMEGA_H_SIMPLEX) {
+      MeshField::fail(
+          "The mesh passed to %s must be 2D and simplex (triangles)\n",
+          __func__);
+    }
+    if (numLayers < 1 || (periodic && numLayers < 2)) {
+      MeshField::fail("%s needs numLayers >= 1, and >= 2 when periodic; got "
+                      "%d\n",
+                      __func__, numLayers);
+    }
+  }
+
+  static constexpr KOKKOS_FUNCTION Kokkos::Array<MeshField::Mesh_Topology, 1>
+  getTopology() {
+    return {MeshField::Wedge};
+  }
+
+  KOKKOS_FUNCTION MeshField::ElementToDofHolderMap
+  operator()(MeshField::LO wedgeNodeIdx, MeshField::LO wedgeCompIdx,
+             MeshField::LO wedge, MeshField::Mesh_Topology topo) const {
+    assert(topo == MeshField::Wedge);
+    const MeshField::LO layer = wedge / nTri2d;
+    const MeshField::LO tri = wedge % nTri2d;
+    const bool isVtx = wedgeNodeIdx < 6;
+    const MeshField::LO corner =
+        isVtx ? wedgeNodeIdx % 3 : (wedgeNodeIdx - 6) / 2;
+    // reverseOrientation swaps corners 1 and 2
+    const MeshField::LO triNodeIdx =
+        (reverseOrientation && corner != 0) ? 3 - corner : corner;
+    const auto triDim = 2;
+    const auto vtxDim = 0;
+    const auto ignored = -1;
+    const auto localVtxIdx =
+        Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
+    const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
+    const MeshField::LO vtx2d = triVerts[(tri * triToVtxDegree) + localVtxIdx];
+    if (isVtx) {
+      const MeshField::LO top = periodic ? (layer + 1) % numLayers : layer + 1;
+      const MeshField::LO plane = (wedgeNodeIdx < 3) ? layer : top;
+      return {0, wedgeCompIdx, plane * nVtx2d + vtx2d, MeshField::Vertex};
+    }
+    return {(wedgeNodeIdx - 6) % 2, wedgeCompIdx, layer * nVtx2d + vtx2d,
+            MeshField::Edge};
+  }
+};
+
+/**
+ * @brief MeshInfo of the wedges from getExtrudedWedgeElement
+ * @details numEdge counts only the vertical edges, which hold the edge DOFs
+ * of LinearCubicWedgeShape
+ */
+inline MeshField::MeshInfo getExtrudedWedgeMeshInfo(Omega_h::Mesh &mesh2d,
+                                                    int numLayers,
+                                                    bool periodic = false) {
+  const int numPlanes = periodic ? numLayers : numLayers + 1;
+  MeshField::MeshInfo meshInfo;
+  meshInfo.dim = 3;
+  meshInfo.numVtx = numPlanes * mesh2d.nverts();
+  meshInfo.numEdge = numLayers * mesh2d.nverts();
+  meshInfo.numWedge = numLayers * mesh2d.nfaces();
+  return meshInfo;
+}
+
+/**
+ * @brief Shape and element map for wedges extruded from a 2D triangle mesh
+ * @tparam ShapeOrder 1 for LinearWedgeShape, 3 for LinearCubicWedgeShape
+ * @details See ExtrudedLinearWedgeToVertexField for the numbering and
+ * orientation. The caller fills the coordinate field, sized by
+ * getExtrudedWedgeMeshInfo.
+ */
+template <int ShapeOrder>
+auto getExtrudedWedgeElement(Omega_h::Mesh &mesh2d, int numLayers,
+                             bool periodic = false,
+                             bool reverseOrientation = false) {
+  static_assert(ShapeOrder == 1 || ShapeOrder == 3);
+  if constexpr (ShapeOrder == 1) {
+    struct result {
+      MeshField::LinearWedgeShape shp;
+      ExtrudedLinearWedgeToVertexField map;
+    };
+    return result{MeshField::LinearWedgeShape(),
+                  ExtrudedLinearWedgeToVertexField(mesh2d, numLayers, periodic,
+                                                   reverseOrientation)};
+  } else if constexpr (ShapeOrder == 3) {
+    struct result {
+      MeshField::LinearCubicWedgeShape shp;
+      ExtrudedLinearCubicWedgeToField map;
+    };
+    return result{MeshField::LinearCubicWedgeShape(),
+                  ExtrudedLinearCubicWedgeToField(mesh2d, numLayers, periodic,
+                                                  reverseOrientation)};
+  }
+}
+
 } // namespace Omegah
 
 /**
