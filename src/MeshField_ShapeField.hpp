@@ -25,6 +25,7 @@ struct MeshInfo {
   int numHex = 0;     // entDim = 3
   int numPrism = 0;   // entDim = 3
   int numPyramid = 0; // entDim = 3
+  int numWedge = 0;   // entDim = 3
   int dim = 0;
 
   /** @brief runtime map of number of entities based on topology */
@@ -46,6 +47,8 @@ struct MeshInfo {
       return numPrism;
     case Pyramid:
       return numPyramid;
+    case Wedge:
+      return numWedge;
     }
     return 0;
   }
