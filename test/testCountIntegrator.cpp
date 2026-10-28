@@ -33,7 +33,7 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
     const auto y = coords[vtx * MeshDim + 1];
     field(vtx, 0, 0, MeshField::Vertex) = func(x, y);
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
+  MeshField::parallel_for<ShapeField::Ctrlr>({0}, {mesh.nverts()},
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
