@@ -288,13 +288,17 @@ template <int ShapeOrder> auto getTetrahedronElement(Omega_h::Mesh &mesh) {
  * @brief Maps the nodes of LinearWedgeShape wedges, extruded from a 2D
  * triangle mesh, to vertices
  * @details
- * The 2D mesh is stacked into numLayers layers and every plane has the same
- * triangulation. Vertex v on plane p is vertex p * nVtx2d + v. Wedge w is in
- * layer k = w / nTri2d and comes from triangle t = w % nTri2d. Layer k runs
- * from plane k to plane k + 1, or to plane (k + 1) % numLayers when periodic.
+ * The 2D mesh is stacked into numLayers layers. Every plane has the vertex
+ * numbering and triangle connectivity of the 2D mesh; only the coordinates,
+ * which the caller sets, differ, so the triangles may change shape from plane
+ * to plane. Vertex v on plane p is vertex p * nVtx2d + v. Wedge w is in layer
+ * k = w / nTri2d and comes from triangle t = w % nTri2d. Layer k runs from
+ * plane k to plane k + 1, or to plane (k + 1) % numLayers when periodic.
  * Wedge corner a is local vertex a of triangle t, or local vertex {0, 2, 1}[a]
  * when reverseOrientation is true. Node a is corner a on plane k and node
- * a + 3 is corner a on the top plane of the layer.
+ * a + 3 is corner a on the top plane of the layer. These vertex ids, and the
+ * vertical edge ids of ExtrudedLinearCubicWedgeToField, number the extruded
+ * mesh; they are not entity ids of an Omega_h mesh.
  *
  * With coordinates (R, phi, Z), phi increasing with the layer and triangles
  * counterclockwise in (R, Z), det J < 0. Setting reverseOrientation = true
