@@ -53,6 +53,7 @@ struct SetCoordFieldFunctor
   const CoordinateMap map_;
 };
 
+
 template <int dim, typename Element, typename CoordinateMap>
 struct InterpolateElementFunctor
 {
@@ -97,9 +98,7 @@ struct LinearTriangleToVertexField {
     const auto vtxDim = 0;
     const auto ignored = -1;
     const auto localVtxIdx =
-        (Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored) +
-         2) %
-        3;
+        Omega_h::simplex_down_template(triDim, vtxDim, triNodeIdx, ignored);
     const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
     const MeshField::LO vtx = triVerts[(tri * triToVtxDegree) + localVtxIdx];
     return {0, triCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
@@ -127,10 +126,7 @@ struct LinearTetrahedronToVertexField {
     const auto tetDim = 3;
     const auto vtxDim = 0;
     const auto ignored = -1;
-    const auto localVtxIdx =
-        (Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored) +
-         3) %
-        4;
+    const auto localVtxIdx = Omega_h::simplex_down_template(tetDim, vtxDim, tetNodeIdx, ignored);
     const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
     const MeshField::LO vtx = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
     return {0, tetCompIdx, vtx, MeshField::Vertex}; // node, comp, ent, topo
@@ -178,10 +174,8 @@ struct QuadraticTriangleToField {
       const auto triDim = 2;
       const auto vtxDim = 0;
       const auto ignored = -1;
-      const auto localVtxIdx = (Omega_h::simplex_down_template(
-                                    triDim, vtxDim, dofHolderIdx, ignored) +
-                                2) %
-                               3;
+      const auto localVtxIdx = Omega_h::simplex_down_template(
+                                    triDim, vtxDim, dofHolderIdx, ignored);
       const auto triToVtxDegree = Omega_h::simplex_degree(triDim, vtxDim);
       osh_ent = triVerts[(tri * triToVtxDegree) + localVtxIdx];
     } else if (dofHolderTopo == MeshField::Edge) {
@@ -191,7 +185,7 @@ struct QuadraticTriangleToField {
       // passing dofHolderIdx as Omega_h_simplex.hpp does not provide
       // a function that maps a triangle and edge index to a 'canonical' edge
       // index. This may need to be revisited...
-      osh_ent = triEdges[(tri * triToEdgeDegree) + (dofHolderIdx + 2) % 3];
+      osh_ent = triEdges[(tri * triToEdgeDegree) + dofHolderIdx];
     } else {
       assert(false);
     }
@@ -222,7 +216,7 @@ struct QuadraticTetrahedronToField {
   operator()(MeshField::LO tetNodeIdx, MeshField::LO tetCompIdx,
              MeshField::LO tet, MeshField::Mesh_Topology topo) const {
     assert(topo == MeshField::Tetrahedron);
-    const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 3, 4, 5, 0, 1, 2};
+    const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 0, 2, 3, 1, 5, 4};
     const MeshField::Mesh_Topology tetNode2DofHolderTopo[10] = {
         MeshField::Vertex, MeshField::Vertex, MeshField::Vertex,
         MeshField::Vertex, MeshField::Edge,   MeshField::Edge,
@@ -235,12 +229,8 @@ struct QuadraticTetrahedronToField {
       const auto tetDim = 3;
       const auto vtxDim = 0;
       const auto ignored = -1;
-      // cyclic rotation of the omegah vertex order to map to the meshfields order
-      // defined by the shape functions in MeshField_Shape.hpp
-      const auto localVtxIdx = (Omega_h::simplex_down_template(
-                                    tetDim, vtxDim, dofHolderIdx, ignored) +
-                                3) %
-                               4;
+      const auto localVtxIdx = Omega_h::simplex_down_template(
+                                    tetDim, vtxDim, dofHolderIdx, ignored);
       const auto tetToVtxDegree = Omega_h::simplex_degree(tetDim, vtxDim);
       osh_ent = tetVerts[(tet * tetToVtxDegree) + localVtxIdx];
     } else if (dofHolderTopo == MeshField::Edge) {
@@ -357,8 +347,8 @@ public:
     if constexpr (order == 1) {
       const auto meshDim = meshInfo.dim;
       const auto coords = mesh.coords();
-      MeshField::parallel_for(
-          ExecutionSpace(), {0}, {meshInfo.numVtx},
+      MeshField::parallel_for<decltype(fieldWithCtrlr.ctrlr)>(
+          {0}, {meshInfo.numVtx},
           SetCoordFieldFunctor<dim, decltype(field), decltype(coords),
                                CoordinateMap>(field, coords, meshDim, map),
           "setCoordField");
