@@ -220,6 +220,7 @@ meshfields_add_exe(IntegratorTest test/testIntegrator.cpp)
 meshfields_add_exe(BoxIntegratorTest test/testBoxIntegrator.cpp)
 
 meshfields_add_exe(IntegratorMeasure test/testIntegratorMeasure.cpp)
+meshfields_add_exe(Interpolate test/testInterpolate.cpp)
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
@@ -245,6 +246,7 @@ test_func(BoxIntegratorTest ./BoxIntegratorTest)
 smoke_test_func(OmegahTriTests ./OmegahTriTests)
 test_func(OmegahTetTest ./OmegahTetTest)
 test_func(IntegratorMeasure ./IntegratorMeasure)
+test_func(Interpolate ./Interpolate)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)

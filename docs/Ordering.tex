@@ -1,76 +1,87 @@
 \documentclass{article}
-\usepackage{graphicx}
 \usepackage[letterpaper,textwidth=5in,right=2.5in,textheight=9in]{geometry}
-
-\usepackage{amsmath,amssymb, changepage}
-\usepackage{enumerate}
-\usepackage{upgreek}
-\pagestyle{empty}
-\usepackage{listings}
 \usepackage{tikz}
+\pagestyle{empty}
 \begin{document}
 \noindent
 Joshua Kloepfer\\
 9/30/2025\\
 \textbf{Meshfields DOF Holder and Integration Point Ordering}\\\\
+The node ordering and parametric coordinates below follow
+Zienkiewicz, Taylor, and Zhu, ``The Finite Element Method: Its Basis and
+Fundamentals'', 2013, and match the shape functions defined in
+\texttt{src/MeshField\_Shape.hpp}.\\
+\\
 Linear Triangle:\\
-\begin{tikzpicture}
-    \draw[gray, thick] (0, 0) -- (2.5, 2.5);
+\begin{tikzpicture}[scale=0.8]
+    \draw[gray, thick] (0, 0) -- (0, 5);
     \draw[gray, thick] (0, 0) -- (5, 0);
-    \draw[gray, thick] (2.5, 2.5) -- (5, 0);
-    \filldraw[black] (0, 0) circle (2pt) node[anchor=east]{V0};
-    \filldraw[black] (5, 0) circle (2pt) node[anchor=west]{V1};
-    \filldraw[black] (2.5, 2.5) circle (2pt) node[anchor=south]{V2};
+    \draw[gray, thick] (0, 5) -- (5, 0);
+    \draw[->] (-1, 0) -- (-1, 2) node[anchor=east]{$\xi_1$};
+    \draw[->] (0, -1) -- (2, -1) node[anchor=north]{$\xi_0$};
+    \filldraw[black] (0, 0) circle (2pt) node[anchor=north east]{V0 $(0,0)$};
+    \filldraw[black] (5, 0) circle (2pt) node[anchor=west]{V1 $(1,0)$};
+    \filldraw[black] (0, 5) circle (2pt) node[anchor=south]{V2 $(0,1)$};
 \end{tikzpicture}
 \\
 Quadratic Triangle\\
-\begin{tikzpicture}
-    \draw[gray, thick] (0, 0) -- (2.5, 2.5);
+\begin{tikzpicture}[scale=0.8]
+    \draw[gray, thick] (0, 0) -- (0, 5);
     \draw[gray, thick] (0, 0) -- (5, 0);
-    \draw[gray, thick] (2.5, 2.5) -- (5, 0);
-    \filldraw[black] (0, 0) circle (2pt) node[anchor=east]{V0};
-    \filldraw[black] (5, 0) circle (2pt) node[anchor=west]{V1};
-    \filldraw[black] (2.5, 2.5) circle (2pt) node[anchor=south]{V2};
+    \draw[gray, thick] (0, 5) -- (5, 0);
+    \draw[->] (-1, 0) -- (-1, 2) node[anchor=east]{$\xi_1$};
+    \draw[->] (0, -1) -- (2, -1) node[anchor=north]{$\xi_0$};
+    \filldraw[black] (0, 0) circle (2pt) node[anchor=north east]{V0 $(0,0)$};
+    \filldraw[black] (5, 0) circle (2pt) node[anchor=west]{V1 $(1,0)$};
+    \filldraw[black] (0, 5) circle (2pt) node[anchor=south]{V2 $(0,1)$};
     \filldraw[black] (2.5, 0) circle (2pt) node[anchor=north]{E0};
-    \filldraw[black] (3.75, 1.25) circle (2pt) node[anchor=west]{E1};
-    \filldraw[black] (1.25, 1.25) circle (2pt) node[anchor=east]{E2};
+    \filldraw[black] (2.5, 2.5) circle (2pt) node[anchor=south west]{E1};
+    \filldraw[black] (0, 2.5) circle (2pt) node[anchor=east]{E2};
 \end{tikzpicture}
 \\
+Edge nodes: E0 on V0--V1, E1 on V1--V2, E2 on V0--V2;
+these are nodes 3, 4 and 5 of \texttt{QuadraticTriangleShape}.\\
 Linear Tetrahedron:\\
-\begin{tikzpicture}
+\begin{tikzpicture}[scale=0.8]
     \draw[gray, thick] (0, 0, 0) -- (5, 0, 0);
     \draw[gray, thick] (0, 0, 0) -- (0, 5, 0);
     \draw[gray, thick] (5, 0, 0) -- (0, 5, 0);
     \draw[gray, thick] (0, 0, 0) -- (0, 0, 5);
     \draw[gray, thick] (5, 0, 0) -- (0, 0, 5);
     \draw[gray, thick] (0, 5, 0) -- (0, 0, 5);
-    \filldraw[black] (0, 0, 5) circle (2pt) node[anchor=east]{V0};
-    \filldraw[black] (5, 0, 0) circle (2pt) node[anchor=west]{V1};
-    \filldraw[black] (0, 0, 0) circle (2pt) node[anchor=east]{V2};
-    \filldraw[black] (0, 5, 0) circle (2pt) node[anchor=south]{V3};
+    \filldraw[black] (0, 0, 0) circle (2pt) node[anchor=north east]{V0 $(0,0,0)$};
+    \filldraw[black] (5, 0, 0) circle (2pt) node[anchor=west]{V1 $(1,0,0)$};
+    \filldraw[black] (0, 5, 0) circle (2pt) node[anchor=south]{V2 $(0,1,0)$};
+    \filldraw[black] (0, 0, 5) circle (2pt) node[anchor=east]{V3 $(0,0,1)$};
 \end{tikzpicture}
 \\
-Vertex ordering must follow right hand rule.\\
+Vertex node $i$ is at $L_i = 1$: V0 at the origin, V1 on $\xi_0$,
+V2 on $\xi_1$, V3 on $\xi_2$.  Vertex ordering must follow the right hand
+rule, so that the Jacobian determinant is positive.\\
 Quadratic Tetrahedron:\\
-\begin{tikzpicture}
+\begin{tikzpicture}[scale=0.8]
     \draw[gray, thick] (0, 0, 0) -- (5, 0, 0);
     \draw[gray, thick] (0, 0, 0) -- (0, 5, 0);
     \draw[gray, thick] (5, 0, 0) -- (0, 5, 0);
     \draw[gray, thick] (0, 0, 0) -- (0, 0, 5);
     \draw[gray, thick] (5, 0, 0) -- (0, 0, 5);
     \draw[gray, thick] (0, 5, 0) -- (0, 0, 5);
-    \filldraw[black] (0, 0, 5) circle (2pt) node[anchor=east]{V0};
+    \filldraw[black] (0, 0, 0) circle (2pt) node[anchor=north east]{V0};
     \filldraw[black] (5, 0, 0) circle (2pt) node[anchor=west]{V1};
-    \filldraw[black] (0, 0, 0) circle (2pt) node[anchor=east]{V2};
-    \filldraw[black] (0, 5, 0) circle (2pt) node[anchor=south]{V3};
-    
-    \filldraw[black] (2.5, 0, 2.5) circle (2pt) node[anchor=north]{E0};
-    \filldraw[black] (0, 0, 2.5) circle (2pt) node[anchor=east]{E1};
-    \filldraw[black] (0, 2.5, 2.5) circle (2pt) node[anchor=east]{E2};
-    \filldraw[black] (2.5, 0, 0) circle (2pt) node[anchor=south]{E3};
-    \filldraw[black] (2.5, 2.5, 0) circle (2pt) node[anchor=east]{E4};
-    \filldraw[black] (0, 2.5, 0) circle (2pt) node[anchor=west]{E5};
+    \filldraw[black] (0, 5, 0) circle (2pt) node[anchor=south]{V2};
+    \filldraw[black] (0, 0, 5) circle (2pt) node[anchor=east]{V3};
+
+    \filldraw[black] (2.5, 0, 0) circle (2pt) node[anchor=north]{E0};
+    \filldraw[black] (0, 2.5, 0) circle (2pt) node[anchor=west]{E1};
+    \filldraw[black] (0, 0, 2.5) circle (2pt) node[anchor=east]{E2};
+    \filldraw[black] (2.5, 2.5, 0) circle (2pt) node[anchor=west]{E3};
+    \filldraw[black] (0, 2.5, 2.5) circle (2pt) node[anchor=west]{E4};
+    \filldraw[black] (2.5, 0, 2.5) circle (2pt) node[anchor=north]{E5};
 \end{tikzpicture}
 \\
-Vertex ordering must follow right hand rule and edge ordering must follow diagram.
+Edge nodes, corresponding to nodes 4--9 of
+\texttt{QuadraticTetrahedronShape}: E0 on V0--V1, E1 on V0--V2,
+E2 on V0--V3, E3 on V1--V2, E4 on V2--V3, E5 on V1--V3.
+Vertex ordering must follow the right hand rule and edge ordering must
+follow the diagram.
 \end{document}

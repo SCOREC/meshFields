@@ -175,10 +175,6 @@ public:
     FieldElement estimationField(estimation.mesh.nelems(), estimation.eps_star, shp, map);
     auto eps_star_atPts =
         evaluateStaticLength(estimationField, p);
-    double meshDim = estimation.mesh.dim();
-    double orderP = estimation.recovered_order;
-
-    const auto &eps = estimation.eps;
     r = error_par_reduce_impl(estimation, eps_star_atPts, errorNorm, w, dV,
                               numPtsPerElem);
   }

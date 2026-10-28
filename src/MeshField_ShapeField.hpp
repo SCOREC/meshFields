@@ -17,15 +17,38 @@ namespace MeshField {
  * On-process mesh metadata
  */
 struct MeshInfo {
-  int numVtx;     // entDim = 0
-  int numEdge;    // entDim = 1
-  int numTri;     // entDim = 2
-  int numQuad;    // entDim = 2
-  int numTet;     // entDim = 3
-  int numHex;     // entDim = 3
-  int numPrism;   // entDim = 3
-  int numPyramid; // entDim = 3
-  int dim;
+  int numVtx = 0;     // entDim = 0
+  int numEdge = 0;    // entDim = 1
+  int numTri = 0;     // entDim = 2
+  int numQuad = 0;    // entDim = 2
+  int numTet = 0;     // entDim = 3
+  int numHex = 0;     // entDim = 3
+  int numPrism = 0;   // entDim = 3
+  int numPyramid = 0; // entDim = 3
+  int dim = 0;
+
+  /** @brief runtime map of number of entities based on topology */
+  int numEntities(Mesh_Topology topo) const {
+    switch (topo) {
+    case Vertex:
+      return numVtx;
+    case Edge:
+      return numEdge;
+    case Triangle:
+      return numTri;
+    case Quad:
+      return numQuad;
+    case Tetrahedron:
+      return numTet;
+    case Hexahedron:
+      return numHex;
+    case Prism:
+      return numPrism;
+    case Pyramid:
+      return numPyramid;
+    }
+    return 0;
+  }
 };
 
 /**
