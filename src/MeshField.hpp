@@ -368,7 +368,7 @@ public:
    * @details
    * The shape and dof map are chosen from the field's order.
    *
-   * @param coordinate field used to create the element
+   * @param field the Lagrange used to create the element
    */
   template <typename Field>
   auto CreateLagrangeElement(const Field &field) const {
