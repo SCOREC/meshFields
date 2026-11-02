@@ -78,7 +78,7 @@ struct IdentityMap {
  * @details
  * The field element supplies the basis and the stored dofs.  The geometry
  * element supplies the map from the reference element to the physical
- * element.  I
+ * element.
  *
  * Evaluation:
  * @code
