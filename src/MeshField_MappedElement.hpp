@@ -149,7 +149,7 @@ struct MappedElement {
       : field(fieldIn), geom(geomIn), dofTransformation(dofTransformationIn),
         mapType(mapTypeIn), numMeshEnts(fieldIn.numMeshEnts) {
     if (geomIn.numMeshEnts != fieldIn.numMeshEnts) {
-      fail("the field and geometry elements have the same number of "
+      fail("the field and geometry elements must have the same number of "
            "mesh entities (%zu != %zu)\n",
            fieldIn.numMeshEnts, geomIn.numMeshEnts);
     }
