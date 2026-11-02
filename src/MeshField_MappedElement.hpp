@@ -220,6 +220,13 @@ struct MappedElement {
     return geom.getJacobians(localCoords, offsets);
   }
 
+  /** @brief Jacobians at the same points in every element, from the geometry
+   * element */
+  Kokkos::View<Real ***>
+  getJacobiansStaticLength(Kokkos::View<Real **> localCoords) const {
+    return geom.getJacobiansStaticLength(localCoords);
+  }
+
   /** @brief Jacobian determinants, from the geometry element */
   template <typename Matrices>
   Kokkos::View<Real *> getJacobianDeterminants(Matrices const &J) const {

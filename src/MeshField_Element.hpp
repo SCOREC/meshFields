@@ -481,7 +481,8 @@ struct FieldElement {
     return Kokkos::View<Real *>("foo", J.extent(0));
   }
 
-  Kokkos::View<Real ***> getJacobiansStaticLength(Kokkos::View<Real **> localCoords) {
+  Kokkos::View<Real ***>
+  getJacobiansStaticLength(Kokkos::View<Real **> localCoords) const {
     if (Debug) {
       LO numErrors = 0;
       Kokkos::parallel_reduce(
