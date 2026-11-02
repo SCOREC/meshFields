@@ -127,15 +127,15 @@ void testKokkosParallelFor() {
       rk5(i, j, k, l, m) = i + j + k + l + m;
       assert(rk5(i, j, k, l, m) == i + j + k + l + m);
     };
-    MeshField::parallel_for(ExecutionSpace(), {0}, {a}, k1,
+    MeshField::parallel_for<Ctrlr>({0}, {a}, k1,
                             "testKokkosParallelFor(rank1)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0}, {a, b}, k2,
+    MeshField::parallel_for<Ctrlr>({0, 0}, {a, b}, k2,
                             "testKokkosParallelFor(rank2)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0}, {a, b, c}, k3,
+    MeshField::parallel_for<Ctrlr>({0, 0, 0}, {a, b, c}, k3,
                             "testKokkosParallelFor(rank3)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0, 0}, {a, b, c, d}, k4,
+    MeshField::parallel_for<Ctrlr>({0, 0, 0, 0}, {a, b, c, d}, k4,
                             "testKokkosParallelFor(rank4)");
-    MeshField::parallel_for(ExecutionSpace(), {0, 0, 0, 0, 0}, {a, b, c, d, e},
+    MeshField::parallel_for<Ctrlr>({0, 0, 0, 0, 0}, {a, b, c, d, e},
                             k5, "testKokkosParallelFor(rank5)");
   }
 
@@ -238,6 +238,7 @@ void kokkosControllerSizeTest() {
   const int e = 1;
 
   const int psi[5] = {a, b, c, d, e};
+  (void)psi; //silence compiler warning in release build
   /* BEGIN STATIC DIMENSIONS TESTS */
   {
     using simple_static =
@@ -261,8 +262,7 @@ void kokkosControllerSizeTest() {
     multi_static c3;
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 3; j++) {
-        int foo = c3.size(i, j);
-        assert((foo == psi[j]));
+        assert((c3.size(i,j) == psi[j]));
       }
     }
   }
@@ -339,6 +339,7 @@ void kokkosFieldSizeTest() {
   printf("== START kokkosFieldSizeTest ==\n");
   const int a = 5, b = 4, c = 3, d = 2, e = 1;
   const size_t psi[5] = {a, b, c, d, e};
+  (void)psi; //silence compiler warning in release build
   {
     using simple_static =
         MeshField::KokkosController<MemorySpace, ExecutionSpace, int[a],

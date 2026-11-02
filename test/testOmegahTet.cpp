@@ -85,7 +85,7 @@ void setVertices(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
       field(vtx, 0, i, MeshField::Vertex) = func(Vec<3>{x, y, z});
     }
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nverts()},
+  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nverts()},
                           setFieldAtVertices, "setFieldAtVertices");
 }
 
@@ -110,7 +110,7 @@ void setEdges(Omega_h::Mesh &mesh, AnalyticFunction func, ShapeField field) {
       field(edge, 0, i, MeshField::Edge) = func(Vec<3>{x, y, z});
     }
   };
-  MeshField::parallel_for(ExecutionSpace(), {0}, {mesh.nedges()},
+  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nedges()},
                           setFieldAtEdges, "setFieldAtEdges");
 }
 

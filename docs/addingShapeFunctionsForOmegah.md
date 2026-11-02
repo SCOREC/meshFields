@@ -52,6 +52,9 @@ omitted:
 | Triangle (2D) | \f$(\xi_0,\xi_1)\f$  | \f$[0,1]^2\f$, \f$\xi_0+\xi_1 \le 1\f$ |
 | Tet (3D)      | \f$(\xi_0,\xi_1,\xi_2)\f$ | \f$[0,1]^3\f$, \f$\sum \xi_i \le 1\f$ |
 
+Diagrams of the vertex and edge node ordering, with parametric coordinates, for
+the linear and quadratic triangle and tetrahedron are in `docs/Ordering.tex`.
+
 ---
 
 ## Step 1 - Define the Shape Function Struct {#step1}
@@ -107,10 +110,8 @@ The mapping struct lives in `src/MeshField.hpp` inside
 (as numbered by the shape function) into the on-process mesh entity indices
 (as numbered by Omega\_h) that hold the corresponding DOFs.
 
-### Vertex-Ordering Correction
+### Mapping Omega\_h Vertices and Edges to Nodes
 
-As previously stated, Omega\_h numbers vertices and edges within an element 
-differently from the MeshFields canonical ordering used by the shape functions.
 The Omega\_h canonical orderings for simplices are depicted below:
 
 <a href="omegah_tri.png"><img src="omegah_tri.png" width="20%" alt="Omega_h triangle ordering"/></a>
@@ -124,26 +125,49 @@ Omega_h tetrahedron ordering.
 Meshes composed of hypercubes (quadrilaterals and hexahedrons), pyramids, and prisms are supported by Omega_h, but they cannot be adapted.
 Version 1.1.0 of MeshFields only supports Omega\_h simplices.
 
-The existing linear-triangle and linear-tetrahedron mappings correct for
-the difference in Omega\_h vs MeshFields ordering with a cyclic rotation.
+**Vertices.** The MeshFields vertex node ordering for triangles and tetrahedra
+matches the Omega\_h element-to-vertex ordering, so vertex node \f$i\f$ maps
+directly to local vertex \f$i\f$ with no rotation:
 
 ```cpp
-// For triangles (triDim=2, vtxDim=0):
+// For triangles (triDim=2) and tetrahedra (tetDim=3), vtxDim=0:
 const auto localVtxIdx =
-    (Omega_h::simplex_down_template(triDim, vtxDim, nodeIdx, /*ignored=*/-1) + 2) % 3;
-
-// For tetrahedra (tetDim=3, vtxDim=0):
-const auto localVtxIdx =
-    (Omega_h::simplex_down_template(tetDim, vtxDim, nodeIdx, /*ignored=*/-1) + 3) % 4;
+    Omega_h::simplex_down_template(elemDim, vtxDim, nodeIdx, /*ignored=*/-1);
 ```
 
-You must determine the correct rotation offset for your topology and DOF holders by
-comparing the Omega\_h canonical vertex/edge ordering (see
+**Edges.** Edge nodes do not necessarily follow the Omega\_h element-to-edge
+ordering, so the mapping struct uses a lookup table from node index to the
+Omega\_h local edge index.
+For the quadratic triangle the MeshFields edges (E0: V0-V1, E1: V1-V2,
+E2: V0-V2) coincide with the Omega\_h edges, so the table is the identity.
+For the quadratic tetrahedron the MeshFields edges (nodes 4-9: V0-V1, V0-V2,
+V0-V3, V1-V2, V2-V3, V1-V3) are reordered to the Omega\_h edges
+(0: V0-V1, 1: V1-V2, 2: V2-V0, 3: V0-V3, 4: V1-V3, 5: V2-V3):
+
+```cpp
+// from QuadraticTetrahedronToField
+const MeshField::LO tetNode2DofHolder[10] = {0, 1, 2, 3, 0, 2, 3, 1, 5, 4};
+```
+
+You must determine the correct vertex and edge mapping for your topology and
+DOF holders by comparing the Omega\_h canonical vertex/edge ordering (see
 figures above based on `Omega_h_simplex.hpp` and the `simplex_down_template` function)
 with the node ordering established by `getNodeParametricCoords()` in your shape
 struct.  It is a good idea to add a unit test that evaluates the shape functions at
 the parametric coordinates of each node and checks that the value for
 that node is 1.0 and all others are 0.0.
+
+### Jacobian Orientation
+
+@ref MeshField::FieldElement "FieldElement" returns **signed** Jacobian
+determinants for 2D and 3D elements.  The integrator
+(`src/MeshField_Integrate.hpp`) uses the determinants as-is, and debug builds
+assert that each one is non-negative.
+The vertex ordering produced by your mapping must therefore follow the
+right-hand rule so that the Jacobian determinant of a valid (un-inverted)
+Omega\_h element is positive.
+An incorrect vertex permutation results in a negative determinant and a
+failed assertion in debug builds.
 
 ### Interface Requirements
 
@@ -225,7 +249,7 @@ The steps within that branch are:
 2. **Allocate storage** -- construct a `Controller` sized for each DOF-holding entity type.  Each field in the controller needs entries for `numEntities * dofsPerHolder * numComp`.
 3. **Create fields** -- call `MeshField::makeField<Ctrlr, N>(ctrl)` for each field index `N` to obtain typed slice objects.
 4. **Construct the Accessor** -- pass the slice objects to your Accessor's constructor (e.g., `QuadraticAccessor{vtxField, edgeField}`).
-5. **Return** `FieldWithController<Ctrlr, ShapeField<numComp, YourShape, YourAccessor>>{ctrl, ShapeField(meshInfo, accessor)}`.
+5. **Return** `FieldWithController<Ctrlr, ShapeField<numComp, YourShape, Ctrlr, YourAccessor>>{ctrl, ShapeField(meshInfo, accessor)}`.
 
 See the existing `order == 2 && dim == 2` branch (quadratic triangle) as a
 concrete reference:

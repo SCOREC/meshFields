@@ -1,0 +1,2 @@
+#include "MeshField_GetHash.hpp"
+const char * GitHash = "@GIT_HASH@";

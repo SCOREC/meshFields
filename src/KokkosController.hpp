@@ -62,7 +62,7 @@ template <class SliceType, class T> struct KokkosSliceWrapper {
   }
 };
 
-template <class MemorySpace, class ExecutionSpace, typename... Ts>
+template <class MemorySpace, class ExeSpace, typename... Ts>
 class KokkosController {
 
   // type definitions
@@ -182,7 +182,8 @@ private:
   std::tuple<Kokkos::View<Ts, MemorySpace>...> values_;
 
 public:
-  typedef ExecutionSpace exe;
+  typedef ExeSpace exe;
+  using ExecutionSpace=exe;
   static const int MAX_RANK = 5;
 
   KokkosController() {
