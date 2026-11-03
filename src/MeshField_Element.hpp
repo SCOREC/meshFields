@@ -334,7 +334,7 @@ struct FieldElement {
           KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
             Real sum = 0;
             LO isError = 0;
-            for (int i = 0; i < localCoords.extent(1); i++) {
+            for (size_t i = 0; i < localCoords.extent(1); i++) {
               if (localCoords(ent, i) < 0)
                 isError++;
               sum += localCoords(ent, i);
@@ -520,7 +520,7 @@ evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
         KOKKOS_LAMBDA(const int &ent, LO &lerrors) {
           Real sum = 0;
           LO isError = 0;
-          for (int i = 0; i < localCoords.extent(1); i++) {
+          for (size_t i = 0; i < localCoords.extent(1); i++) {
             if (localCoords(ent, i) < 0)
               isError++;
             sum += localCoords(ent, i);
@@ -540,10 +540,10 @@ evaluateStaticLength(FieldElement &fes, Kokkos::View<Real **> localCoords) {
   Kokkos::View<Real *[numComponents]> res("result", numPts * fes.numMeshEnts);
   auto evaluateFunc = KOKKOS_LAMBDA(const int ent, const int pt) {
     Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
-    for (int i = 0; i < localCoords.extent(1); ++i)
+    for (size_t i = 0; i < localCoords.extent(1); ++i)
       lc[i] = localCoords(pt, i);
     const auto val = fes.getValue(ent, lc);
-    for (int i = 0; i < numComponents; ++i) {
+    for (size_t i = 0; i < numComponents; ++i) {
       res(ent * numPts + pt, i) = val[i];
     }
   };

@@ -142,8 +142,7 @@ Kokkos::View<MeshField::Real **> getIntegrationPointLocalCoords(
     FieldElement &fes,
     std::vector<IntegrationPoint<FieldElement::MeshEntDim>> ip) {
   const auto numPtsPerElm = ip.size();
-  const auto meshEntDim = fes.MeshEntDim;
-  const auto numParametricCoords = meshEntDim;
+  const auto numParametricCoords = fes.MeshEntDim;
   Kokkos::View<MeshField::Real **> localCoords("localCoords", numPtsPerElm,
                                                numParametricCoords);
   auto hostLocalCoords = Kokkos::create_mirror_view(localCoords);
@@ -163,7 +162,6 @@ Kokkos::View<Real *> getIntegrationPointWeights(
     FieldElement &fes,
     std::vector<IntegrationPoint<FieldElement::MeshEntDim>> ip) {
   const auto numPtsPerElm = ip.size();
-  const auto meshEntDim = fes.MeshEntDim;
   Kokkos::View<Real *> weights("weights", numPtsPerElm);
   auto hostWeights = Kokkos::create_mirror_view(weights);
   for (size_t pt = 0; pt < numPtsPerElm; pt++) {
