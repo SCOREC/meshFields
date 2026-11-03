@@ -53,13 +53,10 @@ bool testAnalytic(
   const auto f = KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
     return order == 1 ? LinearFunction<dim>()(x) : QuadraticFunction<dim>()(x);
   };
+  MeshField::MappedElement mappedElm(elm, coordElm);
   MeshField::setDofByInterpolation(
-      elm, KOKKOS_LAMBDA(const int ent, Kokkos::Array<Real, dim> const &xi) {
-        const auto x = coordElm.getValue(ent, xi);
-        Kokkos::Array<Real, numComp> val;
-        for (size_t c = 0; c < numComp; ++c)
-          val[c] = (c + 1) * f(x);
-        return val;
+      mappedElm, KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
+        return valueScaledByComponent<numComp>(f, x);
       });
 
   const auto lc = offNodeCoords<dim>(mesh.nelems());
@@ -72,9 +69,9 @@ bool testAnalytic(
         Kokkos::Array<Real, dim> xp;
         for (size_t d = 0; d < dim; ++d)
           xp[d] = x(pt, d);
+        const auto expected = valueScaledByComponent<numComp>(f, xp);
         for (size_t c = 0; c < numComp; ++c)
-          if (Kokkos::fabs(values(pt, c) - (c + 1) * f(xp)) >
-              MeshField::Epsilon)
+          if (Kokkos::fabs(values(pt, c) - expected[c]) > MeshField::Epsilon)
             ++lerrors;
       },
       numErrors);

@@ -5,6 +5,7 @@
 #include "MeshField_Element.hpp"
 #include "MeshField_Fail.hpp"
 #include "MeshField_For.hpp"
+#include "MeshField_MappedElement.hpp"
 #include "MeshField_ShapeField.hpp"
 #include "Omega_h_file.hpp"    //move
 #include "Omega_h_mesh.hpp"    //move
@@ -52,7 +53,6 @@ struct SetCoordFieldFunctor
   int meshDim_;
   const CoordinateMap map_;
 };
-
 
 template <int dim, typename Element, typename CoordinateMap>
 struct InterpolateElementFunctor
@@ -354,11 +354,8 @@ public:
           "setCoordField");
     } else {
       const auto linear = CreateLagrangeElement(coordField.field);
-      auto target = CreateLagrangeElement(field);
-      MeshField::setDofByInterpolation(
-          target,
-          InterpolateElementFunctor<dim, decltype(linear), CoordinateMap>(
-              linear, map));
+      auto target = CreateLagrangeElement(field, linear);
+      MeshField::setDofByInterpolation(target, map);
     }
     return fieldWithCtrlr;
   }
@@ -368,6 +365,10 @@ public:
   /**
    * @brief create a FieldElement over the mesh elements for a Lagrange field
    *
+   * @details
+   * The shape and dof map are chosen from the field's order.
+   *
+   * @param field the Lagrange used to create the element
    */
   template <typename Field>
   auto CreateLagrangeElement(const Field &field) const {
@@ -381,6 +382,19 @@ public:
       const auto [shp, map] = Omegah::getTetrahedronElement<order>(mesh);
       return MeshField::FieldElement(meshInfo.numTet, field, shp, map);
     }
+  }
+
+  /**
+   * @brief create a MappedElement for a field on the given geometry
+   *
+   * @param field the Lagrange field to evaluate
+   * @param geomElem the geometry element: CreateLagrangeElement of a
+   * coordinate field
+   */
+  template <typename ShapeField, typename GeomElem>
+  auto CreateLagrangeElement(const ShapeField &field,
+                             const GeomElem &geomElem) const {
+    return MeshField::MappedElement(CreateLagrangeElement(field), geomElem);
   }
 
   // FIXME support 2d and 3d and fields with order>1
