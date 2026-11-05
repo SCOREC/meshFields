@@ -616,9 +616,8 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
          localCoords.extent(0), numLocalCoords);
   }
 
-  constexpr const auto numComponents = FieldElement::ValArray::size();
   const auto numPts = MeshFieldUtil::getLastValue(offsets);
-  Kokkos::View<Real *[numComponents]> res("result", numPts);
+  Kokkos::View<Real *[FieldElement::NumComponents]> res("result", numPts);
   Kokkos::parallel_for(
       fes.numMeshEnts, KOKKOS_LAMBDA(const int ent) {
         Kokkos::Array<Real, FieldElement::MeshEntDim> lc;
@@ -627,7 +626,7 @@ Kokkos::View<Real *[FieldElement::NumComponents]> evaluate(
           for (size_t i = 0; i < localCoords.extent(1); i++) // better way?
             lc[i] = localCoords(pt, i);
           const auto val = fes.getValue(ent, lc);
-          for (size_t i = 0; i < numComponents; i++)
+          for (size_t i = 0; i < FieldElement::NumComponents; i++)
             res(pt, i) = val[i];
         }
       });
