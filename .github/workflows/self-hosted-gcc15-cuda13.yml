@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_and_test:
+  build_and_test_gcc15_cuda13:
     # The asics environment is only for launching on self-hosted runners.
     # Do not use or edit this environment for any other purpose.
     environment: asics
@@ -104,6 +104,7 @@ jobs:
             mfbdir=${workDir}/build-meshfields_cab${cab}
             cmake -S meshfields_${{ github.run_id }} -B $mfbdir \
               -G Ninja \
+              -D CMAKE_CXX_SCAN_FOR_MODULES:BOOL=OFF \
               -DMeshFields_USE_Cabana=$cab \
               -DOmega_h_ROOT=$ohbdir/install \
               -DKokkos_ROOT=$kkbdir/install \
