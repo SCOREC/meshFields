@@ -74,6 +74,7 @@ jobs:
           ohbdir=${workDir}/build-omegah
           cmake -S ${workDir}/omegah -B $ohbdir \
             -G Ninja \
+            -DCMAKE_CXX_SCAN_FOR_MODULES:BOOL=OFF \
             -DCMAKE_INSTALL_PREFIX=$ohbdir/install \
             -DBUILD_SHARED_LIBS=on \
             -DOmega_h_USE_Kokkos=on \
@@ -88,7 +89,7 @@ jobs:
           cabbdir=${workDir}/build-cab
           cmake -S ${workDir}/cabana -B $cabbdir \
             -G Ninja \
-            -DCMAKE_BUILD_TYPE="Debug" \
+            -DCMAKE_CXX_SCAN_FOR_MODULES:BOOL=OFF \
             -DCMAKE_CXX_COMPILER=${workDir}/kokkos/bin/nvcc_wrapper \
             -DKokkos_ROOT=$kkbdir/install \
             -DCabana_ENABLE_MPI=OFF \
@@ -104,7 +105,7 @@ jobs:
             mfbdir=${workDir}/build-meshfields_cab${cab}
             cmake -S meshfields_${{ github.run_id }} -B $mfbdir \
               -G Ninja \
-              -D CMAKE_CXX_SCAN_FOR_MODULES:BOOL=OFF \
+              -DCMAKE_CXX_SCAN_FOR_MODULES:BOOL=OFF \
               -DMeshFields_USE_Cabana=$cab \
               -DOmega_h_ROOT=$ohbdir/install \
               -DKokkos_ROOT=$kkbdir/install \
