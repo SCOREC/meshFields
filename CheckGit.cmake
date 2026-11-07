@@ -43,15 +43,16 @@ endfunction()
 
 function(CheckGitSetup)
 
-    add_custom_target(AlwaysCheckGit COMMAND ${CMAKE_COMMAND}
-        -DRUN_CHECK_GIT_VERSION=1
-        -Dpre_configure_dir=${CMAKE_CURRENT_SOURCE_DIR}
-        -Dpost_configure_file=${CMAKE_CURRENT_BINARY_DIR}
-        -DGIT_HASH_CACHE=${GIT_HASH_CACHE}
-        -P ${CMAKE_CURRENT_SOURCE_DIR}/CheckGit.cmake
-        BYPRODUCTS ${post_configure_file}
-        )
-
+    if (MeshFields_ALWAYS_CHECK_GIT)
+        add_custom_target(AlwaysCheckGit COMMAND ${CMAKE_COMMAND}
+            -DRUN_CHECK_GIT_VERSION=1
+            -Dpre_configure_dir=${CMAKE_CURRENT_SOURCE_DIR}
+            -Dpost_configure_file=${CMAKE_CURRENT_BINARY_DIR}
+            -DGIT_HASH_CACHE=${GIT_HASH_CACHE}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/CheckGit.cmake
+            BYPRODUCTS ${post_configure_file}
+            )
+    endif ()
 
     CheckGitVersion()
 endfunction()
