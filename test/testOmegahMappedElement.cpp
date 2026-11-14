@@ -102,7 +102,7 @@ bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
   });
   auto coordElm = omf.CreateLagrangeElement(cfWc.field, geomElm);
 
-  const MeshField::Real h = 1e-5;
+  const MeshField::Real h = 1e-2;
   MeshField::LO errors = 0;
   Kokkos::parallel_reduce(
       "checkFiniteDifference", mesh.nelems(),
@@ -126,7 +126,10 @@ bool testCurvedGradientFiniteDifference(Omega_h::Mesh &mesh,
             MeshField::Real dvFromGrad = 0;
             for (size_t j = 0; j < dim; ++j)
               dvFromGrad += (posP[j] - posM[j]) / (2 * h) * g[j];
-            if (!(Kokkos::fabs(dvFromGrad - dv) <= 1e-7))
+            // roundoff scales with the magnitude of the derivative
+            const auto tol =
+                MeshField::Epsilon * Kokkos::fmax(1.0, Kokkos::fabs(dv));
+            if (!(Kokkos::fabs(dvFromGrad - dv) <= tol))
               lerr++;
           }
         }
