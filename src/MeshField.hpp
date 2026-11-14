@@ -54,21 +54,6 @@ struct SetCoordFieldFunctor
   const CoordinateMap map_;
 };
 
-template <int dim, typename Element, typename CoordinateMap>
-struct InterpolateElementFunctor
-{
-  InterpolateElementFunctor(const Element& element, const CoordinateMap& map)
-      : element_(element), map_(map) {}
-
-  KOKKOS_INLINE_FUNCTION
-  auto operator()(const int ent, Kokkos::Array<MeshField::Real, dim> const& xi) const {
-        return map_(element_.getValue(ent, xi));
-  }
-
-  const Element element_;
-  const CoordinateMap map_;
-};
-
 } // anonymous namespace
 
 namespace MeshField {
