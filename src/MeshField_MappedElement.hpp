@@ -126,9 +126,14 @@ struct MappedElement {
   /** @brief the Jacobian, J[i][j] = dx_j/dxi_i */
   using JacobianArray = typename GeomElem::JacobianArray;
 
-  /** @brief the geometry map is affine, so the Jacobian is constant over
-   *  each element */
-  static constexpr bool IsAffine = decltype(GeomElem::shapeFn)::Order == 1;
+  // if we know the topology/order combo gives a constant jacobian
+  // we can take advantage of this. Long-term, we may want to add this
+  // as a property to the GeomElement definition
+  static constexpr bool IsAffine =
+      decltype(GeomElem::shapeFn)::Order == 1 &&
+      (GeomElem::getTopology()[0] == Edge ||
+       GeomElem::getTopology()[0] == Triangle ||
+       GeomElem::getTopology()[0] == Tetrahedron);
   /** @brief the field and geometry use the same shape functions and dof map */
   static constexpr bool IsIsoparametric =
       std::is_same_v<decltype(FieldElem::shapeFn),
