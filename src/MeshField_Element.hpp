@@ -235,8 +235,8 @@ struct FieldElement {
 
   /**
    * @brief
-   * contract an element's coefficients with the basis at a parametric
-   * coordinate
+   * compute dot product between the basis functions and the coefficients
+   * I.e., $$\sum_{A=1}^{N} c_A N_A$$
    *
    * @details
    * heavily based on SCOREC/core @ 7cd76473 apf/apfElement.cc
@@ -260,8 +260,8 @@ struct FieldElement {
 
   /**
    * @brief
-   * contract an element's coefficients with the basis gradients at a
-   * parametric coordinate
+   * compute dot product between the basis function gradients and the coefficients
+   * I.e., $$\sum_{A=1}^{N} c_A N_{A,x}$$
    *
    * @details
    * The result is the gradient with respect to the parametric coordinates,
