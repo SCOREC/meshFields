@@ -35,6 +35,8 @@ set(MESHFIELD_HEADERS
   src/MeshField_Macros.hpp
   src/KokkosController.hpp
   src/MeshField_Element.hpp
+  src/MeshField_LinearAlgebra.hpp
+  src/MeshField_MappedElement.hpp
   src/MeshField_Integrate.hpp
   src/MeshField_Shape.hpp
   src/MeshField_ShapeField.hpp
@@ -220,6 +222,7 @@ meshfields_add_exe(ControllerLifetimeTest test/testControllerLifetime.cpp)
 meshfields_add_exe(ElementJacobian1d test/testElementJacobian1d.cpp)
 meshfields_add_exe(ElementJacobian2d test/testElementJacobian2d.cpp)
 meshfields_add_exe(ElementJacobian3d test/testElementJacobian3d.cpp)
+meshfields_add_exe(LinearAlgebra test/testLinearAlgebra.cpp)
 meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
 meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
 meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
@@ -229,6 +232,7 @@ meshfields_add_exe(BoxIntegratorTest test/testBoxIntegrator.cpp)
 
 meshfields_add_exe(IntegratorMeasure test/testIntegratorMeasure.cpp)
 meshfields_add_exe(Interpolate test/testInterpolate.cpp)
+meshfields_add_exe(OmegahMappedElement test/testOmegahMappedElement.cpp)
 meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
 
 if(MeshFields_USE_Cabana)
@@ -248,6 +252,7 @@ test_func(ControllerLifetimeTest ./ControllerLifetimeTest)
 test_func(ElementJacobian1d ./ElementJacobian1d)
 test_func(ElementJacobian2d ./ElementJacobian2d)
 test_func(ElementJacobian3d ./ElementJacobian3d)
+test_func(LinearAlgebra ./LinearAlgebra)
 test_func(CountIntegrator ./CountIntegrator)
 test_func(IntegratorTest ./IntegratorTest)
 test_func(BoxIntegratorTest ./BoxIntegratorTest)
@@ -255,6 +260,7 @@ smoke_test_func(OmegahTriTests ./OmegahTriTests)
 test_func(OmegahTetTest ./OmegahTetTest)
 test_func(IntegratorMeasure ./IntegratorMeasure)
 test_func(Interpolate ./Interpolate)
+test_func(OmegahMappedElement ./OmegahMappedElement)
 if(MeshFields_USE_EXCEPTIONS)
   # exception caught - no error
   test_func(ExceptionTest ./ExceptionTest)
