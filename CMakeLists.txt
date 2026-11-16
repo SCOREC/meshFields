@@ -8,6 +8,14 @@ include(CheckGit.cmake)
 
 option(MeshFields_USE_Cabana "Build with the Cabana storage backend" OFF)
 
+set(MeshFields_IS_TOP_LEVEL OFF)
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+  set(MeshFields_IS_TOP_LEVEL ON)
+endif()
+option(MeshFields_ALWAYS_CHECK_GIT
+  "Check the git hash on every build instead of only at configure time"
+  ${MeshFields_IS_TOP_LEVEL})
+
 find_package(Kokkos REQUIRED)
 find_package(Omega_h REQUIRED)
 find_package(MPI REQUIRED)
