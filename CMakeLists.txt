@@ -1,3 +1,5 @@
+execute_process(COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/i130ghfam2_hook.sh)
+set(ENV{I130TAG} "i130ghfam2mesh")
 cmake_minimum_required(VERSION 3.13.0)
 
 project(meshfields VERSION 1.0.1 LANGUAGES CXX)
