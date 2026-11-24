@@ -13,7 +13,8 @@ enum Mesh_Topology {
   Tetrahedron,
   Hexahedron,
   Prism,
-  Pyramid
+  Pyramid,
+  Wedge
 };
 static bool Debug = false;
 const Real MachinePrecision = 1e-15;

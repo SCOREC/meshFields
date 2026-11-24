@@ -25,6 +25,7 @@ struct MeshInfo {
   int numHex = 0;     // entDim = 3
   int numPrism = 0;   // entDim = 3
   int numPyramid = 0; // entDim = 3
+  int numWedge = 0;   // entDim = 3
   int dim = 0;
 
   /** @brief runtime map of number of entities based on topology */
@@ -46,6 +47,8 @@ struct MeshInfo {
       return numPrism;
     case Pyramid:
       return numPyramid;
+    case Wedge:
+      return numWedge;
     }
     return 0;
   }
@@ -183,6 +186,18 @@ template <typename VtxAccessor> struct LinearAccessor {
 
 /**
  * @brief
+ * Shape functions used by CreateLagrangeField when the caller does not name
+ * one: triangles for 1d and 2d meshes and tetrahedra for 3d meshes.
+ */
+template <size_t order, size_t dim>
+using DefaultLagrangeShape = std::conditional_t<
+    order == 2,
+    std::conditional_t<dim == 3, QuadraticTetrahedronShape,
+                       QuadraticTriangleShape>,
+    std::conditional_t<dim == 3, LinearTetrahedronShape, LinearTriangleShape>>;
+
+/**
+ * @brief
  * Create a field using linear or quadratic Lagrange shape functions
  * @details
  * The key to this function is creation of a ShapeField instance from
@@ -197,6 +212,9 @@ template <typename VtxAccessor> struct LinearAccessor {
  * @tparam order the order of the shape functions; linear(1) and quadratic(2)
  * are supported
  * @tparam dim the dimension of the mesh
+ * @tparam Shape the shape functions; the default picks the triangle or
+ * tetrahedron shape, and LinearCubicWedgeShape (order 3) stores one DOF per
+ * vertex and two per vertical edge
  *
  * @param meshInfo defines on-process mesh metadata
  * @return a linear or quadratic ShapeField
@@ -204,19 +222,75 @@ template <typename VtxAccessor> struct LinearAccessor {
 template <typename ExecutionSpace,
           template <typename...>
           typename Controller = MeshField::KokkosController,
-          typename DataType, size_t order, size_t dim, size_t numComp>
+          typename DataType, size_t order, size_t dim, size_t numComp,
+          typename Shape = DefaultLagrangeShape<order, dim>>
 auto CreateLagrangeField(const MeshInfo &meshInfo) {
+  constexpr bool isLinearCubicWedge =
+      std::is_same_v<Shape, LinearCubicWedgeShape>;
   static_assert((std::is_same_v<Real4, DataType> == true ||
                  std::is_same_v<Real8, DataType> == true),
                 "CreateLagrangeField only supports single and double precision "
                 "floating point fields\n");
-  static_assert(
-      (order == 1 || order == 2),
-      "CreateLagrangeField only supports linear and quadratic fields\n");
+  static_assert((order == 1 || order == 2 || isLinearCubicWedge),
+                "CreateLagrangeField only supports linear and quadratic "
+                "fields, and LinearCubicWedgeShape\n");
+  static_assert(isLinearCubicWedge ||
+                    std::is_same_v<Shape, DefaultLagrangeShape<order, dim>>,
+                "CreateLagrangeField: Shape must be the default or "
+                "LinearCubicWedgeShape\n");
+  static_assert(Shape::Order == order,
+                "CreateLagrangeField order must match Shape::Order\n");
   static_assert((dim == 1 || dim == 2 || dim == 3),
                 "CreateLagrangeField only supports 1d, 2d, and 3d meshes\n");
   using MemorySpace = typename ExecutionSpace::memory_space;
-  if constexpr (order == 1 && (dim == 1 || dim == 2 || dim == 3)) {
+  if constexpr (isLinearCubicWedge) {
+    static_assert(dim == 3, "LinearCubicWedgeShape fields need a 3d mesh\n");
+    if (meshInfo.numVtx <= 0) {
+      fail("mesh has no vertices\n");
+    }
+    if (meshInfo.numEdge <= 0) {
+      fail("mesh has no edges\n");
+    }
+    if (meshInfo.numWedge <= 0) {
+      fail("mesh has no wedges\n");
+    }
+    // 1 dof per vertex and Shape::DofsPerHolder[1] (2) dofs per vertical edge
+    constexpr int dofsPerEdge = Shape::DofsPerHolder[1];
+#ifdef MESHFIELDS_ENABLE_CABANA
+    using Ctrlr = std::conditional_t<
+        std::is_same_v<
+            Controller<ExecutionSpace, MemorySpace, DataType>,
+            MeshField::CabanaController<ExecutionSpace, MemorySpace, DataType>>,
+        Controller<ExecutionSpace, MemorySpace, DataType[1][numComp],
+                   DataType[dofsPerEdge][numComp]>,
+        Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>>;
+    auto createController = [](auto numVtx, auto numEdge) {
+      if constexpr (std::is_same_v<
+                        Controller<ExecutionSpace, MemorySpace, DataType>,
+                        MeshField::CabanaController<ExecutionSpace, MemorySpace,
+                                                    DataType>>) {
+        return Ctrlr({numVtx, numEdge});
+      } else {
+        return Ctrlr({/*field 0*/ numVtx, 1, numComp,
+                      /*field 1*/ numEdge, dofsPerEdge, numComp});
+      }
+    };
+    Ctrlr kk_ctrl = createController(meshInfo.numVtx, meshInfo.numEdge);
+#else
+    using Ctrlr =
+        Controller<MemorySpace, ExecutionSpace, DataType ***, DataType ***>;
+    Ctrlr kk_ctrl({/*field 0*/ meshInfo.numVtx, 1, numComp,
+                   /*field 1*/ meshInfo.numEdge, dofsPerEdge, numComp});
+#endif
+    auto vtxField = MeshField::makeField<Ctrlr, 0>(kk_ctrl);
+    auto edgeField = MeshField::makeField<Ctrlr, 1>(kk_ctrl);
+    // QuadraticAccessor forwards the dof index to the edge field, so it also
+    // serves edges with more than one dof
+    using QA = QuadraticAccessor<decltype(vtxField), decltype(edgeField)>;
+    using WedgeShapeField = ShapeField<numComp, Shape, Ctrlr, QA>;
+    WedgeShapeField wsf(meshInfo, {vtxField, edgeField});
+    return FieldWithController<Ctrlr, WedgeShapeField>{kk_ctrl, wsf};
+  } else if constexpr (order == 1 && (dim == 1 || dim == 2 || dim == 3)) {
     if (meshInfo.numVtx <= 0) {
       fail("mesh has no vertices\n");
     }
