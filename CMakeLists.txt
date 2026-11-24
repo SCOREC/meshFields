@@ -131,166 +131,93 @@ add_custom_target(docInternal
 )
 endif()
 
-#Settings options for testing
-enable_testing()
+# Tests use Catch2; retain the existing full-suite option for Spack and users.
 include(CTest)
-
-option(MeshFields_IS_TESTING "Build for CTest" OFF)
-message(STATUS "MeshFields_IS_TESTING: ${MeshFields_IS_TESTING}")
-
-#check for valgrind
-find_program(VALGRIND_CMD valgrind DOC "Location of the valgrind program")
+option(MeshFields_IS_TESTING "Build the full test suite" OFF)
+option(MeshFields_BUILD_BENCHMARKS "Build the controller benchmark demo" OFF)
 option(MeshFields_USE_VALGRIND "Run tests under valgrind" OFF)
-message(STATUS "MeshFields_USE_VALGRIND: ${MeshFields_USE_VALGRIND}")
-if(MESHFields_USE_VALGRIND AND NOT VALGRIND_CMD)
-  message(FATAL_ERROR "MeshFields_USE_VALGRIND enabled but valgrind binary
-                       not found VALGRIND_CMD=${VALGRIND_CMD}")
+if(MeshFields_USE_VALGRIND)
+  find_program(VALGRIND_CMD valgrind)
+  if(NOT VALGRIND_CMD)
+    message(FATAL_ERROR "MeshFields_USE_VALGRIND requires valgrind")
+  endif()
 endif()
 
-#tests
-function(test_func_impl TEST_NAME)
-  set(TEST_STR ${ARGN})
-  # need to run as a cmake script to capture assert and other 'system failures'
-  # https://cmake.org/cmake/help/latest/prop_test/WILL_FAIL.html#prop_test:WILL_FAIL
-  add_test(NAME ${TEST_NAME} COMMAND ${CMAKE_COMMAND} -E env ${TEST_STR})
-  if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "meshfields::base")
-  endif()
-endfunction(test_func_impl)
+if(BUILD_TESTING OR MeshFields_BUILD_BENCHMARKS)
+  find_package(Catch2 3 REQUIRED)
+  include(Catch)
+  add_library(meshfields_test_main STATIC test/catchMain.cpp)
+  target_include_directories(meshfields_test_main PUBLIC test)
+  target_link_libraries(meshfields_test_main PUBLIC meshfields Catch2::Catch2)
 
-#smoke tests that are always enabled
-function(smoke_test_func TEST_NAME)
-  test_func_impl(${TEST_NAME} ${ARGN})
-  if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY LABELS "meshfields::smoke")
-  endif()
-endfunction(smoke_test_func)
-
-function(test_func TEST_NAME)
-  if(MeshFields_IS_TESTING)
-    if(MeshFields_USE_VALGRIND AND VALGRIND_CMD)
-      test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
+  function(meshfields_add_test NAME SRC)
+    set(label "meshfields::base")
+    if(ARGN)
+      set(label "${ARGN}")
+    endif()
+    add_executable(${NAME} ${SRC})
+    target_link_libraries(${NAME} PRIVATE meshfields_test_main)
+    if(MeshFields_USE_VALGRIND)
+      add_test(NAME ${NAME}
+               COMMAND ${VALGRIND_CMD} --error-exitcode=1 $<TARGET_FILE:${NAME}>)
+      set_tests_properties(${NAME} PROPERTIES LABELS "${label}")
     else()
-      test_func_impl(${TEST_NAME} ${ARGN})
+      # Defer discovery so compiling CUDA tests does not require a GPU.
+      catch_discover_tests(${NAME} TEST_PREFIX "${NAME}: "
+                           DISCOVERY_MODE PRE_TEST
+                           PROPERTIES LABELS "${label}")
+    endif()
+  endfunction()
+
+  if(BUILD_TESTING)
+    meshfields_add_test(ControllerTests test/testController.cpp meshfields::smoke)
+    meshfields_add_test(Reproduction test/testReproduction.cpp meshfields::smoke)
+    if(MeshFields_IS_TESTING)
+      meshfields_add_test(SerializationTests test/testSerialize.cpp)
+      meshfields_add_test(ControllerLifetimeTest test/testControllerLifetime.cpp)
+      meshfields_add_test(ElementJacobian test/testElementJacobian.cpp)
+      meshfields_add_test(Integrator test/testIntegrator.cpp)
+      meshfields_add_test(LinearAlgebra test/testLinearAlgebra.cpp)
+      meshfields_add_test(Interpolate test/testInterpolate.cpp)
+      meshfields_add_test(OmegahMappedElement test/testOmegahMappedElement.cpp)
+      if(MeshFields_USE_EXCEPTIONS)
+        meshfields_add_test(ExceptionTest test/testExceptions.cpp)
+      else()
+        add_executable(ExceptionTest test/testExceptions.cpp)
+        target_link_libraries(ExceptionTest PRIVATE meshfields_test_main)
+        foreach(overload IN ITEMS variadic string)
+          # cmake -E env converts the child's abort into an ordinary nonzero
+          # exit status, which CTest can check with WILL_FAIL.
+          add_test(NAME "ExceptionTest_${overload}_aborts"
+                   COMMAND ${CMAKE_COMMAND} -E env $<TARGET_FILE:ExceptionTest>
+                           "[${overload}]")
+          set_tests_properties("ExceptionTest_${overload}_aborts"
+                               PROPERTIES WILL_FAIL TRUE LABELS "meshfields::base")
+        endforeach()
+      endif()
+      meshfields_add_test(OmegahSprAdapt test/testSprThwaitesAdapt.cpp)
+      target_compile_definitions(OmegahSprAdapt PRIVATE
+        MESHFIELDS_TEST_MESH="${CMAKE_CURRENT_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh")
+      if(Omega_h_USE_MPI)
+        add_test(NAME OmegahSprAdapt_p2
+                 COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2
+                         ${MPIEXEC_PREFLAGS} $<TARGET_FILE:OmegahSprAdapt>
+                         ${MPIEXEC_POSTFLAGS} "[adapt]")
+        set_tests_properties(OmegahSprAdapt_p2 PROPERTIES
+                             LABELS "meshfields::base" PROCESSORS 2)
+      endif()
     endif()
   endif()
-endfunction(test_func)
-
-function(add_test_property TEST_NAME PROP)
-  if(TEST ${TEST_NAME})
-    set_property(TEST ${TEST_NAME} PROPERTY ${PROP} ${ARGN})
+  if(MeshFields_USE_Cabana AND (MeshFields_IS_TESTING OR MeshFields_BUILD_BENCHMARKS))
+    add_executable(IntegratorPerformance test/testIntegratorPerformance.cpp)
+    target_link_libraries(IntegratorPerformance PRIVATE meshfields)
   endif()
-endfunction(add_test_property)
-
-# Unlike test_func, will_fail_test_func assumes the command for the test will fail
-function(will_fail_test_func TEST_NAME)
-  if(MeshFields_IS_TESTING)
-    test_func_impl(${TEST_NAME} ${ARGN})
-    set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
+  if(MeshFields_BUILD_BENCHMARKS)
+    add_executable(ControllerBenchmark test/benchmarkController.cpp)
+    target_link_libraries(ControllerBenchmark PRIVATE meshfields_test_main)
+    # Run explicitly; benchmarks are not correctness tests or timing gates.
   endif()
-endfunction()
-
-function(will_fail_valgrind_test_func TEST_NAME)
-  if(MeshFields_IS_TESTING)
-    if(VALGRIND_CMD)
-      test_func_impl(${TEST_NAME} ${VALGRIND_CMD} ${ARGN})
-      set_property(TEST ${TEST_NAME} PROPERTY
-        FAIL_REGULAR_EXPRESSION "Invalid read;Invalid write"
-      )
-      set_property(TEST ${TEST_NAME} PROPERTY WILL_FAIL TRUE)
-    endif()
-  endif()
-endfunction()
-
-#smoke executables are always built
-function(meshfields_add_smoke_exe EXE_NAME EXE_SRC)
-  add_executable(${EXE_NAME} ${EXE_SRC})
-  target_link_libraries(${EXE_NAME} PRIVATE meshfields)
-endfunction()
-
-function(meshfields_add_exe EXE_NAME EXE_SRC)
-  if(MeshFields_IS_TESTING)
-    add_executable(${EXE_NAME} ${EXE_SRC})
-    target_link_libraries(${EXE_NAME} PRIVATE meshfields)
-  endif()
-endfunction()
-
-meshfields_add_smoke_exe(KokkosTests test/testKokkos.cpp)
-meshfields_add_exe(SerializationTests test/testSerialize.cpp)
-meshfields_add_exe(ElementTests test/testElement.cpp)
-meshfields_add_exe(ControllerLifetimeTest test/testControllerLifetime.cpp)
-meshfields_add_exe(ElementJacobian1d test/testElementJacobian1d.cpp)
-meshfields_add_exe(ElementJacobian2d test/testElementJacobian2d.cpp)
-meshfields_add_exe(ElementJacobian3d test/testElementJacobian3d.cpp)
-meshfields_add_exe(LinearAlgebra test/testLinearAlgebra.cpp)
-meshfields_add_exe(CountIntegrator test/testCountIntegrator.cpp)
-meshfields_add_smoke_exe(OmegahTriTests test/testOmegahTri.cpp)
-meshfields_add_exe(ExceptionTest test/testExceptions.cpp)
-meshfields_add_exe(OmegahTetTest test/testOmegahTet.cpp)
-meshfields_add_exe(IntegratorTest test/testIntegrator.cpp)
-meshfields_add_exe(BoxIntegratorTest test/testBoxIntegrator.cpp)
-
-meshfields_add_exe(IntegratorMeasure test/testIntegratorMeasure.cpp)
-meshfields_add_exe(Interpolate test/testInterpolate.cpp)
-meshfields_add_exe(OmegahMappedElement test/testOmegahMappedElement.cpp)
-meshfields_add_exe(OmegahThwaitesSprAdapt test/testSprThwaitesAdapt.cpp)
-
-if(MeshFields_USE_Cabana)
-  meshfields_add_exe(ControllerPerformance test/testControllerPerformance.cpp)
-  meshfields_add_smoke_exe(CabanaTests test/testCabana.cpp)
-  meshfields_add_exe(CabanaControllerLifetimeTest test/testCabanaControllerLifetime.cpp)
-  meshfields_add_exe(IntegratorPerformance test/testIntegratorPerformance.cpp)
-  smoke_test_func(CabanaTests ./CabanaTests)
-  test_func(ControllerPerformance ./ControllerPerformance)
-  test_func(CabanaControllerLifetimeTest ./CabanaControllerLifetimeTest)
 endif()
-
-smoke_test_func(KokkosTests ./KokkosTests)
-test_func(SerializationTests ./SerializationTests)
-test_func(ElementTests ./ElementTests)
-test_func(ControllerLifetimeTest ./ControllerLifetimeTest)
-test_func(ElementJacobian1d ./ElementJacobian1d)
-test_func(ElementJacobian2d ./ElementJacobian2d)
-test_func(ElementJacobian3d ./ElementJacobian3d)
-test_func(LinearAlgebra ./LinearAlgebra)
-test_func(CountIntegrator ./CountIntegrator)
-test_func(IntegratorTest ./IntegratorTest)
-test_func(BoxIntegratorTest ./BoxIntegratorTest)
-smoke_test_func(OmegahTriTests ./OmegahTriTests)
-test_func(OmegahTetTest ./OmegahTetTest)
-test_func(IntegratorMeasure ./IntegratorMeasure)
-test_func(Interpolate ./Interpolate)
-test_func(OmegahMappedElement ./OmegahMappedElement)
-if(MeshFields_USE_EXCEPTIONS)
-  # exception caught - no error
-  test_func(ExceptionTest ./ExceptionTest)
-else()
-  will_fail_test_func(ExceptionTest ./ExceptionTest)
-endif()
-
-meshfields_add_exe(OmegahSprAdapt test/testSprThwaitesAdapt.cpp) 
-test_func(OmegahSprAdapt ./OmegahSprAdapt
-  ${CMAKE_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh/
-  thwaitesAdapted #output prefix
-  0.1 # adapt ratio
-  1.0 # min size
-  16.0 # max size
-)
-add_test_property(OmegahSprAdapt 
-  PASS_REGULAR_EXPRESSION
-  "afterAdapt nTri: 14439; solution_1 min -4084.78 max 213.322")
-
-test_func(OmegahSprAdapt_p2
-  ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS}
-  ./OmegahSprAdapt ${CMAKE_SOURCE_DIR}/meshes/thwaites_basal_effectiveStrain.osh/
-  thwaitesAdapted_p2 #output prefix
-  0.1 # adapt ratio
-  1.0 # min size
-  16.0 # max size
-)
-add_test_property(OmegahSprAdapt_p2
-  PASS_REGULAR_EXPRESSION
-  "afterAdapt nTri: 144[0-9][0-9]; solution_1 min -4098.9 max 213.322")
 
 #Code Coverage set up -------------------------------------------------------
 

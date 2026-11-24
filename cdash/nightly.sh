@@ -73,6 +73,13 @@ cmake -S omega_h -B build-omega_h \
   -DKokkos_PREFIX=$kkbdir/install/lib64/cmake
 cmake --build build-omega_h -j 8 --target install
 
+# Install Catch2 for the MeshFields test suite.
+[ ! -d catch2 ] && git clone --depth 1 --branch v3.8.0 https://github.com/catchorg/Catch2.git catch2
+cmake -S catch2 -B build-catch2 \
+  -DCMAKE_BUILD_TYPE=Release -DCATCH_BUILD_TESTING=OFF \
+  -DCMAKE_INSTALL_PREFIX="$d/build-catch2/install"
+cmake --build build-catch2 --parallel 8 --target install
+
 touch $d/startedCoreNightly
 #run nightly.cmake script
 ctest -V --script $d/nightly.cmake

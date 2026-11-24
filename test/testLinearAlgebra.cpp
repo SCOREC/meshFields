@@ -1,6 +1,6 @@
 #include "MeshField_LinearAlgebra.hpp"
 #include <Kokkos_Core.hpp>
-#include <iostream>
+#include <catch2/catch_test_macros.hpp>
 
 using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
@@ -52,31 +52,29 @@ KOKKOS_INLINE_FUNCTION int inverseMismatches(Matrix<Dim> const &A) {
 }
 
 /** @brief run check, which returns its number of errors, in a kernel */
-template <typename Check> bool run(const char *name, Check check) {
+template <typename Check> void checkOnDevice(const char *name, Check check) {
   int errors = 0;
   Kokkos::parallel_reduce(
       name, Kokkos::RangePolicy<ExecutionSpace>(0, 1),
       KOKKOS_LAMBDA(const int, int &lerrors) { lerrors += check(); }, errors);
-  std::cout << name << ": " << (errors ? "FAIL" : "pass") << "\n";
-  return errors == 0;
+  INFO(name);
+  CHECK(errors == 0);
 }
 
-int main(int argc, char **argv) {
-  Kokkos::initialize(argc, argv);
-  int failed = 0;
-  failed += !run(
+void checkLinearAlgebra() {
+  checkOnDevice(
       "determinant of known matrices", KOKKOS_LAMBDA() {
         const Matrix<1> a1{3};
         const Matrix<2> a2{2, -1, //
                            1, 2};
-        const Matrix<3> a3{2,  -1, 0, //
-                           1,  2,  -1, //
-                           0,  -1, 3};
+        const Matrix<3> a3{2, -1, 0,  //
+                           1, 2,  -1, //
+                           0, -1, 3};
         return !isClose(MeshField::determinant<1>(a1), 3) +
                !isClose(MeshField::determinant<2>(a2), 5) +
                !isClose(MeshField::determinant<3>(a3), 13);
       });
-  failed += !run(
+  checkOnDevice(
       "determinant of singular matrices", KOKKOS_LAMBDA() {
         const Matrix<1> a1{0};
         const Matrix<2> a2{1, 2, //
@@ -88,18 +86,18 @@ int main(int argc, char **argv) {
                !isClose(MeshField::determinant<2>(a2), 0) +
                !isClose(MeshField::determinant<3>(a3), 0);
       });
-  failed += !run(
+  checkOnDevice(
       "determinant sign under a row swap", KOKKOS_LAMBDA() {
         const Matrix<2> a2{1, 2, //
                            2, 2};
         const Matrix<2> s2{2, 2, //
                            1, 2};
-        const Matrix<3> a3{2,  -1, 0, //
-                           1,  2,  -1, //
-                           0,  -1, 3};
-        const Matrix<3> s3{1,  2,  -1, //
-                           2,  -1, 0, //
-                           0,  -1, 3};
+        const Matrix<3> a3{2, -1, 0,  //
+                           1, 2,  -1, //
+                           0, -1, 3};
+        const Matrix<3> s3{1, 2,  -1, //
+                           2, -1, 0,  //
+                           0, -1, 3};
         return !isClose(MeshField::determinant<2>(a2), -2) +
                !isClose(MeshField::determinant<2>(s2), 2) +
                !isClose(MeshField::determinant<3>(s3),
@@ -108,7 +106,7 @@ int main(int argc, char **argv) {
   // a transposed (column-major) inverse of a triangular matrix is lower
   // triangular, so these catch a mixed up storage order.  These inverses are
   // exact in floating point, so they are compared with a zero tolerance.
-  failed += !run(
+  checkOnDevice(
       "invert triangular matrices exactly", KOKKOS_LAMBDA() {
         const Matrix<1> a1{4};
         const Matrix<1> inv1{0.25};
@@ -119,35 +117,32 @@ int main(int argc, char **argv) {
         const Matrix<3> a3{1, 2, 3, //
                            0, 1, 4, //
                            0, 0, 1};
-        const Matrix<3> inv3{1, -2, 5, //
+        const Matrix<3> inv3{1, -2, 5,  //
                              0, 1,  -4, //
                              0, 0,  1};
         return mismatches<1>(MeshField::invert<1>(a1), inv1, 0) +
                mismatches<2>(MeshField::invert<2>(a2), inv2, 0) +
                mismatches<3>(MeshField::invert<3>(a3), inv3, 0);
       });
-  failed += !run(
+  checkOnDevice(
       "invert gives the identity", KOKKOS_LAMBDA() {
         const Matrix<1> a1{-0.7};
         const Matrix<2> a2{2, -1, //
                            1, 2};
         const Matrix<2> b2{0.3, -1.7, //
                            2.9, 0.4};
-        const Matrix<3> a3{2,  -1, 0, //
-                           1,  2,  -1, //
-                           0,  -1, 3};
-        const Matrix<3> b3{0.9,  -0.2, 1.3, //
+        const Matrix<3> a3{2, -1, 0,  //
+                           1, 2,  -1, //
+                           0, -1, 3};
+        const Matrix<3> b3{0.9,  -0.2, 1.3,  //
                            0.4,  1.7,  -0.6, //
                            -1.1, 0.5,  2.2};
         return inverseMismatches<1>(a1) + inverseMismatches<2>(a2) +
                inverseMismatches<2>(b2) + inverseMismatches<3>(a3) +
                inverseMismatches<3>(b3);
       });
-  Kokkos::finalize();
-  if (failed) {
-    std::cerr << failed << " test(s) failed\n";
-    return 1;
-  }
-  std::cout << "all tests passed\n";
-  return 0;
+}
+
+TEST_CASE("determinants and inverses on device", "[linear-algebra]") {
+  checkLinearAlgebra();
 }

@@ -1,3 +1,5 @@
+#include "MeshField_TestHarness.hpp"
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <iostream>
 
 #include "Omega_h_adapt.hpp"
@@ -32,7 +34,6 @@ void enableFloatingPointExceptions() {
 #endif
 }
 
-using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
 
 using namespace Omega_h;
@@ -142,8 +143,8 @@ void setFieldAtVertices(Omega_h::Mesh &mesh, Reals recoveredStrain,
   auto setFieldAtVertices = KOKKOS_LAMBDA(const int &vtx) {
     field(vtx, 0, 0, MeshField::Vertex) = recoveredStrain[vtx];
   };
-  MeshField::parallel_for<typename ShapeField::Ctrlr>({0}, {mesh.nverts()},
-                          setFieldAtVertices, "setFieldAtVertices");
+  MeshField::parallel_for<typename ShapeField::Ctrlr>(
+      {0}, {mesh.nverts()}, setFieldAtVertices, "setFieldAtVertices");
 }
 
 void printTriCount(Mesh *mesh, std::string_view prefix) {
@@ -152,37 +153,14 @@ void printTriCount(Mesh *mesh, std::string_view prefix) {
     std::cout << prefix << " nTri: " << nTri << "\n";
 }
 
-int main(int argc, char **argv) {
-  enableFloatingPointExceptions();
-  auto lib = Library(&argc, &argv);
-  if (argc != 6) {
-    fprintf(stderr,
-            "Usage: %s inputMesh.osh outputMeshPrefix adaptRatio min_size "
-            "max_size\n",
-            argv[0]);
-    exit(EXIT_FAILURE);
-  }
+void testSprAdaptation() {
+  auto &lib = library();
   auto world = lib.world();
   Omega_h::Mesh mesh(&lib);
-  Omega_h::binary::read(argv[1], world, &mesh);
-
-  const auto prefix = std::string(argv[2]);
-  // adaptRatio = 0.1 is used in scorec/core:cws/sprThwaites test/spr_test.cc
-  const MeshField::Real adaptRatio = std::stof(argv[3]);
-  const MeshField::Real min_size =
-      std::stof(argv[4]); // the smallest edge length in initial mesh is 1
-  const MeshField::Real max_size = std::stof(
-      argv[5]); // a value of 8 or 16 roughly maintains the boundary shape
-                // in the downstream parts of the domain
-                // where there is significant coarsening
-  if (!mesh.comm()->rank()) {
-    std::cout << "input mesh: " << argv[1] << " outputMeshPrefix: " << prefix
-              << " adaptRatio: " << adaptRatio << " max_size: " << max_size
-              << " min_size: " << min_size << "\n";
-  }
-  const auto outname = prefix + "_adaptRatio_" + std::string(argv[3]) +
-                       "_maxSz_" + std::to_string(max_size) + "_minSz_" +
-                       std::to_string(min_size);
+  Omega_h::binary::read(MESHFIELDS_TEST_MESH, world, &mesh);
+  constexpr MeshField::Real adaptRatio = 0.1;
+  constexpr MeshField::Real min_size = 1.0;
+  constexpr MeshField::Real max_size = 16.0;
 
   // equally distribute elements among processes; required when loading a serial
   // mesh
@@ -200,8 +178,9 @@ int main(int argc, char **argv) {
   MeshField::OmegahMeshField<ExecutionSpace, MeshDim,
                              MeshField::KokkosController>
       omf(mesh);
-  auto recoveredStrainField =
-      omf.CreateLagrangeField<Real, ShapeOrder, MeshDim>().field;
+  auto recoveredStrainStorage =
+      omf.CreateLagrangeField<Real, ShapeOrder, MeshDim>();
+  auto recoveredStrainField = recoveredStrainStorage.field;
   setFieldAtVertices(mesh, recoveredStrain, recoveredStrainField);
 
   auto coordField = omf.getCoordField().field;
@@ -218,14 +197,6 @@ int main(int argc, char **argv) {
   Omega_h::Write<MeshField::Real> tgtLength_oh(tgtLength);
   mesh.add_tag<Real>(VERT, "tgtLength", 1, tgtLength_oh, false,
                      Omega_h::ArrayType::VectorND);
-
-  { // write vtk
-    const std::string vtkFileName = "beforeAdapt_" + outname + ".vtk";
-    Omega_h::vtk::write_parallel(vtkFileName, &mesh, 2);
-    const std::string vtkFileName_edges =
-        "beforeAdapt_" + outname + "_edges.vtk";
-    Omega_h::vtk::write_parallel(vtkFileName_edges, &mesh, 1);
-  }
 
   // adapt
   auto opts = Omega_h::AdaptOpts(&mesh);
@@ -246,13 +217,28 @@ int main(int argc, char **argv) {
     std::cout << "solution_1 min " << sol_min << " max " << sol_max << '\n';
   }
 
-  { // write vtk and osh for adapted mesh
-    const std::string outfilename = "afterAdapt_" + outname;
-    Omega_h::vtk::write_parallel(outfilename + ".vtk", &mesh, 2);
-    Omega_h::binary::write(outfilename + ".osh", &mesh);
-    std::cout << "wrote adapted mesh: " << outfilename + ".osh"
-              << "\n";
+  const auto nTri = mesh.nglobal_ents(2);
+  CAPTURE(world->size(), world->rank(), nTri);
+  if (world->size() == 1) {
+    CHECK(nTri == 14439);
+    CHECK_THAT(sol_min, Catch::Matchers::WithinAbs(-4084.78, 0.005));
+  } else {
+    REQUIRE(world->size() == 2);
+    CHECK(nTri >= 14400);
+    CHECK(nTri <= 14499);
+    CHECK_THAT(sol_min, Catch::Matchers::WithinAbs(-4098.9, 0.05));
   }
+  CHECK_THAT(sol_max, Catch::Matchers::WithinAbs(213.322, 0.0005));
+}
 
-  return 0;
+TEST_CASE("SPR adaptation of the Thwaites mesh", "[adapt][integration]") {
+  // Restore the floating-point environment when Catch2 leaves this test.
+  fenv_t original;
+  REQUIRE(fegetenv(&original) == 0);
+  struct RestoreFloatingPointEnvironment {
+    fenv_t &environment;
+    ~RestoreFloatingPointEnvironment() { fesetenv(&environment); }
+  } restore{original};
+  enableFloatingPointExceptions();
+  testSprAdaptation();
 }

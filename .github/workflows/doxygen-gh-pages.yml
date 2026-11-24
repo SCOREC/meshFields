@@ -78,6 +78,7 @@ jobs:
         run: cmake -S $GITHUB_WORKSPACE/meshFields -B ${{runner.workspace}}/build-meshFields
             -DCMAKE_CXX_COMPILER=g++
             -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
+            -DBUILD_TESTING=OFF
             -DMeshFields_USE_Cabana=OFF
             -DOmega_h_ROOT=${{runner.workspace}}/build-omegah/install
             -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install

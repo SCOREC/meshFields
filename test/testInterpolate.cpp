@@ -1,24 +1,7 @@
-#include "KokkosController.hpp"
-#include "MeshField.hpp"
 #include "MeshField_TestFunctions.hpp"
-#ifdef MESHFIELDS_ENABLE_CABANA
-#include "CabanaController.hpp"
-#endif
-#include "Omega_h_build.hpp"
-#include <Kokkos_Core.hpp>
-#include <iostream>
-#include <string>
+#include "MeshField_TestHarness.hpp"
 
-using ExecutionSpace = Kokkos::DefaultExecutionSpace;
 using MeshField::Real;
-
-template <size_t dim, size_t order> auto getElement(Omega_h::Mesh &mesh) {
-  if constexpr (dim == 3) {
-    return MeshField::Omegah::getTetrahedronElement<order>(mesh);
-  } else {
-    return MeshField::Omegah::getTriangleElement<order>(mesh);
-  }
-}
 
 // Create a list of two parametric coordinates for evaluation
 constexpr size_t numOffNodePts = 2;
@@ -35,67 +18,17 @@ template <size_t dim> Kokkos::View<Real **> offNodeCoords(size_t numElems) {
 }
 
 /*
- * Interpolate an analytic function, with numComp components
- */
-template <size_t dim, size_t order, size_t numComp,
-          template <typename...> typename Controller>
-bool testAnalytic(
-    Omega_h::Mesh &mesh,
-    MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
-  const auto [coordShp, coordMap] = getElement<dim, 1>(mesh);
-  MeshField::FieldElement coordElm(mesh.nelems(), omf.getCoordField().field,
-                                   coordShp, coordMap);
-  auto fieldWithCtrlr =
-      omf.template CreateLagrangeField<Real, order, numComp>();
-  const auto [shp, map] = getElement<dim, order>(mesh);
-  MeshField::FieldElement elm(mesh.nelems(), fieldWithCtrlr.field, shp, map);
-
-  const auto f = KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
-    return order == 1 ? LinearFunction<dim>()(x) : QuadraticFunction<dim>()(x);
-  };
-  MeshField::MappedElement mappedElm(elm, coordElm);
-  MeshField::setDofByInterpolation(
-      mappedElm, KOKKOS_LAMBDA(Kokkos::Array<Real, dim> const &x) {
-        return valueScaledByComponent<numComp>(f, x);
-      });
-
-  const auto lc = offNodeCoords<dim>(mesh.nelems());
-  const auto values = MeshField::evaluate(elm, lc, numOffNodePts);
-  const auto x = MeshField::evaluate(coordElm, lc, numOffNodePts);
-  MeshField::LO numErrors = 0;
-  Kokkos::parallel_reduce(
-      "checkAnalytic", values.extent(0),
-      KOKKOS_LAMBDA(const int pt, MeshField::LO &lerrors) {
-        Kokkos::Array<Real, dim> xp;
-        for (size_t d = 0; d < dim; ++d)
-          xp[d] = x(pt, d);
-        const auto expected = valueScaledByComponent<numComp>(f, xp);
-        for (size_t c = 0; c < numComp; ++c)
-          if (Kokkos::fabs(values(pt, c) - expected[c]) > MeshField::Epsilon)
-            ++lerrors;
-      },
-      numErrors);
-  const bool pass = numErrors == 0;
-  std::cout << "testAnalytic(dim " << dim << ", order " << order << ", "
-            << numComp << " components): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
-}
-
-/*
  * Write source(ent, xi) = ent. If ownership is working, we should have the
  * neighboring element with the smallest id listed on every dof holder thats
  * is on a shared entity
  */
 template <size_t dim, size_t order, template <typename...> typename Controller>
-bool testOwnership(
+void testOwnership(
     Omega_h::Mesh &mesh,
     MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
   auto fieldWithCtrlr = omf.template CreateLagrangeField<Real, order, 1>();
   auto field = fieldWithCtrlr.field;
-  const auto [shp, map] = getElement<dim, order>(mesh);
-  MeshField::FieldElement elm(mesh.nelems(), field, shp, map);
+  auto elm = omf.CreateLagrangeElement(field);
   MeshField::setDofByInterpolation(
       elm, KOKKOS_LAMBDA(const int ent, Kokkos::Array<Real, dim> const &) {
         return Kokkos::Array<Real, 1>{static_cast<Real>(ent)};
@@ -121,41 +54,7 @@ bool testOwnership(
         lerrorsDim);
     numErrors += lerrorsDim;
   }
-  const bool pass = numErrors == 0;
-  std::cout << "testOwnership(dim " << dim << ", order " << order << "): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
-}
-
-/*
- * Ensure that straight sided quadratic coordiante field recovers
- * same values as linear coordinate field
- */
-template <size_t dim, template <typename...> typename Controller>
-bool testCoordinateField(
-    Omega_h::Mesh &mesh,
-    MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf) {
-  auto quadraticWithCtrlr = omf.template CreateLagrangeCoordinateField<2>();
-  auto quadratic = omf.CreateLagrangeElement(quadraticWithCtrlr.field);
-  auto linear = omf.CreateLagrangeElement(omf.getCoordField().field);
-  const auto lc = offNodeCoords<dim>(mesh.nelems());
-  const auto xq = MeshField::evaluate(quadratic, lc, numOffNodePts);
-  const auto xl = MeshField::evaluate(linear, lc, numOffNodePts);
-  MeshField::LO numErrors = 0;
-  Kokkos::parallel_reduce(
-      "checkCoordinateField", xq.extent(0),
-      KOKKOS_LAMBDA(const int pt, MeshField::LO &lerrors) {
-        for (size_t d = 0; d < dim; ++d)
-          if (Kokkos::fabs(xq(pt, d) - xl(pt, d)) > MeshField::Epsilon)
-            ++lerrors;
-      },
-      numErrors);
-  const bool pass = numErrors == 0;
-  std::cout << "testCoordinateField(dim " << dim << "): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
+  CHECK(numErrors == 0);
 }
 
 /*
@@ -164,10 +63,10 @@ bool testCoordinateField(
  */
 template <size_t dim, size_t order, typename CoordinateMap,
           template <typename...> typename Controller>
-bool testCoordinateMap(
+void testCoordinateMap(
     Omega_h::Mesh &mesh,
     MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> &omf,
-    CoordinateMap const &coordMap, std::string const &name) {
+    CoordinateMap const &coordMap) {
   auto mappedWithCtrlr =
       omf.template CreateLagrangeCoordinateField<order>(coordMap);
   auto mapped = omf.CreateLagrangeElement(mappedWithCtrlr.field);
@@ -188,51 +87,26 @@ bool testCoordinateMap(
             ++lerrors;
       },
       numErrors);
-  const bool pass = numErrors == 0;
-  std::cout << "testCoordinateMap(dim " << dim << ", order " << order << ", "
-            << name << "): "
-            << (pass ? "pass" : std::to_string(numErrors) + " errors FAIL")
-            << "\n";
-  return pass;
+  CHECK(numErrors == 0);
 }
 
-template <size_t dim, template <typename...> typename Controller>
-int runTests(Omega_h::Mesh &mesh) {
-  MeshField::OmegahMeshField<ExecutionSpace, dim, Controller> omf(mesh);
-  int failed = 0;
-  failed += !testOwnership<dim, 1>(mesh, omf);
-  failed += !testOwnership<dim, 2>(mesh, omf);
-  failed += !testAnalytic<dim, 1, 1>(mesh, omf);
-  failed += !testAnalytic<dim, 2, 1>(mesh, omf);
-  failed += !testAnalytic<dim, 2, 3>(mesh, omf);
-  failed += !testCoordinateField<dim>(mesh, omf);
-  failed += !testCoordinateMap<dim, 1>(mesh, omf, Shear<dim>(), "shear");
-  failed += !testCoordinateMap<dim, 2>(mesh, omf, Shear<dim>(), "shear");
-  failed += !testCoordinateMap<dim, 2>(mesh, omf, Bend<dim>(), "bend");
-  return failed;
-}
-
-int main(int argc, char **argv) {
-  Kokkos::initialize(argc, argv);
-  int failed = 0;
-  {
-    auto lib = Omega_h::Library(&argc, &argv);
-    auto tris = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0,
-                                   3, 3, 0);
-    auto tets = Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 2.0, 3.0,
-                                   2, 2, 2);
-    failed += runTests<2, MeshField::KokkosController>(tris);
-    failed += runTests<3, MeshField::KokkosController>(tets);
-#ifdef MESHFIELDS_ENABLE_CABANA
-    failed += runTests<2, MeshField::CabanaController>(tris);
-    failed += runTests<3, MeshField::CabanaController>(tets);
-#endif
+TEMPLATE_LIST_TEST_CASE("interpolation", "[interpolate]", MeshCases) {
+  constexpr size_t dim = TestType::dim;
+  auto mesh = buildMesh<dim>();
+  MeshField::OmegahMeshField<ExecutionSpace, dim, TestType::template Controller>
+      omf(mesh);
+  SECTION("ownership P1") { testOwnership<dim, 1>(mesh, omf); }
+  SECTION("ownership P2") { testOwnership<dim, 2>(mesh, omf); }
+  SECTION("coordinate map P2 identity") {
+    testCoordinateMap<dim, 2>(mesh, omf, MeshField::IdentityCoordinateMap());
   }
-  Kokkos::finalize();
-  if (failed) {
-    std::cerr << failed << " test(s) failed\n";
-    return 1;
+  SECTION("coordinate map P1 shear") {
+    testCoordinateMap<dim, 1>(mesh, omf, Shear<dim>());
   }
-  std::cout << "all tests passed\n";
-  return 0;
+  SECTION("coordinate map P2 shear") {
+    testCoordinateMap<dim, 2>(mesh, omf, Shear<dim>());
+  }
+  SECTION("coordinate map P2 bend") {
+    testCoordinateMap<dim, 2>(mesh, omf, Bend<dim>());
+  }
 }

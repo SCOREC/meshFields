@@ -70,7 +70,7 @@ jobs:
            -DBUILD_SHARED_LIBS=OFF
            -DOmega_h_USE_Kokkos=ON
            -DKokkos_PREFIX=${{runner.workspace}}/build-kokkos/install/lib/cmake
-           -DOmega_h_USE_MPI=OFF
+           -DOmega_h_USE_MPI=ON
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-omegah/install
 
     - name: Omega_h Build
@@ -99,6 +99,24 @@ jobs:
       shell: bash
       run: cmake --build ${{runner.workspace}}/build-cabana --parallel 2 --target install
 
+    ## Catch2
+    - name: Catch2 Checkout repo
+      uses: actions/checkout@v4
+      with:
+        repository: catchorg/Catch2
+        path: catch2
+        ref: v3.8.0
+
+    - name: Catch2 Configure and Install
+      shell: bash
+      run: |
+        cmake -S $GITHUB_WORKSPACE/catch2 -B ${{runner.workspace}}/build-catch2 \
+          -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCATCH_BUILD_TESTING=OFF \
+          -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-catch2/install
+        cmake --build ${{runner.workspace}}/build-catch2 --parallel 2 --target install
+
     ## MeshFields
     - name: MeshFields Checkout repo
       uses: actions/checkout@v4
@@ -113,6 +131,10 @@ jobs:
            -DKokkos_ROOT=${{runner.workspace}}/build-kokkos/install
            -DCabana_ROOT=${{runner.workspace}}/build-cabana/install
            -DOmega_h_ROOT=${{runner.workspace}}/build-omegah/install
+           -DCatch2_ROOT=${{runner.workspace}}/build-catch2/install
+           -DMeshFields_IS_TESTING=ON
+           -DMeshFields_USE_Cabana=ON
+           -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
            -DCMAKE_INSTALL_PREFIX=${{runner.workspace}}/build-meshFields/install
 
     # Initializes the CodeQL tools for scanning.  This must be done before the code is built.

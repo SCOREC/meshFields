@@ -220,6 +220,12 @@ Run the build script:
 
 ## build meshFields
 
+Catch2 3 is required for the default controller and reproduction smoke tests and the full test
+suite. Set `Catch2_ROOT` or add its installation to `CMAKE_PREFIX_PATH`.
+`-DMeshFields_IS_TESTING=ON` enables the full suite; `-DBUILD_TESTING=OFF`
+builds the library without tests or a Catch2 dependency. Benchmarks are opt-in
+with `-DMeshFields_BUILD_BENCHMARKS=ON` and also require Catch2.
+
 The following assumes that the environment is already setup (see above, either CPU or GPU) and the
 `root` directory is the same directory used to build the dependencies.
 

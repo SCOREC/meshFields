@@ -1,25 +1,25 @@
+#include "MeshField_Config.hpp"
 #include "MeshField_Fail.hpp"
-#include <iostream>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
-void viaVariadic() {
-  try {
-    MeshField::fail("%s\n", "variadic");
-  } catch (const std::exception &ex) {
-    std::cerr << ex.what();
-  }
+TEST_CASE("fail with variadic formatting", "[exceptions][variadic]") {
+#ifdef MeshFields_USE_EXCEPTIONS
+  CHECK_THROWS_AS(MeshField::fail("%s %d\n", "variadic", 42),
+                  MeshField::exception);
+  CHECK_THROWS_WITH(MeshField::fail("%s %d\n", "variadic", 42),
+                    "variadic 42\n");
+#else
+  MeshField::fail("%s %d\n", "variadic", 42);
+#endif
 }
 
-void viaString() {
-  try {
-    std::string msg = "string\n";
-    MeshField::fail(msg);
-  } catch (const std::exception &ex) {
-    std::cerr << ex.what();
-  }
-}
-
-int main(int argc, char **argv) {
-  viaVariadic();
-  viaString();
-  return 0;
+TEST_CASE("fail with a string", "[exceptions][string]") {
+#ifdef MeshFields_USE_EXCEPTIONS
+  CHECK_THROWS_AS(MeshField::fail(std::string("string\n")),
+                  MeshField::exception);
+  CHECK_THROWS_WITH(MeshField::fail(std::string("string\n")), "string\n");
+#else
+  MeshField::fail(std::string("string\n"));
+#endif
 }

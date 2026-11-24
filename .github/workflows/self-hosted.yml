@@ -93,7 +93,16 @@ jobs:
 
           #meshfields
           mfbdir=${workDir}/build-meshfields
+          # Catch2 uses the host compiler.
+          git clone --depth 1 --branch v3.8.0 https://github.com/catchorg/Catch2.git "${workDir}/catch2"
+          catchdir="${workDir}/build-catch2"
+          cmake -S "${workDir}/catch2" -B "$catchdir" \
+            -DCMAKE_BUILD_TYPE=Release -DCATCH_BUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX="$catchdir/install"
+          cmake --build "$catchdir" --parallel 4 --target install
+
           cmake -S meshfields_${{ github.event.id }} -B $mfbdir \
+            -DCatch2_ROOT="$catchdir/install" \
             -DMeshFields_USE_Cabana=on \
             -DOmega_h_ROOT=$ohbdir/install \
             -DKokkos_ROOT=$kkbdir/install \
