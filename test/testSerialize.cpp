@@ -1,92 +1,74 @@
-#include "KokkosController.hpp"
-#include "MeshField_Field.hpp"
-#include "MeshField_Macros.hpp"
-#include "MeshField_Utility.hpp"
+#include "MeshField_TestFields.hpp"
+#include "MeshField_TestHarness.hpp"
 
-#include <Kokkos_Core.hpp>
+using MeshField::LO;
 
-#include <initializer_list>
-#include <iostream>
-#include <vector>
+/*
+ * serialize a field of rank R, check the row-major order of the result, and
+ * deserialize it back
+ */
+template <int R, typename Field> void testSerialize(Field field, Extents n) {
+  INFO("rank " << R);
+  fill<R>(field, n);
+  const auto serial = field.serialize();
 
-using ExecutionSpace = Kokkos::DefaultExecutionSpace;
-using MemorySpace = Kokkos::DefaultExecutionSpace::memory_space;
+  LO expectedSize = 1;
+  for (int d = 0; d < R; ++d)
+    expectedSize *= n[d];
+  REQUIRE(serial.extent(0) == expectedSize);
 
-void test_1_1_16() {
-  using kCon =
+  // entry p of the result is the entry at the row-major index p
+  LO orderErrors = 0;
+  Kokkos::parallel_reduce(
+      "checkSerialOrder", serial.extent(0),
+      KOKKOS_LAMBDA(const int p, LO &lerr) {
+        Extents idx = {0, 0, 0, 0, 0};
+        int rest = p;
+        for (int d = R - 1; d >= 0; --d) {
+          idx[d] = rest % n[d];
+          rest /= n[d];
+        }
+        lerr += serial(p) != indexValue(idx[0], idx[1], idx[2], idx[3], idx[4]);
+      },
+      orderErrors);
+  CHECK(orderErrors == 0);
+
+  fill<R>(field, n, 1); // so that a deserialize that does nothing fails
+  field.deserialize(serial);
+  CHECK(mismatches<R>(field, n) == 0);
+}
+
+// Field::serialize supports only data types without static extents, so only
+// Kokkos controllers with runtime extents are tested
+TEMPLATE_TEST_CASE_SIG("serialize runtime extents", "[serialize]",
+                       ((typename T, int R), T, R), (int, 1), (int, 2),
+                       (int, 3), (int, 4), (int, 5), (double, 1), (double, 2),
+                       (double, 3), (double, 4), (double, 5)) {
+  using Ctrlr = MeshField::KokkosController<MemorySpace, ExecutionSpace, T *,
+                                            T **, T ***, T ****, T *****>;
+  Ctrlr c({rank1[0], /**/ rank2[0], Y, /**/ rank3[0], Y, Z,
+           /**/ rank4[0], Y, Z, A, /**/ rank5[0], Y, Z, A, B});
+  constexpr Extents extents[] = {rank1, rank2, rank3, rank4, rank5};
+  testSerialize<R>(MeshField::makeField<Ctrlr, R - 1>(c), extents[R - 1]);
+}
+
+// the shape of the fields CreateLagrangeField creates
+TEST_CASE("serialize Lagrange shape", "[serialize]") {
+  using LagrangeCtrlr =
       MeshField::KokkosController<MemorySpace, ExecutionSpace, int ***>;
-  kCon c1({1, 1, 16});
-  MeshField::Field field = MeshField::makeField<kCon, 0>(c1);
-  auto field_serialized = field.serialize();
+  LagrangeCtrlr lagrange({1, 1, 16});
+  testSerialize<3>(MeshField::makeField<LagrangeCtrlr, 0>(lagrange),
+                   {1, 1, 16});
 }
 
-void test_multi() {
-  const int N = 10;
-  using kok1 =
-      MeshField::KokkosController<MemorySpace, ExecutionSpace, int *, int **,
-                                  int ***, int ****, int *****>;
-  kok1 c1({N, N, N, N, N, N, N, N, N, N, N, N, N, N, N});
-
-  MeshField::Field field1 = MeshField::makeField<kok1, 0>(c1);
-  MeshField::Field field2 = MeshField::makeField<kok1, 1>(c1);
-  MeshField::Field field3 = MeshField::makeField<kok1, 2>(c1);
-  MeshField::Field field4 = MeshField::makeField<kok1, 3>(c1);
-  MeshField::Field field5 = MeshField::makeField<kok1, 4>(c1);
-
-  Kokkos::View<int *> view1("1", N);
-  Kokkos::View<int **> view2("2", N, N);
-  Kokkos::View<int ***> view3("3", N, N, N);
-  Kokkos::View<int ****> view4("4", N, N, N, N);
-  Kokkos::View<int *****> view5("5", N, N, N, N, N);
-
-  Kokkos::Array start = MeshFieldUtil::to_kokkos_array<5>({0, 0, 0, 0, 0});
-  Kokkos::Array end = MeshFieldUtil::to_kokkos_array<5>({N, N, N, N, N});
-  Kokkos::MDRangePolicy<Kokkos::Rank<5>> p(start, end);
-
-  Kokkos::parallel_for(
-      "", p,
-      KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l,
-                    const int &m) {
-        view1(i) = i;
-        view2(i, j) = i + j;
-        view3(i, j, k) = i + j + k;
-        view4(i, j, k, l) = i + j + k + l;
-        view5(i, j, k, l, m) = i + j + k + l + m;
-      });
-
-  field1.set(view1);
-  field2.set(view2);
-  field3.set(view3);
-  field4.set(view4);
-  field5.set(view5);
-
-  auto serialized1 = field1.serialize();
-  auto serialized2 = field2.serialize();
-  auto serialized3 = field3.serialize();
-  auto serialized4 = field4.serialize();
-  auto serialized5 = field5.serialize();
-
-  field1.deserialize(serialized1);
-  field2.deserialize(serialized2);
-  field3.deserialize(serialized3);
-  field4.deserialize(serialized4);
-  field5.deserialize(serialized5);
-
-  Kokkos::parallel_for(
-      "", p,
-      KOKKOS_LAMBDA(const int &i, const int &j, const int &k, const int &l,
-                    const int &m) {
-        assert(view1(i) == field1(i));
-        assert(view2(i, j) == field2(i, j));
-        assert(view3(i, j, k) == field3(i, j, k));
-        assert(view4(i, j, k, l) == field4(i, j, k, l));
-        assert(view5(i, j, k, l, m) == field5(i, j, k, l, m));
-      });
-}
-
-int main(int argc, char *argv[]) {
-  Kokkos::ScopeGuard scope_guard(argc, argv);
-  test_1_1_16();
-  test_multi();
-  return 0;
-}
+// Field::serialize and deserialize are currently broken for data types with
+// fixed (static) extents: Field::base_type removes only the pointers, so e.g.
+// int*[3] keeps its [3] and these do not compile.  That includes every Cabana
+// field above rank 1.  Catch2 has no way to register a test case that is
+// expected not to compile, so this case stays commented out.
+// TEST_CASE("serialize fixed extents", "[serialize][!mayfail]") {
+//   using KokkosInt = KokkosRanks<int>;
+//   auto fixed = createRanks<KokkosInt>();
+//   testSerialize<1>(MeshField::makeField<KokkosInt, 0>(fixed), rank1);
+//   ...
+// }

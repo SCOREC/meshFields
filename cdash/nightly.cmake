@@ -185,6 +185,7 @@ SET(CONFIGURE_OPTIONS
   "-DMeshFields_IS_TESTING=ON"
   "-DKokkos_ROOT=${CTEST_DASHBOARD_ROOT}/build-kokkos/install/"
   "-DOmega_h_ROOT=${CTEST_DASHBOARD_ROOT}/build-omega_h/install/"
+  "-DCatch2_ROOT=${CTEST_DASHBOARD_ROOT}/build-catch2/install"
   "-DCabana_ROOT=${CTEST_DASHBOARD_ROOT}/build-cab/install"
 )
 

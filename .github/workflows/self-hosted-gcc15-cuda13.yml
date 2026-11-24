@@ -100,10 +100,19 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=$cabbdir/install
           cmake --build $cabbdir -j `nproc` --target install
 
+          # Catch2 uses the host compiler.
+          git clone --depth 1 --branch v3.8.0 https://github.com/catchorg/Catch2.git "${workDir}/catch2"
+          catchdir="${workDir}/build-catch2"
+          cmake -S "${workDir}/catch2" -B "$catchdir" \
+            -DCMAKE_BUILD_TYPE=Release -DCATCH_BUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX="$catchdir/install"
+          cmake --build "$catchdir" --parallel 4 --target install
+
           # meshfields, with and without cabana
           for cab in on off; do
             mfbdir=${workDir}/build-meshfields_cab${cab}
             cmake -S meshfields_${{ github.run_id }} -B $mfbdir \
+              -DCatch2_ROOT="$catchdir/install" \
               -G Ninja \
               -DCMAKE_CXX_SCAN_FOR_MODULES:BOOL=OFF \
               -DMeshFields_USE_Cabana=$cab \
